@@ -15,18 +15,20 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #image-modal.hidden { display: none; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-200">
 
     <div class="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-lg">
+        <!-- 文章列表視圖 -->
         <div id="list-view">
             <header class="bg-gray-50 dark:bg-gray-800 shadow-sm sticky top-0 z-20 p-3">
                 <div class="flex items-center gap-3">
                     <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                     <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
-                        <svg id="theme-icon-light" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        <svg id="theme-icon-dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                        <svg id="theme-icon-light" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <svg id="theme-icon-dark" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                     </button>
                 </div>
             </header>
@@ -36,17 +38,34 @@
             <div id="pagination" class="flex justify-center items-center my-4 space-x-4 hidden"><button id="prev-page" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">舊文章</button><button id="next-page" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">最新頁</button></div>
         </div>
 
+        <!-- 文章內文視圖 -->
         <div id="detail-view" class="hidden h-screen flex flex-col">
             <header class="bg-blue-600 dark:bg-blue-800 text-white shadow-md sticky top-0 z-20 p-3 flex items-center gap-3">
                 <button id="back-button" class="p-2 rounded-full hover:bg-blue-500 dark:hover:bg-blue-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                <h2 class="font-bold text-lg truncate">PTT 行動版</h2>
+                <h2 id="detail-title" class="font-bold text-lg truncate">文章內文</h2>
             </header>
             <main id="detail-content" class="flex-grow p-4 overflow-y-auto no-scrollbar"></main>
         </div>
     </div>
 
+    <!-- 圖片放大 Modal -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+        <div class="relative max-w-4xl max-h-full">
+            <img id="modal-image" src="" alt="放大的圖片" class="max-w-full max-h-[85vh] object-contain">
+            <div class="absolute top-0 right-0 m-4 flex gap-2">
+                 <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                </a>
+                <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // DOM 元素
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
             const articlesList = document.getElementById('articles-list');
@@ -58,11 +77,17 @@
             const nextPageBtn = document.getElementById('next-page');
             const boardSelector = document.getElementById('board-selector');
             const backButton = document.getElementById('back-button');
+            const detailTitle = document.getElementById('detail-title');
             const detailContent = document.getElementById('detail-content');
+            const imageModal = document.getElementById('image-modal');
+            const modalImage = document.getElementById('modal-image');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const downloadBtn = document.getElementById('download-btn');
             
             let prevPageUrl = null;
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
+            // 初始化看板選單
             for (const board_en in TOP_BOARDS) {
                 const option = document.createElement('option');
                 option.value = board_en;
@@ -70,6 +95,7 @@
                 boardSelector.appendChild(option);
             }
 
+            // 主題切換
             const themeToggle = document.getElementById('theme-toggle');
             const themeIconLight = document.getElementById('theme-icon-light');
             const themeIconDark = document.getElementById('theme-icon-dark');
@@ -92,30 +118,47 @@
                 applyTheme(newTheme);
             });
 
+            // --- 修改開始：頁面狀態管理 ---
+            function showListView() {
+                detailView.classList.add('hidden');
+                listView.classList.remove('hidden');
+            }
+
+            // 監聽瀏覽器歷史狀態變化 (例如：點擊手機返回鍵)
+            window.addEventListener('popstate', (event) => {
+                // 如果 hash 不是 #detail，就代表要回到列表頁
+                if (location.hash !== '#detail') {
+                    showListView();
+                }
+            });
+            // --- 修改結束 ---
+
+            // 建立文章列表項目
             function createListItem(article) {
                 const item = document.createElement('div');
-                item.className = 'flex items-center p-3 gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
+                item.className = 'flex items-center p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
                 
-                let thumbnailHTML = '';
-                if (article.thumbnail) {
-                    thumbnailHTML = `
-                        <div class="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center">
-                            <img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none';">
-                        </div>
-                    `;
-                }
+                let thumbnailHTML = `
+                    <div class="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                        ${article.thumbnail ? 
+                            `<img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover">` :
+                            `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"></path></svg>`
+                        }
+                    </div>
+                `;
 
                 item.innerHTML = `
                     ${thumbnailHTML}
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight text-gray-900 dark:text-white">${article.title}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${article.author} - ${article.date}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
                     </div>
                 `;
                 item.addEventListener('click', () => showDetailView(article));
                 return item;
             }
 
+            // 載入文章列表
             async function loadArticles(board, url = null) {
                 listLoader.classList.remove('hidden');
                 articlesList.innerHTML = '';
@@ -125,8 +168,11 @@
                 try {
                     const apiUrl = url ? `/api/scraper?board=${board}&list_url=${encodeURIComponent(url)}` : `/api/scraper?board=${board}`;
                     const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: `請求失敗，狀態碼: ${response.status}` }));
+                        throw new Error(errorData.error);
+                    }
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || `請求失敗`);
                     
                     const filteredArticles = data.articles.filter(a => !a.title.includes('[公告]'));
                     filteredArticles.forEach(article => articlesList.appendChild(createListItem(article)));
@@ -144,47 +190,93 @@
                 }
             }
             
-            function showListView() {
-                detailView.classList.add('hidden');
-                listView.classList.remove('hidden');
-            }
-
+            // 顯示文章內文
             async function showDetailView(article) {
                 listView.classList.add('hidden');
                 detailView.classList.remove('hidden');
+                detailTitle.textContent = article.title;
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
+                
+                // --- 修改開始：推入新的歷史狀態 ---
+                history.pushState({view: 'detail'}, '', '#detail');
+                // --- 修改結束 ---
 
                 try {
                     const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
+                     if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: `無法載入內文，狀態碼: ${response.status}` }));
+                        throw new Error(errorData.error);
+                    }
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || '無法載入內文');
 
-                    let imagesHTML = '';
+                    // 處理圖片
+                    let contentWithImages = data.content;
                     data.images.forEach(imgUrl => {
-                        imagesHTML += `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg">`;
+                        const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal('${imgUrl}')">`;
+                        const urlPattern = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                        contentWithImages = contentWithImages.replace(urlPattern, imgTag);
                     });
 
+                    // 處理簽名檔
+                    const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
+                    
+                    // 處理推文
+                    let pushesHTML = '';
+                    if (data.pushes && data.pushes.length > 0) {
+                        const pushList = data.pushes.map(p => {
+                            let tagColor = 'text-gray-500 dark:text-gray-400';
+                            if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
+                            if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
+                            return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${p.content}</span></div>`;
+                        }).join('');
+                        pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${pushList}</div>`;
+                    }
+
                     detailContent.innerHTML = `
-                        <div class="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg text-sm mb-4">
+                        <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg text-sm mb-4">
                             <p><strong>看板:</strong> ${article.board}</p>
                             <p><strong>作者:</strong> ${data.author_full}</p>
                             <p><strong>標題:</strong> ${article.title}</p>
                             <p><strong>時間:</strong> ${data.timestamp}</p>
                         </div>
-                        <div class="text-base leading-relaxed whitespace-pre-wrap break-words">${data.content}</div>
-                        <div class="mt-4">${imagesHTML}</div>
+                        <div class="text-base leading-relaxed whitespace-pre-wrap break-words">${contentWithImages}</div>
+                        ${signatureHTML}
+                        ${pushesHTML}
                     `;
+                    detailContent.scrollTop = 0;
 
                 } catch (error) {
-                    detailContent.innerHTML = `<p class="text-red-500 font-bold">${error.message}</p>`;
+                    detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
                 }
             }
+
+            // 圖片 Modal 控制
+            window.openImageModal = (src) => {
+                modalImage.src = src;
+                downloadBtn.href = src;
+                imageModal.classList.remove('hidden');
+            }
+            const closeImageModal = () => imageModal.classList.add('hidden');
+            closeModalBtn.addEventListener('click', closeImageModal);
+            imageModal.addEventListener('click', (e) => {
+                if (e.target === imageModal) closeImageModal();
+            });
             
+            // --- 修改開始：頁首返回按鈕使用 history.back() ---
+            backButton.addEventListener('click', () => {
+                history.back();
+            });
+            // --- 修改結束 ---
+            
+            // 事件監聽
             boardSelector.addEventListener('change', () => loadArticles(boardSelector.value));
             prevPageBtn.addEventListener('click', () => { if(prevPageUrl) loadArticles(boardSelector.value, prevPageUrl); });
             nextPageBtn.addEventListener('click', () => loadArticles(boardSelector.value));
-            backButton.addEventListener('click', showListView);
 
+            // 初始載入
+            // --- 修改開始：設定初始 hash 狀態 ---
+            history.replaceState({view: 'list'}, '', '#list');
+            // --- 修改結束 ---
             loadArticles(boardSelector.value);
         });
     </script>

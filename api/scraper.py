@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import requests
 from bs4 import BeautifulSoup
+import re
 
 app = Flask(__name__)
 
@@ -46,6 +47,7 @@ def fetch_ptt_article_list(board, page_url):
             article_link = "https://www.ptt.cc" + title_tag['href']
             thumbnail = None
             
+            # 為了提升效能，只抓取前幾篇文章的縮圖
             if index < 8: 
                 thumbnail = get_first_image_from_article(article_link)
 
@@ -59,37 +61,58 @@ def fetch_ptt_article_list(board, page_url):
     return {"articles": article_list, "prev_page_url": prev_page_url}
 
 def fetch_ptt_article_content(article_url):
-    """抓取單篇文章的詳細內容"""
+    """抓取單篇文章的詳細內容，包含內文、簽名檔和推文"""
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     main_content = soup.select_one('#main-content')
     if not main_content: raise Exception("找不到 #main-content 區塊。")
 
-    author_full = ''
-    timestamp = ''
-    meta_lines = main_content.select('.article-metaline')
+    author_full, timestamp = '', ''
+    meta_lines = main_content.select('.article-metaline, .article-metaline-right')
     for line in meta_lines:
         tag = line.select_one('.article-meta-tag')
         value = line.select_one('.article-meta-value')
         if tag and value:
-            if tag.get_text(strip=True) == '作者':
-                author_full = value.get_text(strip=True)
-            elif tag.get_text(strip=True) == '時間':
-                timestamp = value.get_text(strip=True)
+            if tag.get_text(strip=True) == '作者': author_full = value.get_text(strip=True)
+            elif tag.get_text(strip=True) == '時間': timestamp = value.get_text(strip=True)
+        line.decompose()
 
-    for meta_line in main_content.select('.article-metaline, .article-metaline-right, .push, span.f2'):
-        meta_line.decompose()
-    for br in main_content.find_all("br"):
-        br.replace_with("\n")
-        
-    content_text = main_content.get_text(strip=True)
+    # 提取所有推文
+    pushes = []
+    for push in main_content.select('.push'):
+        push_tag = push.select_one('.push-tag').get_text(strip=True) if push.select_one('.push-tag') else ''
+        push_userid = push.select_one('.push-userid').get_text(strip=True) if push.select_one('.push-userid') else ''
+        push_content = push.select_one('.push-content').get_text(strip=True) if push.select_one('.push-content') else ''
+        push_ipdatetime = push.select_one('.push-ipdatetime').get_text(strip=True) if push.select_one('.push-ipdatetime') else ''
+        pushes.append({
+            "tag": push_tag, "userid": push_userid,
+            "content": push_content, "ipdatetime": push_ipdatetime
+        })
+        push.decompose()
+
+    # 移除 "※ 發信站:" 等資訊
+    for f2_span in main_content.select('span.f2'):
+        if '※ 發信站:' in f2_span.get_text() or '※ 編輯:' in f2_span.get_text():
+            f2_span.decompose()
+
+    # 提取圖片連結
     images = [link.get('href', '') for link in main_content.select('a') if link.get('href', '').endswith(('.jpg', '.jpeg', '.png', '.gif'))]
-    return {"author_full": author_full, "timestamp": timestamp, "content": content_text, "images": images}
+    
+    # 處理內文和簽名檔
+    for br in main_content.find_all("br"): br.replace_with("\n")
+    full_text = main_content.get_text()
+    content_parts = re.split(r'\n--\n', full_text, 1)
+    content = content_parts[0].strip()
+    signature = content_parts[1].strip() if len(content_parts) > 1 else ''
 
-# --- 修改開始：將 Flask 路由與 vercel.json 中的 source 路徑保持一致 ---
+    return {
+        "author_full": author_full, "timestamp": timestamp, "content": content,
+        "signature": signature, "images": images, "pushes": pushes
+    }
+
+
 @app.route('/api/scraper', methods=['GET'])
-# --- 修改結束 ---
 def scraper_endpoint():
     try:
         board = request.args.get('board', 'Gossiping')
