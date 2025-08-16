@@ -19,17 +19,16 @@
         #image-modal.hidden { display: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-        .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); } /* dark:bg-gray-900/70 */
+        .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
         button:disabled { background-color: #9ca3af; cursor: not-allowed; }
         .dark button:disabled { background-color: #4b5563; }
-        /* Pinch Zoom 容器 */
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-black text-gray-900 dark:text-gray-100">
+<body class="bg-gray-100 dark:bg-black">
 
-    <div class="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-lg flex flex-col">
+    <div class="max-w-md mx-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
         <!-- 統一工具列 -->
         <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
@@ -87,7 +86,7 @@
         </div>
     </div>
     
-    <button id="floating-back-btn" class="fixed bottom-5 right-5 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
+    <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
     </button>
 
@@ -126,6 +125,7 @@
             const detailContent = document.getElementById('detail-content');
             const showFavoritesBtn = document.getElementById('show-favorites-btn');
             const floatingBackBtn = document.getElementById('floating-back-btn');
+            const imageModal = document.getElementById('image-modal');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
@@ -144,7 +144,7 @@
                     headerFavoriteBtn.classList.remove('hidden');
                     headerTitle.textContent = state.currentArticle.title;
                     updateFavoriteIcon(isFavorite(state.currentArticle.link));
-                } else { // list or favorites
+                } else {
                     boardSelector.classList.remove('hidden');
                     showFavoritesBtn.classList.remove('hidden');
                     headerBackBtn.classList.add('hidden');
@@ -247,6 +247,8 @@
                 state.currentArticle = article;
                 state.currentView = 'detail';
                 updateHeader();
+                floatingBackBtn.classList.remove('hidden');
+                showFloatingBackButton();
 
                 if (!state.readArticles.has(article.link)) {
                     state.readArticles.add(article.link);
@@ -289,6 +291,16 @@
                     detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
                 }
             }
+            
+            function goBack() {
+                if (!imageModal.classList.contains('hidden')) {
+                    closeImageModal();
+                    return;
+                }
+                if (state.currentView === 'detail') {
+                    history.back();
+                }
+            }
 
             // --- 事件監聽器 ---
             boardSelector.addEventListener('change', (e) => {
@@ -314,11 +326,13 @@
                 pagination.classList.add('hidden');
             });
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
-            headerBackBtn.addEventListener('click', () => history.back());
+            headerBackBtn.addEventListener('click', goBack);
+            floatingBackBtn.addEventListener('click', goBack);
             window.addEventListener('popstate', () => {
                 state.currentView = 'list';
                 listView.classList.remove('hidden');
                 detailView.classList.add('hidden');
+                floatingBackBtn.classList.add('hidden');
                 updateHeader();
                 updatePagination();
             });
@@ -335,7 +349,6 @@
             updateHeader();
 
             // --- 圖片 Modal 和全螢幕 ---
-            const imageModal = document.getElementById('image-modal');
             const pinchZoomTarget = document.getElementById('pinch-zoom-target');
             const closeModalBtn = document.getElementById('close-modal-btn');
             const downloadBtn = document.getElementById('download-btn');
@@ -378,6 +391,7 @@
                 else if (document.exitFullscreen) document.exitFullscreen();
             });
             function showFloatingBackButton() {
+                if (state.currentView !== 'detail') return;
                 floatingBackBtn.classList.remove('opacity-0');
                 clearTimeout(state.inactivityTimer);
                 state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000);
@@ -386,10 +400,8 @@
                 fullscreenEnterIcon.classList.toggle('hidden', !!document.fullscreenElement);
                 fullscreenExitIcon.classList.toggle('hidden', !document.fullscreenElement);
             });
-            floatingBackBtn.addEventListener('click', () => history.back());
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
-            showFloatingBackButton();
         });
     </script>
 </body>
