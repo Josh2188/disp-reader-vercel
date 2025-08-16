@@ -83,16 +83,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- NEW: 7-Day LocalStorage Cache System ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
                 EXPIRATION_DAYS: 7,
                 get(key) {
                     const fullKey = this.CACHE_PREFIX + key;
                     const itemStr = localStorage.getItem(fullKey);
-                    if (!itemStr) {
-                        return null;
-                    }
+                    if (!itemStr) return null;
                     try {
                         const item = JSON.parse(itemStr);
                         const now = new Date();
@@ -110,15 +107,10 @@
                 },
                 set(key, data) {
                     const fullKey = this.CACHE_PREFIX + key;
-                    const item = {
-                        data: data,
-                        timestamp: new Date().getTime(),
-                    };
+                    const item = { data: data, timestamp: new Date().getTime() };
                     try {
                         localStorage.setItem(fullKey, JSON.stringify(item));
-                    } catch (e) {
-                        console.error("Error saving to cache", e);
-                    }
+                    } catch (e) { console.error("Error saving to cache", e); }
                 }
             };
 
@@ -157,6 +149,14 @@
             const saveFavorites = () => localStorage.setItem('favoriteArticles', JSON.stringify(state.favorites));
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
+
+            // --- NEW: Helper function to turn URLs into links ---
+            function linkify(text) {
+                if (!text) return '';
+                // A regex to find URLs that are not already in an <a> tag or src attribute.
+                const urlRegex = /(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g;
+                return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`);
+            }
 
             function updateHeader() {
                 if (state.currentView === 'detail') {
@@ -364,7 +364,7 @@
                     }
                 });
 
-                const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${processedSignature}</div>` : '';
+                const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : '';
                 
                 let pushesHTML = '';
                 if (data.pushes?.length > 0) {
@@ -372,10 +372,10 @@
                         let tagColor = 'text-gray-500 dark:text-gray-400';
                         if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
                         if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
-                        return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${p.content}</span></div>`;
+                        return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`;
                     }).join('')}</div>`;
                 }
-                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${processedContent}</div>${signatureHTML}${pushesHTML}`;
+                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`;
                 detailContent.scrollTop = 0;
             }
 
@@ -483,14 +483,12 @@
                 }
             };
 
-            // --- NEW: Force Download Logic ---
             downloadBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const url = downloadBtn.href;
                 const originalIcon = downloadBtn.innerHTML;
                 
-                // Show loading spinner
                 downloadBtn.innerHTML = `<svg class="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
                 try {
@@ -502,7 +500,6 @@
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = objectUrl;
-                    // Create a filename from URL
                     a.download = url.split('/').pop().split('?')[0] || 'download.jpg';
                     document.body.appendChild(a);
                     a.click();
@@ -512,7 +509,6 @@
                     console.error('Download failed:', err);
                     alert('圖片下載失敗，可能是瀏覽器限制或網路問題。');
                 } finally {
-                    // Restore original icon
                     downloadBtn.innerHTML = originalIcon;
                 }
             });
