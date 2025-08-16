@@ -28,13 +28,13 @@
 </head>
 <body class="bg-gray-100 dark:bg-black">
 
-    <div class="max-w-md mx-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
+    <div id="app-container" class="max-w-md mx-auto bg-white dark:bg-black text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
         <!-- 統一工具列 -->
         <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
                 <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
-                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
+                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden text-gray-900 dark:text-gray-100"></h2>
                 
                 <div class="flex-shrink-0 flex items-center gap-1">
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
@@ -107,6 +107,7 @@
             };
 
             // --- DOM 元素 ---
+            const appContainer = document.getElementById('app-container');
             const docEl = document.documentElement;
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
@@ -182,7 +183,7 @@
 
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base leading-tight line-clamp-2">${article.title}</h3>
+                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
                         <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
                     </div>
@@ -295,9 +296,7 @@
             function goBack() {
                 if (!imageModal.classList.contains('hidden')) {
                     closeImageModal();
-                    return;
-                }
-                if (state.currentView === 'detail') {
+                } else if (state.currentView === 'detail') {
                     history.back();
                 }
             }
@@ -364,7 +363,10 @@
                 imageModal.classList.remove('hidden');
             }
             const closeImageModal = () => {
-                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
+                if (state.pinchZoomInstance) {
+                    state.pinchZoomInstance.destroy();
+                    state.pinchZoomInstance = null;
+                }
                 imageModal.classList.add('hidden');
             };
             closeModalBtn.addEventListener('click', closeImageModal);
@@ -372,10 +374,14 @@
             
             const themeToggle = document.getElementById('theme-toggle');
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
-            const fullscreenEnterIcon = document.getElementById('fullscreen-enter-icon');
-            const fullscreenExitIcon = document.getElementById('fullscreen-exit-icon');
             const applyTheme = (theme) => {
-                if (theme === 'dark') docEl.classList.add('dark'); else docEl.classList.remove('dark');
+                if (theme === 'dark') {
+                    docEl.classList.add('dark');
+                    appContainer.classList.add('dark');
+                } else {
+                    docEl.classList.remove('dark');
+                    appContainer.classList.remove('dark');
+                }
                 document.querySelector('#theme-icon-light').classList.toggle('hidden', theme !== 'dark');
                 document.querySelector('#theme-icon-dark').classList.toggle('hidden', theme === 'dark');
             };
@@ -397,8 +403,8 @@
                 state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000);
             }
             document.addEventListener('fullscreenchange', () => {
-                fullscreenEnterIcon.classList.toggle('hidden', !!document.fullscreenElement);
-                fullscreenExitIcon.classList.toggle('hidden', !document.fullscreenElement);
+                document.getElementById('fullscreen-enter-icon').classList.toggle('hidden', !!document.fullscreenElement);
+                document.getElementById('fullscreen-exit-icon').classList.toggle('hidden', !document.fullscreenElement);
             });
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
