@@ -171,7 +171,6 @@
             // --- Firebase 設定 ---
             const firebaseConfig = {
               apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
-              // *** FIX: 明確指定 authDomain 來解決驗證問題 ***
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
               projectId: "my-english-learning-app-5d864",
               storageBucket: "my-english-learning-app-5d864.firebasestorage.app",
@@ -603,13 +602,17 @@
 
             // --- 圖片瀏覽器邏輯 (使用 pinch-zoom-js) ---
             function cleanupImageInstance() {
+                // *** FIX: 確保 instance 存在才嘗試移除監聽器和銷毀 ***
                 if (state.pinchZoomInstance) {
                     if (state.pinchZoomInstance._wheelHandler) {
                         pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler);
                     }
-                    state.pinchZoomInstance.destroy();
-                    state.pinchZoomInstance = null;
+                    // *** FIX: 直接呼叫函式庫的 destroy 方法 ***
+                    if (typeof state.pinchZoomInstance.destroy === 'function') {
+                        state.pinchZoomInstance.destroy();
+                    }
                 }
+                state.pinchZoomInstance = null;
                 pinchZoomTarget.innerHTML = '';
             }
             
