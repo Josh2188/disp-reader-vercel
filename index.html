@@ -20,14 +20,32 @@
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
         .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
-        
-        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: grab; transition: transform 0.1s ease-out; }
-        .pinch-zoom-container img.dragging { cursor: grabbing; }
-
-        .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.3); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; z-index: 61; }
-        #image-modal:hover .image-nav-btn { opacity: 1; }
-        .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .image-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.3);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .image-nav-btn:hover, #image-modal-controls:hover + .image-nav-btn, #image-modal:hover .image-nav-btn {
+            opacity: 1;
+        }
+        .image-nav-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
     </style>
@@ -35,26 +53,19 @@
 <body class="bg-gray-100 dark:bg-black">
 
     <div id="app-container" class="max-w-md mx-auto bg-white dark:bg-black text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
-        <!-- Header Toolbar -->
+        <!-- 統一工具列 -->
         <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
                 <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
-                <div class="flex-shrink-0 flex items-center gap-1 relative">
+                <div class="flex-shrink-0 flex items-center gap-1">
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                     </button>
-                    <button id="sort-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <svg id="sort-time-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <svg id="sort-hot-icon" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.934l.643-.643a1 1 0 00-1.414-1.414l-1.45 1.45a1 1 0 00-.293.707v.523a1 1 0 00.395.807c.223.18.49.322.764.422l-2.132 2.132a1 1 0 00-1.414 1.414l2.132-2.132a1 1 0 00-.176.431l-.258 1.034a1 1 0 00.398 1.134c.33.225.734.285 1.102.165l1.034-.258a1 1 0 00.431-.176l2.132 2.132a1 1 0 001.414-1.414l-2.132-2.132a1 1 0 00.422-.764v-.523a1 1 0 00-.293-.707l-1.45-1.45a1 1 0 00-.385-1.45zM12 6c-1.105 0-2 .895-2 2s.895 2 2 2 2-.895 2-2-.895-2-2-2z" clip-rule="evenodd" /></svg>
-                    </button>
                     <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg>
-                    </button>
-                    <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                     </button>
                     <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                         <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
@@ -64,7 +75,7 @@
             </div>
         </header>
 
-        <!-- Page Container -->
+        <!-- 頁面容器 -->
         <div class="flex-grow relative">
             <div id="list-view" class="absolute inset-0 flex flex-col">
                 <div id="skeleton-container" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></div>
@@ -78,26 +89,39 @@
         </div>
     </div>
 
-    <!-- Image Modal -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-0 md:p-4 glassmorphism">
+    <!-- 圖片放大 Modal -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism" onclick="handleCloseRequest(event)">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
-        <button id="image-prev-btn" class="image-nav-btn"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-        <button id="image-next-btn" class="image-nav-btn"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+        <button id="image-prev-btn" class="image-nav-btn">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <button id="image-next-btn" class="image-nav-btn">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </button>
     </div>
+    <!-- 獨立的控制按鈕圖層 -->
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
-        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
-        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        </a>
+        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
     </div>
     
-    <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+    <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+    </button>
 
-    <!-- Firebase SDK -->
+    <!-- NEW: Firebase SDK -->
     <script type="module">
+        // Import the functions you need from the SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // --- FIREBASE SETUP ---
             const firebaseConfig = {
               apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
@@ -113,381 +137,553 @@
             const db = getFirestore(app);
             let userId = null;
 
-            const CACHE_VERSION = '1.5'; 
+            // --- LOCAL CACHE & STATE ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
-                get(key) { const fullKey = this.CACHE_PREFIX + key; const itemStr = localStorage.getItem(fullKey); if (!itemStr) return null; try { const item = JSON.parse(itemStr); if (item.version !== CACHE_VERSION) { localStorage.removeItem(fullKey); return null; } const now = new Date(); if (now.getTime() > item.expiry) { localStorage.removeItem(fullKey); return null; } return item.data; } catch (e) { localStorage.removeItem(fullKey); return null; } },
-                set(key, data, days = 7) { const fullKey = this.CACHE_PREFIX + key; const now = new Date(); const expirationTime = days * 24 * 60 * 60 * 1000; const item = { data, timestamp: now.getTime(), expiry: now.getTime() + expirationTime, version: CACHE_VERSION }; try { localStorage.setItem(fullKey, JSON.stringify(item)); } catch (e) { console.error("Error saving to cache", e); } },
-                clearListCache() { let clearedCount = 0; for (let i = localStorage.length - 1; i >= 0; i--) { const key = localStorage.key(i); if (key.startsWith(this.CACHE_PREFIX) && key.includes('/index')) { localStorage.removeItem(key); clearedCount++; } } alert(`已清除 ${clearedCount} 筆文章列表快取！`); location.reload(); }
+                EXPIRATION_DAYS: 7,
+                get(key) {
+                    const fullKey = this.CACHE_PREFIX + key;
+                    const itemStr = localStorage.getItem(fullKey);
+                    if (!itemStr) return null;
+                    try {
+                        const item = JSON.parse(itemStr);
+                        const now = new Date();
+                        const expirationTime = this.EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+                        if (now.getTime() > item.timestamp + expirationTime) {
+                            localStorage.removeItem(fullKey);
+                            return null;
+                        }
+                        return item.data;
+                    } catch (e) {
+                        localStorage.removeItem(fullKey);
+                        return null;
+                    }
+                },
+                set(key, data) {
+                    const fullKey = this.CACHE_PREFIX + key;
+                    const item = { data: data, timestamp: new Date().getTime() };
+                    try {
+                        localStorage.setItem(fullKey, JSON.stringify(item));
+                    } catch (e) { console.error("Error saving to cache", e); }
+                }
             };
 
-            let state = { currentBoard: 'Beauty', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, desktopZoom: { scale: 1, isDragging: false, prevX: 0, prevY: 0, translateX: 0, translateY: 0, }, currentArticleList: [], sortBy: 'time' };
+            let state = {
+                currentBoard: 'Gossiping',
+                prevPageUrl: null,
+                isLoading: false,
+                currentView: 'list',
+                currentArticle: null,
+                favorites: [], // Now loaded from Firebase
+                readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
+                pinchZoomInstance: null,
+                inactivityTimer: null,
+                currentArticleImages: [],
+                currentImageIndex: 0,
+                galleryActivityTimer: null
+            };
 
+            // DOM Elements...
             const docEl = document.documentElement;
-            const listView = document.getElementById('list-view'), detailView = document.getElementById('detail-view');
-            const articlesList = document.getElementById('articles-list'), skeletonContainer = document.getElementById('skeleton-container');
-            const infiniteLoader = document.getElementById('infinite-loader'), listError = document.getElementById('list-error'), listErrorText = document.getElementById('list-error-text');
-            const boardSelector = document.getElementById('board-selector'), headerBackBtn = document.getElementById('header-back-btn'), headerTitle = document.getElementById('header-title');
-            const headerFavoriteBtn = document.getElementById('header-favorite-btn'), showFavoritesBtn = document.getElementById('show-favorites-btn');
-            const detailContent = document.getElementById('detail-content'), floatingBackBtn = document.getElementById('floating-back-btn');
-            const imageModal = document.getElementById('image-modal'), imageModalControls = document.getElementById('image-modal-controls');
-            const imagePrevBtn = document.getElementById('image-prev-btn'), imageNextBtn = document.getElementById('image-next-btn');
-            const pinchZoomTarget = document.getElementById('pinch-zoom-target'), downloadBtn = document.getElementById('download-btn');
-            const closeModalBtn = document.getElementById('close-modal-btn'), clearCacheBtn = document.getElementById('clear-cache-btn');
-            const sortBtn = document.getElementById('sort-btn'), sortTimeIcon = document.getElementById('sort-time-icon'), sortHotIcon = document.getElementById('sort-hot-icon');
-
+            const listView = document.getElementById('list-view');
+            const detailView = document.getElementById('detail-view');
+            const articlesList = document.getElementById('articles-list');
+            const skeletonContainer = document.getElementById('skeleton-container');
+            const infiniteLoader = document.getElementById('infinite-loader');
+            const listError = document.getElementById('list-error');
+            const listErrorText = document.getElementById('list-error-text');
+            const boardSelector = document.getElementById('board-selector');
+            const headerBackBtn = document.getElementById('header-back-btn');
+            const headerTitle = document.getElementById('header-title');
+            const headerFavoriteBtn = document.getElementById('header-favorite-btn');
+            const detailContent = document.getElementById('detail-content');
+            const showFavoritesBtn = document.getElementById('show-favorites-btn');
+            const floatingBackBtn = document.getElementById('floating-back-btn');
+            const imageModal = document.getElementById('image-modal');
+            const imageModalControls = document.getElementById('image-modal-controls');
+            const imagePrevBtn = document.getElementById('image-prev-btn');
+            const imageNextBtn = document.getElementById('image-next-btn');
+            
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
+            // --- AUTHENTICATION & DATA SYNC ---
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
+                    // Listen for real-time updates on favorites
                     const favsCol = collection(db, 'users', userId, 'favorites');
                     onSnapshot(favsCol, (snapshot) => {
-                        state.favorites = snapshot.docs.map(doc => doc.data());
-                        if (state.currentView === 'favorites') sortAndRenderArticles(state.favorites);
-                        if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
-                    }, (error) => { console.error("Firebase onSnapshot error:", error); alert("無法同步收藏文章，請檢查網路連線。"); });
-                } else { signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error)); }
+                        const serverFavorites = [];
+                        snapshot.forEach((doc) => {
+                            serverFavorites.push(doc.data());
+                        });
+                        state.favorites = serverFavorites;
+                        // If user is currently viewing favorites, re-render
+                        if (state.currentView === 'favorites') {
+                            renderArticles(state.favorites);
+                        }
+                        // If user is viewing a detail page, update the heart icon
+                        if(state.currentView === 'detail' && state.currentArticle) {
+                            updateFavoriteIcon(isFavorite(state.currentArticle.link));
+                        }
+                    });
+                } else {
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("Anonymous sign-in failed:", error);
+                    });
+                }
             });
 
+            // --- HELPER FUNCTIONS ---
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
-            const linkify = (text) => text ? text.replace(/(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`) : '';
-            function updateHeader() { const isDetail = state.currentView === 'detail'; boardSelector.classList.toggle('hidden', isDetail); showFavoritesBtn.classList.toggle('hidden', isDetail); clearCacheBtn.classList.toggle('hidden', isDetail); sortBtn.classList.toggle('hidden', isDetail); headerBackBtn.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); headerFavoriteBtn.classList.toggle('hidden', !isDetail); if (isDetail) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
-            function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div><div class="flex justify-between items-center mt-1"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div><div class="w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-md"></div></div></div><div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
-            function showSkeleton() { skeletonContainer.innerHTML = Array(12).fill(0).map(createSkeletonItem).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
-            function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
-            function updateFavoriteIcon(isFav) { const svg = headerFavoriteBtn.querySelector('svg'); svg.classList.toggle('text-pink-500', isFav); svg.classList.toggle('fill-current', isFav); svg.classList.toggle('text-gray-400', !isFav); }
-            function sortAndRenderArticles(articles) { const sortedArticles = [...articles]; if (state.sortBy === 'hotness') { sortedArticles.sort((a, b) => (b.push_count ?? 0) - (a.push_count ?? 0)); } renderArticles(sortedArticles); }
-            function renderArticles(articleData, append = false) { if (!append) articlesList.innerHTML = ''; if (articleData.length === 0 && !append) { articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`; } else { articleData.forEach(article => articlesList.appendChild(createListItem(article))); } if (!append) lazyLoadDetailsForVisibleArticles(); }
+
+            function linkify(text) {
+                if (!text) return '';
+                const urlRegex = /(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g;
+                return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`);
+            }
             
+            // --- UI FUNCTIONS ---
+            function updateHeader() {
+                if (state.currentView === 'detail') {
+                    boardSelector.classList.add('hidden');
+                    showFavoritesBtn.classList.add('hidden');
+                    headerBackBtn.classList.remove('hidden');
+                    headerTitle.classList.remove('hidden');
+                    headerFavoriteBtn.classList.remove('hidden');
+                    headerTitle.textContent = state.currentArticle.title;
+                    updateFavoriteIcon(isFavorite(state.currentArticle.link));
+                } else {
+                    boardSelector.classList.remove('hidden');
+                    showFavoritesBtn.classList.remove('hidden');
+                    headerBackBtn.classList.add('hidden');
+                    headerTitle.classList.add('hidden');
+                    headerFavoriteBtn.classList.add('hidden');
+                }
+            }
+            
+            function createSkeletonItem() {
+                return `
+                    <div class="flex items-start p-3 gap-3 animate-pulse">
+                        <div class="flex flex-col overflow-hidden flex-grow">
+                            <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div>
+                        </div>
+                        <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div>
+                    </div>
+                `;
+            }
+
+            function showSkeleton() {
+                let skeletonHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    skeletonHTML += createSkeletonItem();
+                }
+                skeletonContainer.innerHTML = skeletonHTML;
+                skeletonContainer.classList.remove('hidden');
+                articlesList.classList.add('hidden');
+            }
+
+            function hideSkeleton() {
+                skeletonContainer.classList.add('hidden');
+                articlesList.classList.remove('hidden');
+            }
+
+            function updateFavoriteIcon(isFav) {
+                const svg = headerFavoriteBtn.querySelector('svg');
+                svg.classList.toggle('text-pink-500', isFav);
+                svg.classList.toggle('fill-current', isFav);
+                svg.classList.toggle('text-gray-400', !isFav);
+            }
+
+            function renderArticles(articleData, append = false) {
+                if (!append) articlesList.innerHTML = '';
+                if (articleData.length === 0 && (state.currentView === 'favorites' || state.currentView === 'list')) {
+                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`;
+                } else {
+                    articleData.forEach(article => articlesList.appendChild(createListItem(article)));
+                }
+            }
+
             function createListItem(article) {
                 const item = document.createElement('div');
                 const isRead = state.readArticles.has(article.link);
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
                 item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`;
-                item.dataset.link = article.link; 
-                item.dataset.detailsLoaded = article.thumbnail ? 'true' : 'false';
+                
+                let thumbnailHTML = '';
+                if (article.thumbnail) {
+                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
+                }
 
-                let pushColor = 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-                if (article.push_count >= 100) pushColor = 'bg-red-500 text-white';
-                else if (article.push_count > 50) pushColor = 'bg-yellow-500 text-white';
-                else if (article.push_count > 0) pushColor = 'bg-green-500 text-white';
-                else if (article.push_count < 0) pushColor = 'bg-gray-500 text-white';
-                const pushBadge = `<div class="w-10 h-6 flex-shrink-0 rounded-md flex items-center justify-center text-xs font-bold ${pushColor}">${article.push_text || 0}</div>`;
-                
-                const thumbnailHTML = `<div class="thumbnail-container w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">${article.thumbnail ? `<img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover">` : ''}</div>`;
-                const displayDate = article.formatted_timestamp || article.date;
-                
+                const displayDate = article.timestamp || article.date;
+
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3>
-                        <div class="flex items-center justify-between mt-1">
-                            <p class="date-author-container text-xs text-gray-500 dark:text-gray-400 truncate">${article.author} - ${displayDate}</p>
-                            ${pushBadge}
-                        </div>
-                        <p class="snippet-container text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${displayDate}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
                     </div>
-                    ${thumbnailHTML}`;
+                    ${thumbnailHTML}
+                `;
                 item.addEventListener('click', () => showDetailView(article));
                 return item;
             }
+            
+            // --- CORE LOGIC ---
+            async function loadArticles(board, url = null, append = false) {
+                if (state.isLoading) return;
+                
+                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
 
-            async function lazyLoadDetailsForVisibleArticles() {
-                const itemsToLoad = document.querySelectorAll('[data-details-loaded="false"]');
-                for (const item of itemsToLoad) {
-                    const link = item.dataset.link;
-                    if (!link) continue;
+                if (!append) {
+                    state.currentView = 'list';
+                    articlesList.innerHTML = '';
+                    listError.classList.add('hidden');
+                    updateHeader();
+                }
 
-                    try {
-                        const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(link)}`);
-                        if (!response.ok) continue;
-                        const data = await response.json();
-                        
-                        const articleInState = state.currentArticleList.find(a => a.link === link);
-                        if (articleInState) {
-                            Object.assign(articleInState, data);
-                        }
-                        
-                        if (data.thumbnail) {
-                            const thumbContainer = item.querySelector('.thumbnail-container');
-                            if (thumbContainer) thumbContainer.innerHTML = `<img src="${data.thumbnail}" alt="thumbnail" class="w-full h-full object-cover">`;
-                        }
-                        const dateAuthorContainer = item.querySelector('.date-author-container');
-                        if (dateAuthorContainer) dateAuthorContainer.textContent = `${articleInState.author} - ${data.formatted_timestamp || articleInState.date}`;
-                        const snippetContainer = item.querySelector('.snippet-container');
-                        if (snippetContainer) snippetContainer.textContent = data.snippet || '';
-                        
-                        item.dataset.detailsLoaded = 'true';
-                    } catch (error) {
-                        console.error(`Failed to lazy load details for ${link}`, error);
+                const cachedData = cache.get(fetchUrl);
+                if (!append && cachedData) {
+                    state.prevPageUrl = cachedData.prev_page_url;
+                    renderArticles(cachedData.articles, false);
+                    articlesList.classList.remove('hidden');
+                    skeletonContainer.classList.add('hidden');
+                    return;
+                }
+
+                state.isLoading = true;
+                
+                if (append) {
+                    infiniteLoader.classList.remove('hidden');
+                } else {
+                    showSkeleton();
+                }
+
+                try {
+                    const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`);
+                    if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
+                    const data = await response.json();
+                    
+                    if (!append) {
+                       cache.set(fetchUrl, data);
                     }
+                    
+                    state.prevPageUrl = data.prev_page_url;
+                    renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')), append);
+                } catch (error) {
+                    listErrorText.textContent = error.message;
+                    listError.classList.remove('hidden');
+                    if (!append) {
+                        skeletonContainer.classList.add('hidden');
+                    }
+                } finally {
+                    state.isLoading = false;
+                    if (!append) hideSkeleton();
+                    infiniteLoader.classList.add('hidden');
+                }
+            }
+            
+            async function toggleFavorite() {
+                if (!state.currentArticle || !userId) return;
+                const article = state.currentArticle;
+                const favsCol = collection(db, 'users', userId, 'favorites');
+                // Use a sanitized link as the document ID
+                const docId = article.link.replace(/[^a-zA-Z0-9]/g, '');
+                const docRef = doc(favsCol, docId);
+
+                if (isFavorite(article.link)) {
+                    await deleteDoc(docRef);
+                } else {
+                    await setDoc(docRef, article);
                 }
             }
 
-            async function loadArticles(board, url = null, append = false) { if (state.isLoading) return; const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; if (!append) { state.currentView = 'list'; articlesList.innerHTML = ''; listError.classList.add('hidden'); updateHeader(); } const cachedData = cache.get(fetchUrl); if (!append && cachedData) { state.prevPageUrl = cachedData.prev_page_url; state.currentArticleList = cachedData.articles; sortAndRenderArticles(state.currentArticleList); articlesList.classList.remove('hidden'); skeletonContainer.classList.add('hidden'); return; } state.isLoading = true; if (append) infiniteLoader.classList.remove('hidden'); else showSkeleton(); try { const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`); if (!response.ok) throw new Error(`請求失敗: ${response.status}`); const data = await response.json(); if (!append) { cache.set(fetchUrl, data); state.currentArticleList = data.articles; } else { state.currentArticleList.push(...data.articles); } state.prevPageUrl = data.prev_page_url; sortAndRenderArticles(append ? state.currentArticleList : data.articles); } catch (error) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); if (!append) skeletonContainer.classList.add('hidden'); } finally { state.isLoading = false; if (!append) hideSkeleton(); infiniteLoader.classList.add('hidden'); } }
-            async function toggleFavorite() { if (!state.currentArticle || !userId) return; const article = state.currentArticle; const docId = article.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); const currentlyIsFavorite = isFavorite(article.link); if (currentlyIsFavorite) { state.favorites = state.favorites.filter(fav => fav.link !== article.link); } else { state.favorites.push(article); } updateFavoriteIcon(!currentlyIsFavorite); try { if (currentlyIsFavorite) { await deleteDoc(docRef); } else { await setDoc(docRef, article); } } catch (error) { console.error("Firebase sync failed:", error); alert("同步收藏失敗！"); if (currentlyIsFavorite) { state.favorites.push(article); } else { state.favorites = state.favorites.filter(fav => fav.link !== article.link); } updateFavoriteIcon(currentlyIsFavorite); } }
-            async function showDetailView(article) { state.currentArticle = article; state.currentView = 'detail'; updateHeader(); floatingBackBtn.classList.remove('hidden'); showFloatingBackButton(); if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); const el = document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`); if(el) el.classList.add('opacity-60'); } listView.classList.add('hidden'); detailView.classList.remove('hidden'); detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>'; history.pushState({view: 'detail'}, '', '#detail'); const articleUrl = article.link; const cachedData = cache.get(articleUrl); if (cachedData) { state.currentArticleImages = cachedData.images || []; renderDetailContent(cachedData, article); return; } try { const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(articleUrl)}`); if (!response.ok) throw new Error(`無法載入內文: ${response.status}`); const data = await response.json(); state.currentArticleImages = data.images || []; cache.set(articleUrl, data); renderDetailContent(data, article); } catch (error) { detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`; } }
-            function renderDetailContent(data, article) { let processedContent = data.content; let processedSignature = data.signature || ''; if (data.youtube_ids?.length > 0) { processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match); } data.images.forEach(imgUrl => { const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`; const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'); processedContent = processedContent.replace(urlRegex, imgTag); if (processedSignature) processedSignature = processedSignature.replace(urlRegex, imgTag); }); const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : ''; const pushesHTML = data.pushes?.length > 0 ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => { let tagColor = 'text-gray-500 dark:text-gray-400'; if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400'; if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400'; return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`; }).join('')}</div>` : ''; detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`; detailContent.scrollTop = 0; }
-            function openImageModal() { const imageUrl = state.currentArticleImages[state.currentImageIndex]; if (!imageUrl) return; state.desktopZoom = { scale: 1, isDragging: false, prevX: 0, prevY: 0, translateX: 0, translateY: 0 }; if (state.pinchZoomInstance) state.pinchZoomInstance.destroy(); pinchZoomTarget.innerHTML = ''; const newImg = document.createElement('img'); newImg.src = imageUrl; newImg.addEventListener('load', () => { if ('ontouchstart' in window) { state.pinchZoomInstance = new PinchZoom.default(newImg.parentElement, { minZoom: 1, maxZoom: 4 }); } }); pinchZoomTarget.appendChild(newImg); downloadBtn.href = imageUrl; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); updateImageNavButtons(); history.pushState({ view: 'image-modal' }, 'Image', '#image'); }
-            function closeImageModal() { if (imageModal.classList.contains('hidden')) return; if (state.pinchZoomInstance) state.pinchZoomInstance.destroy(); state.pinchZoomInstance = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
-            function showNextImage() { if (state.currentImageIndex < state.currentArticleImages.length - 1) { state.currentImageIndex++; openImageModal(); } }
-            function showPrevImage() { if (state.currentImageIndex > 0) { state.currentImageIndex--; openImageModal(); } }
-            function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
-            function updateImageTransform(img) { if (!img) return; const { scale, translateX, translateY } = state.desktopZoom; img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`; img.style.transformOrigin = '0 0'; }
-            function handleCloseRequest(e) { if (e) e.stopPropagation(); closeImageModal(); if (history.state?.view === 'image-modal') history.back(); };
+            async function showDetailView(article) {
+                state.currentArticle = article;
+                state.currentView = 'detail';
+                updateHeader();
+                floatingBackBtn.classList.remove('hidden');
+                showFloatingBackButton();
+
+                if (!state.readArticles.has(article.link)) {
+                    state.readArticles.add(article.link);
+                    saveReadArticles();
+                    document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60');
+                }
+
+                listView.classList.add('hidden');
+                detailView.classList.remove('hidden');
+                detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
+                history.pushState({view: 'detail'}, '', '#detail');
+
+                const articleUrl = article.link;
+                const cachedData = cache.get(articleUrl);
+                if (cachedData) {
+                    state.currentArticleImages = cachedData.images || [];
+                    renderDetailContent(cachedData, article);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(articleUrl)}`);
+                    if (!response.ok) throw new Error(`無法載入內文: ${response.status}`);
+                    const data = await response.json();
+                    
+                    state.currentArticleImages = data.images || [];
+                    cache.set(articleUrl, data);
+                    renderDetailContent(data, article);
+
+                } catch (error) {
+                    detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
+                }
+            }
             
-            detailContent.addEventListener('click', (e) => { if (e.target?.classList.contains('article-image')) { const clickedSrc = e.target.src; const imageIndex = state.currentArticleImages.indexOf(clickedSrc); if (imageIndex > -1) { state.currentImageIndex = imageIndex; openImageModal(); } } });
-            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) handleCloseRequest(e); });
-            closeModalBtn.addEventListener('click', handleCloseRequest);
-            imagePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrevImage(); });
-            imageNextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNextImage(); });
-            downloadBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const imageUrl = downloadBtn.href; if (!imageUrl) return; window.location.href = `/api/scraper?proxy_url=${encodeURIComponent(imageUrl)}`; });
-            pinchZoomTarget.addEventListener('wheel', (e) => { if ('ontouchstart' in window) return; e.preventDefault(); e.stopPropagation(); const img = pinchZoomTarget.querySelector('img'); if (!img) return; const rect = pinchZoomTarget.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const delta = e.deltaY > 0 ? 0.9 : 1.1; const newScale = Math.max(1, Math.min(8, state.desktopZoom.scale * delta)); const scaleChange = newScale / state.desktopZoom.scale; state.desktopZoom.translateX = x - (x - state.desktopZoom.translateX) * scaleChange; state.desktopZoom.translateY = y - (y - state.desktopZoom.translateY) * scaleChange; state.desktopZoom.scale = newScale; updateImageTransform(img); });
-            pinchZoomTarget.addEventListener('mousedown', (e) => { if ('ontouchstart' in window || state.desktopZoom.scale <= 1) return; e.preventDefault(); e.stopPropagation(); const img = pinchZoomTarget.querySelector('img'); if (!img) return; img.classList.add('dragging'); state.desktopZoom.isDragging = true; state.desktopZoom.prevX = e.clientX; state.desktopZoom.prevY = e.clientY; });
-            window.addEventListener('mousemove', (e) => { if (!state.desktopZoom.isDragging) return; const img = pinchZoomTarget.querySelector('img'); if (!img) return; const dx = e.clientX - state.desktopZoom.prevX; const dy = e.clientY - state.desktopZoom.prevY; state.desktopZoom.translateX += dx; state.desktopZoom.translateY += dy; state.desktopZoom.prevX = e.clientX; state.desktopZoom.prevY = e.clientY; updateImageTransform(img); });
-            window.addEventListener('mouseup', () => { if (state.desktopZoom.isDragging) { const img = pinchZoomTarget.querySelector('img'); if(img) img.classList.remove('dragging'); state.desktopZoom.isDragging = false; } });
-            clearCacheBtn.addEventListener('click', (e) => { e.preventDefault(); cache.clearListCache(); });
-            sortBtn.addEventListener('click', () => { state.sortBy = state.sortBy === 'time' ? 'hotness' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hotness'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); sortAndRenderArticles(state.currentArticleList); });
+            function renderDetailContent(data, article) {
+                let processedContent = data.content;
+                let processedSignature = data.signature || '';
+
+                if (data.youtube_ids?.length > 0) {
+                    processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => 
+                        data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match
+                    );
+                }
+                
+                data.images.forEach(imgUrl => {
+                    const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
+                    const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
+                    processedContent = processedContent.replace(urlRegex, imgTag);
+                    if (processedSignature) {
+                        processedSignature = processedSignature.replace(urlRegex, imgTag);
+                    }
+                });
+
+                const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : '';
+                
+                let pushesHTML = '';
+                if (data.pushes?.length > 0) {
+                    pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => {
+                        let tagColor = 'text-gray-500 dark:text-gray-400';
+                        if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
+                        if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
+                        return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`;
+                    }).join('')}</div>`;
+                }
+                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`;
+                detailContent.scrollTop = 0;
+            }
+
+            // --- EVENT LISTENERS & INITIALIZATION ---
             function goBack() { history.back(); }
-            boardSelector.addEventListener('change', (e) => { state.currentBoard = e.target.value; loadArticles(state.currentBoard); });
-            showFavoritesBtn.addEventListener('click', () => { if (state.currentView === 'favorites') { state.currentView = 'list'; updateHeader(); sortAndRenderArticles(state.currentArticleList); } else { state.currentView = 'favorites'; updateHeader(); sortAndRenderArticles(state.favorites); } });
+
+            boardSelector.addEventListener('change', (e) => {
+                state.currentBoard = e.target.value;
+                loadArticles(state.currentBoard);
+            });
+            showFavoritesBtn.addEventListener('click', () => {
+                state.currentView = 'favorites';
+                renderArticles(state.favorites);
+                updateHeader();
+                hideSkeleton();
+                listError.classList.add('hidden');
+            });
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
-            window.addEventListener('popstate', () => { if (!imageModal.classList.contains('hidden')) { closeImageModal(); } else if (state.currentView === 'detail') { state.currentView = 'list'; updateHeader(); sortAndRenderArticles(state.currentArticleList); listView.classList.remove('hidden'); detailView.classList.add('hidden'); floatingBackBtn.classList.add('hidden'); } });
-            articlesList.addEventListener('scroll', () => { lazyLoadDetailsForVisibleArticles(); if (state.isLoading || !state.prevPageUrl || state.currentView !== 'list') return; if (articlesList.scrollTop + articlesList.clientHeight >= articlesList.scrollHeight - 300) { loadArticles(state.currentBoard, state.prevPageUrl, true); } });
-            const fullscreenToggle = document.getElementById('fullscreen-toggle');
-            const applyTheme = (isDark) => docEl.classList.toggle('dark', isDark);
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            applyTheme(mediaQuery.matches);
-            mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
-            fullscreenToggle.addEventListener('click', () => { if (!document.fullscreenElement) docEl.requestFullscreen().catch(err => console.error(err)); else if (document.exitFullscreen) document.exitFullscreen(); });
-            document.addEventListener('fullscreenchange', () => { const isFullscreen = !!document.fullscreenElement; document.getElementById('fullscreen-enter-icon').classList.toggle('hidden', isFullscreen); document.getElementById('fullscreen-exit-icon').classList.toggle('hidden', !isFullscreen); });
-            function showFloatingBackButton() { if (state.currentView !== 'detail') return; floatingBackBtn.classList.remove('opacity-0'); clearTimeout(state.inactivityTimer); state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000); }
-            document.addEventListener('mousemove', showFloatingBackButton);
-            document.addEventListener('touchstart', showFloatingBackButton);
             
-            Object.entries(TOP_BOARDS).forEach(([en, zh]) => { const option = document.createElement('option'); option.value = en; option.textContent = zh; boardSelector.appendChild(option); });
-            boardSelector.value = state.currentBoard;
+            window.addEventListener('popstate', (event) => {
+                if (!imageModal.classList.contains('hidden')) {
+                    closeImageModal();
+                } else if (state.currentView === 'detail') {
+                    state.currentView = 'list';
+                    listView.classList.remove('hidden');
+                    detailView.classList.add('hidden');
+                    floatingBackBtn.classList.add('hidden');
+                    updateHeader();
+                }
+            });
+
+            articlesList.addEventListener('scroll', () => {
+                if (state.isLoading || !state.prevPageUrl || state.currentView !== 'list') return;
+                const { scrollTop, scrollHeight, clientHeight } = articlesList;
+                if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    loadArticles(state.currentBoard, state.prevPageUrl, true);
+                }
+            });
+
+            for (const board_en in TOP_BOARDS) {
+                const option = document.createElement('option');
+                option.value = board_en;
+                option.textContent = `${TOP_BOARDS[board_en]}`;
+                boardSelector.appendChild(option);
+            }
             history.replaceState({view: 'list'}, '', '#list');
             loadArticles(state.currentBoard);
             updateHeader();
+
+            const pinchZoomTarget = document.getElementById('pinch-zoom-target');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            // --- IMAGE GALLERY LOGIC ---
+            detailContent.addEventListener('click', (e) => {
+                if (e.target && e.target.classList.contains('article-image')) {
+                    const clickedSrc = e.target.src;
+                    const imageIndex = state.currentArticleImages.indexOf(clickedSrc);
+                    if (imageIndex > -1) {
+                        state.currentImageIndex = imageIndex;
+                        openImageModal();
+                    }
+                }
+            });
+
+            function openImageModal() {
+                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
+                pinchZoomTarget.innerHTML = '';
+                
+                const imageUrl = state.currentArticleImages[state.currentImageIndex];
+                if (!imageUrl) return;
+
+                const newImg = document.createElement('img');
+                newImg.src = imageUrl;
+                pinchZoomTarget.appendChild(newImg);
+
+                downloadBtn.href = imageUrl;
+                imageModal.classList.remove('hidden');
+                imageModalControls.classList.remove('hidden');
+                updateImageNavButtons();
+                resetGalleryActivityTimer();
+                history.pushState({ view: 'image-modal' }, 'Image', '#image');
+
+                try {
+                    if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
+                        throw new Error('PinchZoom library is not loaded correctly.');
+                    }
+                    state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
+                } catch(e) {
+                    console.error("PinchZoom failed to initialize:", e);
+                    pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
+                }
+            }
+            
+            function closeImageModal() {
+                if (imageModal.classList.contains('hidden')) return;
+                
+                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
+                    state.pinchZoomInstance.destroy();
+                }
+                state.pinchZoomInstance = null;
+                
+                imageModal.classList.add('hidden');
+                imageModalControls.classList.add('hidden');
+                clearTimeout(state.galleryActivityTimer);
+            };
+
+            function showNextImage() {
+                if (state.currentImageIndex < state.currentArticleImages.length - 1) {
+                    state.currentImageIndex++;
+                    openImageModal();
+                }
+            }
+
+            function showPrevImage() {
+                if (state.currentImageIndex > 0) {
+                    state.currentImageIndex--;
+                    openImageModal();
+                }
+            }
+
+            function updateImageNavButtons() {
+                imagePrevBtn.disabled = state.currentImageIndex === 0;
+                imageNextBtn.disabled = state.currentImageIndex === state.currentArticleImages.length - 1;
+            }
+
+            function resetGalleryActivityTimer() {
+                imageModal.classList.remove('hide-controls');
+                clearTimeout(state.galleryActivityTimer);
+                state.galleryActivityTimer = setTimeout(() => {
+                    imageModal.classList.add('hide-controls');
+                }, 2000);
+            }
+            
+            imagePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrevImage(); });
+            imageNextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNextImage(); });
+            imageModal.addEventListener('mousemove', resetGalleryActivityTimer);
+            imageModal.addEventListener('touchstart', resetGalleryActivityTimer);
+
+            window.handleCloseRequest = (e) => {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                closeImageModal();
+                
+                if (history.state && history.state.view === 'image-modal') {
+                    history.back();
+                }
+            };
+
+            downloadBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const url = downloadBtn.href;
+                const originalIcon = downloadBtn.innerHTML;
+                
+                downloadBtn.innerHTML = `<svg class="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok.');
+                    const blob = await response.blob();
+                    const objectUrl = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = objectUrl;
+                    a.download = url.split('/').pop().split('?')[0] || 'download.jpg';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(objectUrl);
+                    a.remove();
+                } catch (err) {
+                    console.error('Download failed:', err);
+                    alert('圖片下載失敗，可能是瀏覽器限制或網路問題。');
+                } finally {
+                    downloadBtn.innerHTML = originalIcon;
+                }
+            });
+            
+            const fullscreenToggle = document.getElementById('fullscreen-toggle');
+            
+            const applyTheme = (isDark) => {
+                docEl.classList.toggle('dark', isDark);
+            };
+            
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            applyTheme(mediaQuery.matches);
+            mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
+
+            fullscreenToggle.addEventListener('click', () => {
+                if (!document.fullscreenElement) docEl.requestFullscreen().catch(err => console.error(err));
+                else if (document.exitFullscreen) document.exitFullscreen();
+            });
+            function showFloatingBackButton() {
+                if (state.currentView !== 'detail') return;
+                floatingBackBtn.classList.remove('opacity-0');
+                clearTimeout(state.inactivityTimer);
+                state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000);
+            }
+            document.addEventListener('fullscreenchange', () => {
+                const isFullscreen = !!document.fullscreenElement;
+                document.getElementById('fullscreen-enter-icon').classList.toggle('hidden', isFullscreen);
+                document.getElementById('fullscreen-exit-icon').classList.toggle('hidden', !isFullscreen);
+            });
+            document.addEventListener('mousemove', showFloatingBackButton);
+            document.addEventListener('touchstart', showFloatingBackButton);
         });
     </script>
 </body>
 </html>
-```
-Most up-to-date Immersive Artifact for "ptt-viewer-fix-py" is:
-
-```python
-from flask import Flask, jsonify, request, Response, stream_with_context
-import requests
-from bs4 import BeautifulSoup
-import re
-from datetime import datetime
-
-# Vercel 會尋找名為 'app' 的 Flask 實例
-app = Flask(__name__)
-
-# Define request headers and cookies
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-}
-COOKIES = {'over18': '1'}
-
-IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif)$', re.IGNORECASE)
-
-def parse_push_count(push_str):
-    """Converts PTT push count string (e.g., '爆', '99', 'X1') to an integer."""
-    if not push_str:
-        return 0
-    push_str = push_str.strip()
-    if push_str == '爆':
-        return 100
-    if push_str.startswith('X'):
-        try:
-            if push_str == 'XX':
-                return -100
-            return -1 * int(push_str[1:])
-        except (ValueError, IndexError):
-            return -1
-    try:
-        return int(push_str)
-    except ValueError:
-        return 0
-
-def format_ptt_time(time_str):
-    """Converts PTT's English timestamp to 'YYYY/MM/DD HH:MM 週X' format."""
-    if not time_str:
-        return None
-    try:
-        dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        weekday_map = {
-            'Sunday': '週日', 'Monday': '週一', 'Tuesday': '週二', 
-            'Wednesday': '週三', 'Thursday': '週四', 'Friday': '週五', 
-            'Saturday': '週六'
-        }
-        formatted_date = dt_obj.strftime('%Y/%m/%d %H:%M')
-        english_weekday = dt_obj.strftime('%A')
-        return f"{formatted_date} {weekday_map.get(english_weekday, '')}"
-    except (ValueError, TypeError):
-        return time_str
-
-def extract_youtube_id(url):
-    if not url: return None
-    patterns = [
-        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})',
-        r'(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})',
-        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})'
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    return None
-
-def process_article_item_for_list(item, board):
-    """
-    Processes a single article item from the list page.
-    This version is optimized for speed and stability on serverless platforms.
-    It ONLY parses data available directly on the list page.
-    """
-    title_tag = item.select_one('.title a')
-    meta_tag = item.select_one('.meta')
-    push_tag = item.select_one('.nrec span')
-    
-    if title_tag and title_tag.get('href') and meta_tag:
-        push_text = push_tag.get_text(strip=True) if push_tag else ''
-        push_count = parse_push_count(push_text)
-
-        return {
-            "title": title_tag.text.strip(),
-            "link": "https://www.ptt.cc" + title_tag['href'],
-            "board": board,
-            "author": meta_tag.select_one('.author').get_text(strip=True) or '',
-            "date": meta_tag.select_one('.date').get_text(strip=True) or '',
-            "push_count": push_count,
-            "push_text": push_text,
-        }
-    return None
-
-def fetch_ptt_article_list(board, page_url):
-    """Fetches a list of articles. This is a fast and robust version."""
-    response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
-    articles = soup.select('div.r-ent')
-    article_list = []
-    
-    for item in articles:
-        result = process_article_item_for_list(item, board)
-        if result:
-            article_list.append(result)
-            
-    prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
-    prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
-    return {"articles": article_list, "prev_page_url": prev_page_url}
-
-def fetch_ptt_article_content(article_url):
-    """Fetches the full content of a single article, including images and timestamps."""
-    response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
-    main_content = soup.select_one('#main-content')
-    if not main_content: raise Exception("Could not find #main-content block.")
-    author_full, timestamp = '', ''
-    meta_lines = main_content.select('.article-metaline, .article-metaline-right')
-    for line in meta_lines:
-        tag = line.select_one('.article-meta-tag')
-        value = line.select_one('.article-meta-value')
-        if tag and value:
-            if tag.get_text(strip=True) == '作者': author_full = value.get_text(strip=True)
-            elif tag.get_text(strip=True) == '時間': timestamp = value.get_text(strip=True)
-        line.decompose()
-    pushes = [{"tag": p.select_one('.push-tag').get_text(strip=True) if p.select_one('.push-tag') else '', "userid": p.select_one('.push-userid').get_text(strip=True) if p.select_one('.push-userid') else '', "content": p.select_one('.push-content').get_text(strip=True) if p.select_one('.push-content') else ''} for p in main_content.select('.push')]
-    for p in main_content.select('.push'): p.decompose()
-    for f2 in main_content.select('span.f2'):
-        if '※ 發信站:' in f2.get_text() or '※ 編輯:' in f2.get_text(): f2.decompose()
-    
-    # Find first image for thumbnail
-    first_image_url = None
-    first_youtube_id = None
-    for link in main_content.select('a'):
-        href = link.get('href', '')
-        if not href: continue
-        if not first_youtube_id:
-            youtube_id = extract_youtube_id(href)
-            if youtube_id: first_youtube_id = youtube_id
-        if not first_image_url and IMAGE_REGEX.search(href):
-            first_image_url = href
-        if first_image_url and first_youtube_id: break
-    
-    thumbnail = f"https://i.ytimg.com/vi/{first_youtube_id}/hqdefault.jpg" if first_youtube_id else first_image_url
-
-    images = [link.get('href') for link in main_content.select('a') if link.get('href') and IMAGE_REGEX.search(link.get('href'))]
-    youtube_ids = [yt_id for link in main_content.select('a') if (yt_id := extract_youtube_id(link.get('href')))]
-    for br in main_content.find_all("br"): br.replace_with("\n")
-    full_text = main_content.get_text()
-    content_parts = re.split(r'\n--\n', full_text, 1)
-    content = content_parts[0].strip()
-    signature = content_parts[1].strip() if len(content_parts) > 1 else ''
-    
-    # Create snippet after removing metadata
-    temp_soup = BeautifulSoup(content, 'html.parser')
-    snippet = temp_soup.get_text(strip=True)[:80] + "..."
-
-    return {
-        "author_full": author_full, 
-        "timestamp": timestamp, 
-        "formatted_timestamp": format_ptt_time(timestamp),
-        "content": content,
-        "signature": signature, 
-        "images": list(dict.fromkeys(images)), 
-        "thumbnail": thumbnail,
-        "snippet": snippet,
-        "pushes": pushes, 
-        "youtube_ids": list(dict.fromkeys(youtube_ids))
-    }
-
-@app.route('/api/scraper', methods=['GET'])
-def handler():
-    proxy_url = request.args.get('proxy_url')
-    if proxy_url:
-        return proxy_image(proxy_url)
-
-    try:
-        board = request.args.get('board', 'Gossiping')
-        list_url = request.args.get('list_url')
-        article_url = request.args.get('article_url')
-        if list_url:
-            data = fetch_ptt_article_list(board, list_url)
-            return jsonify(data)
-        elif article_url:
-            data = fetch_ptt_article_content(article_url)
-            return jsonify(data)
-        else:
-            initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
-            data = fetch_ptt_article_list(board, initial_url)
-            return jsonify(data)
-    except Exception as e:
-        print(f"Error processing request: {e}")
-        return jsonify({"error": str(e)}), 500
-
-def proxy_image(url):
-    if not url: return "Missing URL parameter", 400
-    try:
-        req = requests.get(url, stream=True, headers=HEADERS, timeout=20)
-        req.raise_for_status()
-        filename = url.split('/')[-1].split('?')[0] or 'download'
-        return Response(
-            stream_with_context(req.iter_content(chunk_size=8192)),
-            content_type=req.headers.get('content-type'),
-            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
-        )
-    except requests.exceptions.RequestException as e:
-        print(f"Error proxying image {url}: {e}")
-        return str(e), 502
-
-if __name__ == '__main__':
-    app.run(debug=True)
