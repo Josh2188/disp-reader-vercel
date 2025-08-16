@@ -185,7 +185,6 @@
                     infiniteLoader.classList.remove('hidden');
                 } else {
                     state.currentView = 'list';
-                    // 顯示主載入動畫前先清空列表
                     articlesList.innerHTML = '';
                     infiniteLoader.classList.add('hidden');
                     listError.classList.add('hidden');
@@ -350,8 +349,9 @@
             
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             
-            const applyTheme = (theme) => {
-                if (theme === 'dark') {
+            // 自動日夜模式
+            const applyTheme = (isDark) => {
+                if (isDark) {
                     docEl.classList.add('dark');
                 } else {
                     docEl.classList.remove('dark');
@@ -359,9 +359,9 @@
             };
             
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            applyTheme(mediaQuery.matches ? 'dark' : 'light');
+            applyTheme(mediaQuery.matches);
             mediaQuery.addEventListener('change', (e) => {
-                applyTheme(e.matches ? 'dark' : 'light');
+                applyTheme(e.matches);
             });
 
             fullscreenToggle.addEventListener('click', () => {
