@@ -129,12 +129,19 @@ def fetch_ptt_article_content(article_url):
     
     # Find first image for thumbnail
     first_image_url = None
+    first_youtube_id = None
     for link in main_content.select('a'):
         href = link.get('href', '')
-        if href and IMAGE_REGEX.search(href):
+        if not href: continue
+        if not first_youtube_id:
+            youtube_id = extract_youtube_id(href)
+            if youtube_id: first_youtube_id = youtube_id
+        if not first_image_url and IMAGE_REGEX.search(href):
             first_image_url = href
-            break
+        if first_image_url and first_youtube_id: break
     
+    thumbnail = f"https://i.ytimg.com/vi/{first_youtube_id}/hqdefault.jpg" if first_youtube_id else first_image_url
+
     images = [link.get('href') for link in main_content.select('a') if link.get('href') and IMAGE_REGEX.search(link.get('href'))]
     youtube_ids = [yt_id for link in main_content.select('a') if (yt_id := extract_youtube_id(link.get('href')))]
     for br in main_content.find_all("br"): br.replace_with("\n")
@@ -143,9 +150,9 @@ def fetch_ptt_article_content(article_url):
     content = content_parts[0].strip()
     signature = content_parts[1].strip() if len(content_parts) > 1 else ''
     
-    for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2'):
-            tag.decompose()
-    snippet = main_content.get_text(strip=True)[:80] + "..."
+    # Create snippet after removing metadata
+    temp_soup = BeautifulSoup(content, 'html.parser')
+    snippet = temp_soup.get_text(strip=True)[:80] + "..."
 
     return {
         "author_full": author_full, 
@@ -154,8 +161,8 @@ def fetch_ptt_article_content(article_url):
         "content": content,
         "signature": signature, 
         "images": list(dict.fromkeys(images)), 
-        "thumbnail": first_image_url, # Add thumbnail to content data
-        "snippet": snippet, # Add snippet to content data
+        "thumbnail": thumbnail,
+        "snippet": snippet,
         "pushes": pushes, 
         "youtube_ids": list(dict.fromkeys(youtube_ids))
     }
