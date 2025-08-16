@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- pinch-zoom-js for touch gestures -->
     <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,55 +21,40 @@
         .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
         .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
         
-        /* Styles for image viewer */
-        .pinch-zoom-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden; /* Hide overflow for manual drag */
-        }
-        .pinch-zoom-container img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            /* Style for desktop drag/zoom */
-            cursor: grab;
-            transition: transform 0.1s ease-out;
-        }
-        .pinch-zoom-container img.dragging {
-            cursor: grabbing;
-        }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: grab; transition: transform 0.1s ease-out; }
+        .pinch-zoom-container img.dragging { cursor: grabbing; }
 
-        /* Navigation buttons for image modal */
-        .image-nav-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background-color: rgba(0, 0, 0, 0.3);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 61; /* Ensure it's above the image */
-        }
-        #image-modal:hover .image-nav-btn {
-            opacity: 1;
-        }
-        .image-nav-btn:disabled {
-            opacity: 0.2;
-            cursor: not-allowed;
-        }
+        .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.3); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; z-index: 61; }
+        #image-modal:hover .image-nav-btn { opacity: 1; }
+        .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
+        
+        /* Dropdown for cache clearing */
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 0.5rem;
+        }
+        .dark .dropdown-content { background-color: #2d3748; }
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            text-align: left;
+        }
+        .dark .dropdown-content a { color: white; }
+        .dropdown-content a:hover { background-color: #f1f1f1; }
+        .dark .dropdown-content a:hover { background-color: #4a5568; }
+        .dropdown:hover .dropdown-content { display: block; }
+
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -83,13 +67,26 @@
                 <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
-                <div class="flex-shrink-0 flex items-center gap-1">
+                <div class="flex-shrink-0 flex items-center gap-1 relative">
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                     </button>
                     <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                        <!-- UPDATED: Filled heart icon -->
+                        <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg>
                     </button>
+                    <!-- NEW: Cache Clear Dropdown -->
+                    <div class="dropdown inline-block relative">
+                        <button class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                             <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                        <div class="dropdown-content rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
+                            <a href="#" id="clear-cache-1">清除一天內快取</a>
+                            <a href="#" id="clear-cache-3">清除三天內快取</a>
+                            <a href="#" id="clear-cache-7">清除七天內快取</a>
+                            <a href="#" id="clear-cache-all" class="text-red-500 dark:text-red-400">清除所有快取</a>
+                        </div>
+                    </div>
                     <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                         <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
                         <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>
@@ -114,31 +111,16 @@
 
     <!-- Image Modal -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-0 md:p-4 glassmorphism">
-        <div id="pinch-zoom-target" class="pinch-zoom-container">
-            <!-- Image will be injected here -->
-        </div>
-        <!-- Navigation Buttons -->
-        <button id="image-prev-btn" class="image-nav-btn">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-        </button>
-        <button id="image-next-btn" class="image-nav-btn">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-        </button>
+        <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
+        <button id="image-prev-btn" class="image-nav-btn"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+        <button id="image-next-btn" class="image-nav-btn"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
     </div>
-    <!-- Modal Control Buttons -->
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
-        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-        </a>
-        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
+        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
+        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
     
-    <!-- Floating Back Button -->
-    <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-    </button>
+    <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -147,7 +129,6 @@
         import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // --- FIREBASE SETUP ---
             const firebaseConfig = {
               apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
@@ -163,19 +144,23 @@
             const db = getFirestore(app);
             let userId = null;
 
-            // --- LOCAL CACHE & STATE ---
+            // --- CACHE LOGIC WITH VERSIONING ---
+            const CACHE_VERSION = '1.1'; // Increment this to invalidate all old caches
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
-                EXPIRATION_DAYS: 7,
                 get(key) {
                     const fullKey = this.CACHE_PREFIX + key;
                     const itemStr = localStorage.getItem(fullKey);
                     if (!itemStr) return null;
                     try {
                         const item = JSON.parse(itemStr);
+                        // NEW: Check cache version
+                        if (item.version !== CACHE_VERSION) {
+                            localStorage.removeItem(fullKey);
+                            return null;
+                        }
                         const now = new Date();
-                        const expirationTime = this.EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-                        if (now.getTime() > item.timestamp + expirationTime) {
+                        if (now.getTime() > item.expiry) {
                             localStorage.removeItem(fullKey);
                             return null;
                         }
@@ -185,35 +170,47 @@
                         return null;
                     }
                 },
-                set(key, data) {
+                set(key, data, days = 7) {
                     const fullKey = this.CACHE_PREFIX + key;
-                    const item = { data: data, timestamp: new Date().getTime() };
+                    const now = new Date();
+                    const expirationTime = days * 24 * 60 * 60 * 1000;
+                    const item = { 
+                        data: data, 
+                        timestamp: now.getTime(),
+                        expiry: now.getTime() + expirationTime,
+                        version: CACHE_VERSION // NEW: Add version to cache item
+                    };
                     try {
                         localStorage.setItem(fullKey, JSON.stringify(item));
                     } catch (e) { console.error("Error saving to cache", e); }
+                },
+                // NEW: Function to clear cache
+                clear(days = null) {
+                    const now = new Date().getTime();
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key.startsWith(this.CACHE_PREFIX)) {
+                            if (days === null) { // Clear all
+                                localStorage.removeItem(key);
+                                continue;
+                            }
+                            try {
+                                const item = JSON.parse(localStorage.getItem(key));
+                                const ageInDays = (now - item.timestamp) / (1000 * 60 * 60 * 24);
+                                if (ageInDays <= days) {
+                                    localStorage.removeItem(key);
+                                }
+                            } catch (e) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    }
+                    alert(`已清除 ${days === null ? '所有' : days + ' 天內'} 的快取！`);
+                    location.reload(); // Reload to see changes
                 }
             };
 
-            let state = {
-                // CHANGED: Default board is now 'Beauty'
-                currentBoard: 'Beauty',
-                prevPageUrl: null,
-                isLoading: false,
-                currentView: 'list',
-                currentArticle: null,
-                favorites: [], 
-                readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
-                pinchZoomInstance: null,
-                inactivityTimer: null,
-                currentArticleImages: [],
-                currentImageIndex: 0,
-                desktopZoom: {
-                    scale: 1,
-                    isDragging: false,
-                    prevX: 0, prevY: 0,
-                    translateX: 0, translateY: 0,
-                }
-            };
+            let state = { currentBoard: 'Beauty', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, desktopZoom: { scale: 1, isDragging: false, prevX: 0, prevY: 0, translateX: 0, translateY: 0, } };
 
             // DOM Elements...
             const docEl = document.documentElement;
@@ -240,7 +237,7 @@
             
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
-            // --- AUTHENTICATION & DATA SYNC ---
+            // --- AUTH & DATA SYNC ---
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
@@ -248,300 +245,55 @@
                     onSnapshot(favsCol, (snapshot) => {
                         state.favorites = snapshot.docs.map(doc => doc.data());
                         if (state.currentView === 'favorites') renderArticles(state.favorites);
-                        if(state.currentView === 'detail' && state.currentArticle) {
-                            updateFavoriteIcon(isFavorite(state.currentArticle.link));
-                        }
+                        if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
                     });
                 } else {
                     signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
                 }
             });
 
-            // --- HELPER FUNCTIONS ---
+            // --- HELPERS & UI ---
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
             const linkify = (text) => text ? text.replace(/(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`) : '';
-            
-            // --- UI FUNCTIONS ---
-            function updateHeader() {
-                const isDetail = state.currentView === 'detail';
-                boardSelector.classList.toggle('hidden', isDetail);
-                showFavoritesBtn.classList.toggle('hidden', isDetail);
-                headerBackBtn.classList.toggle('hidden', !isDetail);
-                headerTitle.classList.toggle('hidden', !isDetail);
-                headerFavoriteBtn.classList.toggle('hidden', !isDetail);
-                if (isDetail) {
-                    headerTitle.textContent = state.currentArticle.title;
-                    updateFavoriteIcon(isFavorite(state.currentArticle.link));
-                }
-            }
-            
+            function updateHeader() { const isDetail = state.currentView === 'detail'; boardSelector.classList.toggle('hidden', isDetail); showFavoritesBtn.classList.toggle('hidden', isDetail); headerBackBtn.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); headerFavoriteBtn.classList.toggle('hidden', !isDetail); if (isDetail) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
             function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(0).map(createSkeletonItem).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
             function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
             function updateFavoriteIcon(isFav) { const svg = headerFavoriteBtn.querySelector('svg'); svg.classList.toggle('text-pink-500', isFav); svg.classList.toggle('fill-current', isFav); svg.classList.toggle('text-gray-400', !isFav); }
-
-            function renderArticles(articleData, append = false) {
-                if (!append) articlesList.innerHTML = '';
-                if (articleData.length === 0 && !append) {
-                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`;
-                } else {
-                    articleData.forEach(article => articlesList.appendChild(createListItem(article)));
-                }
-            }
-
-            function createListItem(article) {
-                const item = document.createElement('div');
-                const isRead = state.readArticles.has(article.link);
-                item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
-                item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`;
-                
-                const thumbnailHTML = article.thumbnail ? `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>` : '';
-                const displayDate = article.timestamp || article.date;
-
-                item.innerHTML = `
-                    <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${displayDate}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
-                    </div>
-                    ${thumbnailHTML}
-                `;
-                item.addEventListener('click', () => showDetailView(article));
-                return item;
-            }
+            function renderArticles(articleData, append = false) { if (!append) articlesList.innerHTML = ''; if (articleData.length === 0 && !append) { articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`; } else { articleData.forEach(article => articlesList.appendChild(createListItem(article))); } }
+            function createListItem(article) { const item = document.createElement('div'); const isRead = state.readArticles.has(article.link); item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`; item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`; const thumbnailHTML = article.thumbnail ? `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>` : ''; const displayDate = article.formatted_timestamp || article.date; item.innerHTML = `<div class="flex flex-col overflow-hidden flex-grow"><h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3><p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${displayDate}</p><p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p></div>${thumbnailHTML}`; item.addEventListener('click', () => showDetailView(article)); return item; }
             
             // --- CORE LOGIC ---
-            async function loadArticles(board, url = null, append = false) {
-                if (state.isLoading) return;
-                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                if (!append) { state.currentView = 'list'; articlesList.innerHTML = ''; listError.classList.add('hidden'); updateHeader(); }
-                const cachedData = cache.get(fetchUrl);
-                if (!append && cachedData) { state.prevPageUrl = cachedData.prev_page_url; renderArticles(cachedData.articles, false); articlesList.classList.remove('hidden'); skeletonContainer.classList.add('hidden'); return; }
-                state.isLoading = true;
-                if (append) infiniteLoader.classList.remove('hidden'); else showSkeleton();
-                try {
-                    const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`);
-                    if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
-                    const data = await response.json();
-                    if (!append) cache.set(fetchUrl, data);
-                    state.prevPageUrl = data.prev_page_url;
-                    renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')), append);
-                } catch (error) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); if (!append) skeletonContainer.classList.add('hidden'); } 
-                finally { state.isLoading = false; if (!append) hideSkeleton(); infiniteLoader.classList.add('hidden'); }
-            }
-            
-            async function toggleFavorite() {
-                if (!state.currentArticle || !userId) return;
-                const article = state.currentArticle;
-                const docId = article.link.replace(/[^a-zA-Z0-9]/g, '');
-                const docRef = doc(db, 'users', userId, 'favorites', docId);
-                if (isFavorite(article.link)) await deleteDoc(docRef); else await setDoc(docRef, article);
-            }
+            async function loadArticles(board, url = null, append = false) { if (state.isLoading) return; const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; if (!append) { state.currentView = 'list'; articlesList.innerHTML = ''; listError.classList.add('hidden'); updateHeader(); } const cachedData = cache.get(fetchUrl); if (!append && cachedData) { state.prevPageUrl = cachedData.prev_page_url; renderArticles(cachedData.articles, false); articlesList.classList.remove('hidden'); skeletonContainer.classList.add('hidden'); return; } state.isLoading = true; if (append) infiniteLoader.classList.remove('hidden'); else showSkeleton(); try { const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`); if (!response.ok) throw new Error(`請求失敗: ${response.status}`); const data = await response.json(); if (!append) cache.set(fetchUrl, data); state.prevPageUrl = data.prev_page_url; renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')), append); } catch (error) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); if (!append) skeletonContainer.classList.add('hidden'); } finally { state.isLoading = false; if (!append) hideSkeleton(); infiniteLoader.classList.add('hidden'); } }
+            async function toggleFavorite() { if (!state.currentArticle || !userId) return; const article = state.currentArticle; const docId = article.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(article.link)) await deleteDoc(docRef); else await setDoc(docRef, article); }
+            async function showDetailView(article) { state.currentArticle = article; state.currentView = 'detail'; updateHeader(); floatingBackBtn.classList.remove('hidden'); showFloatingBackButton(); if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60'); } listView.classList.add('hidden'); detailView.classList.remove('hidden'); detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>'; history.pushState({view: 'detail'}, '', '#detail'); const articleUrl = article.link; const cachedData = cache.get(articleUrl); if (cachedData) { state.currentArticleImages = cachedData.images || []; renderDetailContent(cachedData, article); return; } try { const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(articleUrl)}`); if (!response.ok) throw new Error(`無法載入內文: ${response.status}`); const data = await response.json(); state.currentArticleImages = data.images || []; cache.set(articleUrl, data); renderDetailContent(data, article); } catch (error) { detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`; } }
+            function renderDetailContent(data, article) { let processedContent = data.content; let processedSignature = data.signature || ''; if (data.youtube_ids?.length > 0) { processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match); } data.images.forEach(imgUrl => { const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`; const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'); processedContent = processedContent.replace(urlRegex, imgTag); if (processedSignature) processedSignature = processedSignature.replace(urlRegex, imgTag); }); const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : ''; const pushesHTML = data.pushes?.length > 0 ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => { let tagColor = 'text-gray-500 dark:text-gray-400'; if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400'; if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400'; return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`; }).join('')}</div>` : ''; detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`; detailContent.scrollTop = 0; }
 
-            async function showDetailView(article) {
-                state.currentArticle = article;
-                state.currentView = 'detail';
-                updateHeader();
-                floatingBackBtn.classList.remove('hidden');
-                showFloatingBackButton();
-                if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60'); }
-                listView.classList.add('hidden');
-                detailView.classList.remove('hidden');
-                detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
-                history.pushState({view: 'detail'}, '', '#detail');
-                const articleUrl = article.link;
-                const cachedData = cache.get(articleUrl);
-                if (cachedData) { state.currentArticleImages = cachedData.images || []; renderDetailContent(cachedData, article); return; }
-                try {
-                    const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(articleUrl)}`);
-                    if (!response.ok) throw new Error(`無法載入內文: ${response.status}`);
-                    const data = await response.json();
-                    state.currentArticleImages = data.images || [];
-                    cache.set(articleUrl, data);
-                    renderDetailContent(data, article);
-                } catch (error) { detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`; }
-            }
-            
-            function renderDetailContent(data, article) {
-                let processedContent = data.content;
-                let processedSignature = data.signature || '';
-                if (data.youtube_ids?.length > 0) { processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match); }
-                data.images.forEach(imgUrl => {
-                    const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
-                    const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
-                    processedContent = processedContent.replace(urlRegex, imgTag);
-                    if (processedSignature) processedSignature = processedSignature.replace(urlRegex, imgTag);
-                });
-                const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : '';
-                const pushesHTML = data.pushes?.length > 0 ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => { let tagColor = 'text-gray-500 dark:text-gray-400'; if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400'; if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400'; return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`; }).join('')}</div>` : '';
-                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`;
-                detailContent.scrollTop = 0;
-            }
-
-            // --- IMAGE GALLERY LOGIC (REVISED) ---
-            detailContent.addEventListener('click', (e) => {
-                if (e.target?.classList.contains('article-image')) {
-                    const clickedSrc = e.target.src;
-                    const imageIndex = state.currentArticleImages.indexOf(clickedSrc);
-                    if (imageIndex > -1) {
-                        state.currentImageIndex = imageIndex;
-                        openImageModal();
-                    }
-                }
-            });
-
-            function openImageModal() {
-                const imageUrl = state.currentArticleImages[state.currentImageIndex];
-                if (!imageUrl) return;
-                state.desktopZoom = { scale: 1, isDragging: false, prevX: 0, prevY: 0, translateX: 0, translateY: 0 };
-                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
-                pinchZoomTarget.innerHTML = '';
-                const newImg = document.createElement('img');
-                newImg.src = imageUrl;
-                newImg.addEventListener('load', () => {
-                   if ('ontouchstart' in window) {
-                       state.pinchZoomInstance = new PinchZoom.default(newImg.parentElement, { minZoom: 1, maxZoom: 4 });
-                   }
-                });
-                pinchZoomTarget.appendChild(newImg);
-                downloadBtn.href = imageUrl;
-                imageModal.classList.remove('hidden');
-                imageModalControls.classList.remove('hidden');
-                updateImageNavButtons();
-                history.pushState({ view: 'image-modal' }, 'Image', '#image');
-            }
-            
-            function closeImageModal() {
-                if (imageModal.classList.contains('hidden')) return;
-                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
-                state.pinchZoomInstance = null;
-                imageModal.classList.add('hidden');
-                imageModalControls.classList.add('hidden');
-            };
-
-            function showNextImage() {
-                if (state.currentImageIndex < state.currentArticleImages.length - 1) {
-                    state.currentImageIndex++;
-                    openImageModal();
-                }
-            }
-
-            function showPrevImage() {
-                if (state.currentImageIndex > 0) {
-                    state.currentImageIndex--;
-                    openImageModal();
-                }
-            }
-
-            function updateImageNavButtons() {
-                imagePrevBtn.disabled = state.currentImageIndex === 0;
-                imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1;
-            }
-
+            // --- IMAGE GALLERY LOGIC ---
+            detailContent.addEventListener('click', (e) => { if (e.target?.classList.contains('article-image')) { const clickedSrc = e.target.src; const imageIndex = state.currentArticleImages.indexOf(clickedSrc); if (imageIndex > -1) { state.currentImageIndex = imageIndex; openImageModal(); } } });
+            function openImageModal() { const imageUrl = state.currentArticleImages[state.currentImageIndex]; if (!imageUrl) return; state.desktopZoom = { scale: 1, isDragging: false, prevX: 0, prevY: 0, translateX: 0, translateY: 0 }; if (state.pinchZoomInstance) state.pinchZoomInstance.destroy(); pinchZoomTarget.innerHTML = ''; const newImg = document.createElement('img'); newImg.src = imageUrl; newImg.addEventListener('load', () => { if ('ontouchstart' in window) { state.pinchZoomInstance = new PinchZoom.default(newImg.parentElement, { minZoom: 1, maxZoom: 4 }); } }); pinchZoomTarget.appendChild(newImg); downloadBtn.href = imageUrl; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); updateImageNavButtons(); history.pushState({ view: 'image-modal' }, 'Image', '#image'); }
+            function closeImageModal() { if (imageModal.classList.contains('hidden')) return; if (state.pinchZoomInstance) state.pinchZoomInstance.destroy(); state.pinchZoomInstance = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
+            function showNextImage() { if (state.currentImageIndex < state.currentArticleImages.length - 1) { state.currentImageIndex++; openImageModal(); } }
+            function showPrevImage() { if (state.currentImageIndex > 0) { state.currentImageIndex--; openImageModal(); } }
+            function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
             imagePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrevImage(); });
             imageNextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNextImage(); });
+            pinchZoomTarget.addEventListener('wheel', (e) => { if ('ontouchstart' in window) return; e.preventDefault(); const img = pinchZoomTarget.querySelector('img'); if (!img) return; const rect = pinchZoomTarget.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const delta = e.deltaY > 0 ? 0.9 : 1.1; const newScale = Math.max(1, Math.min(8, state.desktopZoom.scale * delta)); const scaleChange = newScale / state.desktopZoom.scale; state.desktopZoom.translateX = x - (x - state.desktopZoom.translateX) * scaleChange; state.desktopZoom.translateY = y - (y - state.desktopZoom.translateY) * scaleChange; state.desktopZoom.scale = newScale; updateImageTransform(img); });
+            pinchZoomTarget.addEventListener('mousedown', (e) => { if ('ontouchstart' in window || state.desktopZoom.scale <= 1) return; e.preventDefault(); const img = pinchZoomTarget.querySelector('img'); if (!img) return; img.classList.add('dragging'); state.desktopZoom.isDragging = true; state.desktopZoom.prevX = e.clientX; state.desktopZoom.prevY = e.clientY; });
+            window.addEventListener('mousemove', (e) => { if (!state.desktopZoom.isDragging) return; const img = pinchZoomTarget.querySelector('img'); if (!img) return; const dx = e.clientX - state.desktopZoom.prevX; const dy = e.clientY - state.desktopZoom.prevY; state.desktopZoom.translateX += dx; state.desktopZoom.translateY += dy; state.desktopZoom.prevX = e.clientX; state.desktopZoom.prevY = e.clientY; updateImageTransform(img); });
+            window.addEventListener('mouseup', () => { if (state.desktopZoom.isDragging) { const img = pinchZoomTarget.querySelector('img'); if(img) img.classList.remove('dragging'); state.desktopZoom.isDragging = false; } });
+            function updateImageTransform(img) { if (!img) return; const { scale, translateX, translateY } = state.desktopZoom; img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`; img.style.transformOrigin = '0 0'; }
 
-            // --- DESKTOP MOUSE ZOOM/PAN LOGIC ---
-            pinchZoomTarget.addEventListener('wheel', (e) => {
-                if ('ontouchstart' in window) return;
-                e.preventDefault();
-                const img = pinchZoomTarget.querySelector('img');
-                if (!img) return;
-                const rect = pinchZoomTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                const newScale = Math.max(1, Math.min(8, state.desktopZoom.scale * delta));
-                const scaleChange = newScale / state.desktopZoom.scale;
-                state.desktopZoom.translateX = x - (x - state.desktopZoom.translateX) * scaleChange;
-                state.desktopZoom.translateY = y - (y - state.desktopZoom.translateY) * scaleChange;
-                state.desktopZoom.scale = newScale;
-                updateImageTransform(img);
-            });
-
-            pinchZoomTarget.addEventListener('mousedown', (e) => {
-                if ('ontouchstart' in window || state.desktopZoom.scale <= 1) return;
-                e.preventDefault();
-                const img = pinchZoomTarget.querySelector('img');
-                if (!img) return;
-                img.classList.add('dragging');
-                state.desktopZoom.isDragging = true;
-                state.desktopZoom.prevX = e.clientX;
-                state.desktopZoom.prevY = e.clientY;
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!state.desktopZoom.isDragging) return;
-                const img = pinchZoomTarget.querySelector('img');
-                if (!img) return;
-                const dx = e.clientX - state.desktopZoom.prevX;
-                const dy = e.clientY - state.desktopZoom.prevY;
-                state.desktopZoom.translateX += dx;
-                state.desktopZoom.translateY += dy;
-                state.desktopZoom.prevX = e.clientX;
-                state.desktopZoom.prevY = e.clientY;
-                updateImageTransform(img);
-            });
-
-            window.addEventListener('mouseup', () => {
-                if (state.desktopZoom.isDragging) {
-                    const img = pinchZoomTarget.querySelector('img');
-                    if(img) img.classList.remove('dragging');
-                    state.desktopZoom.isDragging = false;
-                }
-            });
+            // --- GLOBAL LISTENERS ---
+            window.handleCloseRequest = (e) => { if (e) e.stopPropagation(); closeImageModal(); if (history.state?.view === 'image-modal') history.back(); };
+            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) handleCloseRequest(e); });
+            downloadBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const imageUrl = downloadBtn.href; if (!imageUrl) return; window.location.href = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`; });
+            document.getElementById('clear-cache-1').addEventListener('click', (e) => { e.preventDefault(); cache.clear(1); });
+            document.getElementById('clear-cache-3').addEventListener('click', (e) => { e.preventDefault(); cache.clear(3); });
+            document.getElementById('clear-cache-7').addEventListener('click', (e) => { e.preventDefault(); cache.clear(7); });
+            document.getElementById('clear-cache-all').addEventListener('click', (e) => { e.preventDefault(); cache.clear(null); });
             
-            function updateImageTransform(img) {
-                if (!img) return;
-                const { scale, translateX, translateY } = state.desktopZoom;
-                img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-                img.style.transformOrigin = '0 0';
-            }
-
-            // --- GLOBAL EVENT LISTENERS ---
-            window.handleCloseRequest = (e) => {
-                if (e) e.stopPropagation();
-                closeImageModal();
-                if (history.state?.view === 'image-modal') history.back();
-            };
-            
-            // FIXED: Event listener for modal backdrop click
-            imageModal.addEventListener('click', (e) => {
-                if (e.target === imageModal) {
-                    handleCloseRequest(e);
-                }
-            });
-
-            downloadBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const url = downloadBtn.href;
-                const originalIcon = downloadBtn.innerHTML;
-                downloadBtn.innerHTML = `<svg class="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-                try {
-                    const response = await fetch(url, { mode: 'cors' });
-                    if (!response.ok) throw new Error('Network response was not ok.');
-                    const blob = await response.blob();
-                    const objectUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = objectUrl;
-                    const filename = url.substring(url.lastIndexOf('/') + 1).split('?')[0];
-                    // Ensure filename is not empty and has an extension
-                    a.download = filename || 'download.file';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(objectUrl);
-                    a.remove();
-                } catch (err) {
-                    console.error('Download failed:', err);
-                    window.open(url, '_blank');
-                } finally {
-                    downloadBtn.innerHTML = originalIcon;
-                }
-            });
-
             // --- INITIALIZATION ---
             function goBack() { history.back(); }
             boardSelector.addEventListener('change', (e) => { state.currentBoard = e.target.value; loadArticles(state.currentBoard); });
@@ -549,26 +301,8 @@
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
-            
-            window.addEventListener('popstate', (event) => {
-                if (!imageModal.classList.contains('hidden')) {
-                    closeImageModal();
-                } else if (state.currentView === 'detail') {
-                    state.currentView = 'list';
-                    listView.classList.remove('hidden');
-                    detailView.classList.add('hidden');
-                    floatingBackBtn.classList.add('hidden');
-                    updateHeader();
-                }
-            });
-
-            articlesList.addEventListener('scroll', () => {
-                if (state.isLoading || !state.prevPageUrl || state.currentView !== 'list') return;
-                if (articlesList.scrollTop + articlesList.clientHeight >= articlesList.scrollHeight - 300) {
-                    loadArticles(state.currentBoard, state.prevPageUrl, true);
-                }
-            });
-            
+            window.addEventListener('popstate', (event) => { if (!imageModal.classList.contains('hidden')) { closeImageModal(); } else if (state.currentView === 'detail') { state.currentView = 'list'; listView.classList.remove('hidden'); detailView.classList.add('hidden'); floatingBackBtn.classList.add('hidden'); updateHeader(); } });
+            articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.currentView !== 'list') return; if (articlesList.scrollTop + articlesList.clientHeight >= articlesList.scrollHeight - 300) { loadArticles(state.currentBoard, state.prevPageUrl, true); } });
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             const applyTheme = (isDark) => docEl.classList.toggle('dark', isDark);
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -579,17 +313,8 @@
             function showFloatingBackButton() { if (state.currentView !== 'detail') return; floatingBackBtn.classList.remove('opacity-0'); clearTimeout(state.inactivityTimer); state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000); }
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
-
-            // Populate board selector and load initial articles
-            Object.entries(TOP_BOARDS).forEach(([en, zh]) => {
-                const option = document.createElement('option');
-                option.value = en;
-                option.textContent = zh;
-                boardSelector.appendChild(option);
-            });
-            // ADDED: Set selector to match initial state
+            Object.entries(TOP_BOARDS).forEach(([en, zh]) => { const option = document.createElement('option'); option.value = en; option.textContent = zh; boardSelector.appendChild(option); });
             boardSelector.value = state.currentBoard;
-
             history.replaceState({view: 'list'}, '', '#list');
             loadArticles(state.currentBoard);
             updateHeader();
