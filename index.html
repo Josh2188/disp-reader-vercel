@@ -69,7 +69,7 @@
     </div>
     <!-- 獨立的控制按鈕圖層 -->
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
-        <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
         </a>
         <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)">
@@ -83,7 +83,44 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const apiCache = new Map();
+            // --- NEW: 7-Day LocalStorage Cache System ---
+            const cache = {
+                CACHE_PREFIX: 'ptt-cache-',
+                EXPIRATION_DAYS: 7,
+                get(key) {
+                    const fullKey = this.CACHE_PREFIX + key;
+                    const itemStr = localStorage.getItem(fullKey);
+                    if (!itemStr) {
+                        return null;
+                    }
+                    try {
+                        const item = JSON.parse(itemStr);
+                        const now = new Date();
+                        const expirationTime = this.EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+                        if (now.getTime() > item.timestamp + expirationTime) {
+                            localStorage.removeItem(fullKey);
+                            return null;
+                        }
+                        return item.data;
+                    } catch (e) {
+                        console.error("Error reading from cache", e);
+                        localStorage.removeItem(fullKey);
+                        return null;
+                    }
+                },
+                set(key, data) {
+                    const fullKey = this.CACHE_PREFIX + key;
+                    const item = {
+                        data: data,
+                        timestamp: new Date().getTime(),
+                    };
+                    try {
+                        localStorage.setItem(fullKey, JSON.stringify(item));
+                    } catch (e) {
+                        console.error("Error saving to cache", e);
+                    }
+                }
+            };
 
             let state = {
                 currentBoard: 'Gossiping',
@@ -219,10 +256,10 @@
                     updateHeader();
                 }
 
-                if (!append && apiCache.has(fetchUrl)) {
-                    const data = apiCache.get(fetchUrl);
-                    state.prevPageUrl = data.prev_page_url;
-                    renderArticles(data.articles, false);
+                const cachedData = cache.get(fetchUrl);
+                if (!append && cachedData) {
+                    state.prevPageUrl = cachedData.prev_page_url;
+                    renderArticles(cachedData.articles, false);
                     articlesList.classList.remove('hidden');
                     skeletonContainer.classList.add('hidden');
                     return;
@@ -242,7 +279,7 @@
                     const data = await response.json();
                     
                     if (!append) {
-                       apiCache.set(fetchUrl, data);
+                       cache.set(fetchUrl, data);
                     }
                     
                     state.prevPageUrl = data.prev_page_url;
@@ -289,8 +326,9 @@
                 history.pushState({view: 'detail'}, '', '#detail');
 
                 const articleUrl = article.link;
-                if (apiCache.has(articleUrl)) {
-                    renderDetailContent(apiCache.get(articleUrl), article);
+                const cachedData = cache.get(articleUrl);
+                if (cachedData) {
+                    renderDetailContent(cachedData, article);
                     return;
                 }
 
@@ -299,7 +337,7 @@
                     if (!response.ok) throw new Error(`無法載入內文: ${response.status}`);
                     const data = await response.json();
                     
-                    apiCache.set(articleUrl, data);
+                    cache.set(articleUrl, data);
                     renderDetailContent(data, article);
 
                 } catch (error) {
@@ -420,15 +458,13 @@
                 }
             }
             
-            // --- FINAL FIX: Robust close function with safety check ---
             window.closeImageModal = () => {
                 if (imageModal.classList.contains('hidden')) return;
                 
-                // Safety check: only call destroy if it exists and is a function
                 if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
                     state.pinchZoomInstance.destroy();
                 }
-                state.pinchZoomInstance = null; // Always nullify to prevent memory leaks
+                state.pinchZoomInstance = null;
                 
                 imageModal.classList.add('hidden');
                 imageModalControls.classList.add('hidden');
@@ -446,6 +482,40 @@
                     history.back();
                 }
             };
+
+            // --- NEW: Force Download Logic ---
+            downloadBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const url = downloadBtn.href;
+                const originalIcon = downloadBtn.innerHTML;
+                
+                // Show loading spinner
+                downloadBtn.innerHTML = `<svg class="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok.');
+                    const blob = await response.blob();
+                    const objectUrl = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = objectUrl;
+                    // Create a filename from URL
+                    a.download = url.split('/').pop().split('?')[0] || 'download.jpg';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(objectUrl);
+                    a.remove();
+                } catch (err) {
+                    console.error('Download failed:', err);
+                    alert('圖片下載失敗，可能是瀏覽器限制或網路問題。');
+                } finally {
+                    // Restore original icon
+                    downloadBtn.innerHTML = originalIcon;
+                }
+            });
             
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             
