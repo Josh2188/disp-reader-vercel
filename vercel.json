@@ -1,14 +1,1 @@
-{
-    "builds": [
-        {
-            "src": "scraper.py",
-            "use": "@vercel/python"
-        }
-    ],
-    "rewrites": [
-        {
-            "source": "/api/scraper",
-            "destination": "/scraper.py"
-        }
-    ]
-}
+{}
