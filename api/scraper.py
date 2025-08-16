@@ -87,8 +87,9 @@ def fetch_ptt_article_content(article_url):
     images = [link.get('href', '') for link in main_content.select('a') if link.get('href', '').endswith(('.jpg', '.jpeg', '.png', '.gif'))]
     return {"author_full": author_full, "timestamp": timestamp, "content": content_text, "images": images}
 
-# Vercel 會自動處理 /api/scraper 路由，所以這裡只需要處理根路徑
-@app.route('/', methods=['GET'])
+# --- 修改開始：將 Flask 路由與 vercel.json 中的 source 路徑保持一致 ---
+@app.route('/api/scraper', methods=['GET'])
+# --- 修改結束 ---
 def scraper_endpoint():
     try:
         board = request.args.get('board', 'Gossiping')
