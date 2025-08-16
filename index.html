@@ -2,7 +2,6 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <!-- *** FIX: 移除 user-scalable=no 允許瀏覽器處理雙指縮放手勢 *** -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,7 +26,6 @@
         /* 圖片瀏覽器相關樣式 */
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: grab; }
-        /* 當 pinch-zoom-js 正在拖曳時會自動加上此 class */
         .pinch-zoom-container.is-dragging { cursor: grabbing; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
         .image-nav-btn {
@@ -217,6 +215,7 @@
                 allArticles: [],
                 sortBy: 'time',
                 viewingFavorites: false,
+                isImageModalOpen: false, // *** FIX: 新增狀態來追蹤 Modal 是否開啟 ***
             };
 
             // DOM 元素
@@ -501,7 +500,7 @@
             floatingBackBtn.addEventListener('click', goBack);
             
             window.addEventListener('popstate', (event) => {
-                if (!imageModal.classList.contains('hidden')) {
+                if (state.isImageModalOpen) {
                     closeImageModal();
                 } else if (state.currentView === 'detail') {
                     state.currentView = 'list';
@@ -521,21 +520,12 @@
             });
 
             // --- 圖片瀏覽器邏輯 (已重構) ---
-            // *** FIX: 簡化事件處理，專注於滾輪縮放，其餘交給 pinch-zoom-js ***
-            let wheelListener = null;
-
             function cleanupImageInstance() {
-                // 只移除我們手動添加的 wheel 事件監聽器
-                if (wheelListener) {
-                    pinchZoomTarget.removeEventListener('wheel', wheelListener, { passive: false });
-                    wheelListener = null;
-                }
-                // pinch-zoom-js 庫會處理自己的事件和實例銷毀
                 if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
                     state.pinchZoomInstance.destroy();
                 }
                 state.pinchZoomInstance = null;
-                pinchZoomTarget.innerHTML = ''; // 清空容器
+                pinchZoomTarget.innerHTML = '';
             }
             
             detailContent.addEventListener('click', (e) => {
@@ -555,6 +545,8 @@
                 const imageUrl = state.currentArticleImages[state.currentImageIndex];
                 if (!imageUrl) return;
 
+                state.isImageModalOpen = true;
+
                 const newImg = document.createElement('img');
                 newImg.src = imageUrl;
                 pinchZoomTarget.appendChild(newImg);
@@ -568,38 +560,10 @@
                 }
 
                 try {
-                    // 初始化 pinch-zoom 庫，它會自動處理觸控縮放和拖曳
                     state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, {
                         minZoom: 0.5,
-                        maxZoom: 8, // 增加最大縮放倍率
+                        maxZoom: 8,
                     });
-                    
-                    // 為桌面版添加滾輪縮放功能
-                    wheelListener = (event) => {
-                        // 防止頁面滾動
-                        event.preventDefault();
-                        
-                        if (!state.pinchZoomInstance || typeof state.pinchZoomInstance.getScale !== 'function') return;
-                        
-                        const rect = pinchZoomTarget.getBoundingClientRect();
-                        const scale = state.pinchZoomInstance.getScale();
-                        
-                        // 以滑鼠位置為中心進行縮放
-                        const zoomPoint = { 
-                            x: event.clientX - rect.left, 
-                            y: event.clientY - rect.top 
-                        };
-                        
-                        // 根據滾輪方向計算新縮放比例
-                        const newScale = event.deltaY < 0 ? scale * 1.2 : scale / 1.2;
-                        
-                        state.pinchZoomInstance.zoomTo(newScale, zoomPoint);
-                    };
-
-                    // 添加滾輪事件監聽器
-                    // 使用 { passive: false } 來確保 preventDefault() 能生效
-                    pinchZoomTarget.addEventListener('wheel', wheelListener, { passive: false });
-
                 } catch (e) {
                     console.error("PinchZoom 初始化失敗:", e);
                     pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
@@ -607,7 +571,8 @@
             }
             
             function closeImageModal() {
-                if (imageModal.classList.contains('hidden')) return;
+                if (!state.isImageModalOpen) return;
+                state.isImageModalOpen = false;
                 cleanupImageInstance();
                 imageModal.classList.add('hidden');
                 imageModalControls.classList.add('hidden');
@@ -738,6 +703,36 @@
             }
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
+
+            // *** FIX: 建立一個全域的滾輪事件監聽器，以提高穩定性 ***
+            window.addEventListener('wheel', (event) => {
+                // 只有當圖片 Modal 開啟且 pinch-zoom 實例存在時才作用
+                if (!state.isImageModalOpen || !state.pinchZoomInstance) return;
+
+                // 阻止背景頁面滾動
+                event.preventDefault();
+
+                const rect = pinchZoomTarget.getBoundingClientRect();
+                
+                // 計算滑鼠相對於圖片容器的位置，作為縮放中心點
+                const zoomPoint = { 
+                    x: event.clientX - rect.left, 
+                    y: event.clientY - rect.top 
+                };
+                
+                // 如果滑鼠不在圖片容器範圍內，則不進行縮放
+                if (zoomPoint.x < 0 || zoomPoint.x > rect.width || zoomPoint.y < 0 || zoomPoint.y > rect.height) {
+                    return;
+                }
+                
+                const scale = state.pinchZoomInstance.getScale();
+                // 根據滾輪方向計算新的縮放比例
+                const newScale = event.deltaY < 0 ? scale * 1.2 : scale / 1.2;
+                
+                // 執行縮放
+                state.pinchZoomInstance.zoomTo(newScale, zoomPoint);
+
+            }, { passive: false }); // 使用 passive: false 才能讓 preventDefault() 生效
 
             // --- 初始載入 ---
             for (const board_en in TOP_BOARDS) {
