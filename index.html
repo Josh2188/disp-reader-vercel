@@ -359,11 +359,11 @@
             floatingBackBtn.addEventListener('click', goBack);
             
             window.addEventListener('popstate', (event) => {
-                const isModalOpen = !imageModal.classList.contains('hidden');
-                if (isModalOpen) {
-                    closeImageModal();
-                } else if (history.state && history.state.view === 'list') {
-                     // This condition might need adjustment based on your state management
+                // This listener now primarily handles the browser's back button
+                if (!imageModal.classList.contains('hidden')) {
+                    closeImageModal(); // If modal is open, back button should close it
+                } else if (state.currentView === 'detail') {
+                    // If in detail view, back button should go to list view
                     state.currentView = 'list';
                     listView.classList.remove('hidden');
                     detailView.classList.add('hidden');
@@ -409,6 +409,7 @@
                 history.pushState({ view: 'image-modal' }, 'Image', '#image');
 
                 try {
+                    // pinch-zoom-js is primarily for touch devices. Desktop zoom is not supported out-of-the-box.
                     if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
                         throw new Error('PinchZoom library is not loaded correctly.');
                     }
@@ -420,8 +421,9 @@
                 }
             }
             
+            // --- FIXED: New, more direct closing logic ---
             const closeImageModal = () => {
-                if (imageModal.classList.contains('hidden')) return; // Avoid multiple calls
+                if (imageModal.classList.contains('hidden')) return;
                 if (state.pinchZoomInstance) {
                     state.pinchZoomInstance.destroy();
                     state.pinchZoomInstance = null;
@@ -429,18 +431,20 @@
                 imageModal.classList.add('hidden');
             };
 
-            // --- FIXED: New robust closing logic ---
             const handleCloseRequest = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // If the modal is open, go back in history, which will trigger the popstate listener to close it.
-                if (!imageModal.classList.contains('hidden')) {
+                // First, visually close the modal immediately.
+                closeImageModal();
+                
+                // Then, if the history state is the modal, go back to clean up the URL.
+                if (history.state && history.state.view === 'image-modal') {
                     history.back();
                 }
             };
             
-            // Use both touchend and click for maximum compatibility
+            // Use both touchend and click for maximum compatibility on all devices.
             closeModalBtn.addEventListener('touchend', handleCloseRequest);
             closeModalBtn.addEventListener('click', handleCloseRequest);
             imageModal.addEventListener('touchend', (e) => {
