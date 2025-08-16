@@ -113,7 +113,7 @@
     </div>
 
     <!-- Image Modal -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-0 md:p-4 glassmorphism" onclick="handleCloseRequest(event)">
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-0 md:p-4 glassmorphism">
         <div id="pinch-zoom-target" class="pinch-zoom-container">
             <!-- Image will be injected here -->
         </div>
@@ -195,7 +195,8 @@
             };
 
             let state = {
-                currentBoard: 'Gossiping',
+                // CHANGED: Default board is now 'Beauty'
+                currentBoard: 'Beauty',
                 prevPageUrl: null,
                 isLoading: false,
                 currentView: 'list',
@@ -206,7 +207,6 @@
                 inactivityTimer: null,
                 currentArticleImages: [],
                 currentImageIndex: 0,
-                // NEW: State for desktop image manipulation
                 desktopZoom: {
                     scale: 1,
                     isDragging: false,
@@ -276,7 +276,7 @@
                 }
             }
             
-            function createSkeletonItem() { /* ... unchanged ... */ return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
+            function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(0).map(createSkeletonItem).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
             function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
             function updateFavoriteIcon(isFav) { const svg = headerFavoriteBtn.querySelector('svg'); svg.classList.toggle('text-pink-500', isFav); svg.classList.toggle('fill-current', isFav); svg.classList.toggle('text-gray-400', !isFav); }
@@ -297,8 +297,6 @@
                 item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`;
                 
                 const thumbnailHTML = article.thumbnail ? `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>` : '';
-                
-                // UPDATED: Use the full timestamp from scraper
                 const displayDate = article.timestamp || article.date;
 
                 item.innerHTML = `
@@ -396,24 +394,17 @@
             function openImageModal() {
                 const imageUrl = state.currentArticleImages[state.currentImageIndex];
                 if (!imageUrl) return;
-
-                // Reset desktop zoom state
                 state.desktopZoom = { scale: 1, isDragging: false, prevX: 0, prevY: 0, translateX: 0, translateY: 0 };
-
-                // Destroy previous instances if they exist
                 if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
                 pinchZoomTarget.innerHTML = '';
-
                 const newImg = document.createElement('img');
                 newImg.src = imageUrl;
                 newImg.addEventListener('load', () => {
-                   // Only init pinch-zoom on touch devices
                    if ('ontouchstart' in window) {
                        state.pinchZoomInstance = new PinchZoom.default(newImg.parentElement, { minZoom: 1, maxZoom: 4 });
                    }
                 });
                 pinchZoomTarget.appendChild(newImg);
-
                 downloadBtn.href = imageUrl;
                 imageModal.classList.remove('hidden');
                 imageModalControls.classList.remove('hidden');
@@ -453,24 +444,19 @@
 
             // --- DESKTOP MOUSE ZOOM/PAN LOGIC ---
             pinchZoomTarget.addEventListener('wheel', (e) => {
-                if ('ontouchstart' in window) return; // Don't interfere with pinch-zoom library
+                if ('ontouchstart' in window) return;
                 e.preventDefault();
                 const img = pinchZoomTarget.querySelector('img');
                 if (!img) return;
-
                 const rect = pinchZoomTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-
                 const delta = e.deltaY > 0 ? 0.9 : 1.1;
                 const newScale = Math.max(1, Math.min(8, state.desktopZoom.scale * delta));
-                
                 const scaleChange = newScale / state.desktopZoom.scale;
-
                 state.desktopZoom.translateX = x - (x - state.desktopZoom.translateX) * scaleChange;
                 state.desktopZoom.translateY = y - (y - state.desktopZoom.translateY) * scaleChange;
                 state.desktopZoom.scale = newScale;
-
                 updateImageTransform(img);
             });
 
@@ -519,8 +505,14 @@
                 closeImageModal();
                 if (history.state?.view === 'image-modal') history.back();
             };
+            
+            // FIXED: Event listener for modal backdrop click
+            imageModal.addEventListener('click', (e) => {
+                if (e.target === imageModal) {
+                    handleCloseRequest(e);
+                }
+            });
 
-            // FIXED: Download functionality
             downloadBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -528,23 +520,22 @@
                 const originalIcon = downloadBtn.innerHTML;
                 downloadBtn.innerHTML = `<svg class="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
                 try {
-                    const response = await fetch(url, { mode: 'cors' }); // Use cors mode
+                    const response = await fetch(url, { mode: 'cors' });
                     if (!response.ok) throw new Error('Network response was not ok.');
                     const blob = await response.blob();
                     const objectUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = objectUrl;
-                    // Extract filename from URL
                     const filename = url.substring(url.lastIndexOf('/') + 1).split('?')[0];
-                    a.download = filename || 'download.jpg';
+                    // Ensure filename is not empty and has an extension
+                    a.download = filename || 'download.file';
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(objectUrl);
                     a.remove();
                 } catch (err) {
                     console.error('Download failed:', err);
-                    // Fallback for CORS or other issues: open in new tab
                     window.open(url, '_blank');
                 } finally {
                     downloadBtn.innerHTML = originalIcon;
@@ -578,7 +569,6 @@
                 }
             });
             
-            // Fullscreen and theme setup...
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             const applyTheme = (isDark) => docEl.classList.toggle('dark', isDark);
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -597,6 +587,9 @@
                 option.textContent = zh;
                 boardSelector.appendChild(option);
             });
+            // ADDED: Set selector to match initial state
+            boardSelector.value = state.currentBoard;
+
             history.replaceState({view: 'list'}, '', '#list');
             loadArticles(state.currentBoard);
             updateHeader();
