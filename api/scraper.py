@@ -54,15 +54,12 @@ def get_article_preview_data(article_url):
         snippet = ""
         main_content = soup.select_one('#main-content')
         if main_content:
-            # 尋找第一張圖片
             for link in main_content.select('a'):
                 href = link.get('href', '')
                 if href and IMAGE_REGEX.search(href):
                     first_image_url = href
                     break
             
-            # 提取文字摘要
-            # 移除所有不需要的元素以獲得乾淨的文字
             for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
                 tag.decompose()
             snippet = main_content.get_text(strip=True)[:100] + "..."
@@ -174,8 +171,27 @@ def fetch_ptt_article_content(article_url):
 
 @app.route('/api/scraper', methods=['GET'])
 def scraper_endpoint():
-    """API 端點，根據參數決定抓取列表或內文。"""
+    """API 端點，根據參數決定抓取列表、內文或代理圖片。"""
     try:
+        # *** FIX: Integrated image proxy logic into the main endpoint ***
+        proxy_url = request.args.get('proxy_url')
+        if proxy_url:
+            try:
+                req = requests.get(proxy_url, stream=True, headers=HEADERS, timeout=20)
+                req.raise_for_status()
+                
+                filename = proxy_url.split('/')[-1].split('?')[0] or 'download'
+                
+                return Response(
+                    stream_with_context(req.iter_content(chunk_size=8192)),
+                    content_type=req.headers.get('content-type'),
+                    headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+                )
+            except requests.exceptions.RequestException as e:
+                print(f"代理圖片失敗 {proxy_url}: {e}")
+                return str(e), 502
+
+        # 現有的列表/文章抓取邏輯
         board = request.args.get('board', 'Beauty')
         list_url = request.args.get('list_url')
         article_url = request.args.get('article_url')
@@ -194,27 +210,6 @@ def scraper_endpoint():
     except Exception as e:
         print(f"處理請求時發生錯誤: {e}")
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/proxy-image')
-def proxy_image():
-    """代理圖片請求以解決 CORS 和下載問題。"""
-    url = request.args.get('url')
-    if not url: return "缺少 URL 參數", 400
-    
-    try:
-        req = requests.get(url, stream=True, headers=HEADERS, timeout=20)
-        req.raise_for_status()
-        
-        filename = url.split('/')[-1].split('?')[0] or 'download'
-        
-        return Response(
-            stream_with_context(req.iter_content(chunk_size=8192)),
-            content_type=req.headers.get('content-type'),
-            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
-        )
-    except requests.exceptions.RequestException as e:
-        print(f"代理圖片失敗 {url}: {e}")
-        return str(e), 502
 
 if __name__ == '__main__':
     app.run(debug=True)
