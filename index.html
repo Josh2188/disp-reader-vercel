@@ -66,7 +66,6 @@
     <!-- 圖片放大 Modal -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
-        <!-- FIXED: z-index 提高，確保按鈕在最上層 -->
         <div class="absolute top-0 right-0 m-4 flex gap-2 z-[60]">
              <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -211,11 +210,19 @@
                 
                 const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
 
+                if (!append) {
+                    state.currentView = 'list';
+                    articlesList.innerHTML = '';
+                    listError.classList.add('hidden');
+                    updateHeader();
+                }
+
                 if (!append && apiCache.has(fetchUrl)) {
                     const data = apiCache.get(fetchUrl);
                     state.prevPageUrl = data.prev_page_url;
                     renderArticles(data.articles, false);
-                    hideSkeleton();
+                    articlesList.classList.remove('hidden');
+                    skeletonContainer.classList.add('hidden');
                     return;
                 }
 
@@ -224,12 +231,7 @@
                 if (append) {
                     infiniteLoader.classList.remove('hidden');
                 } else {
-                    state.currentView = 'list';
-                    articlesList.innerHTML = '';
-                    infiniteLoader.classList.add('hidden');
-                    listError.classList.add('hidden');
                     showSkeleton();
-                    updateHeader();
                 }
 
                 try {
@@ -246,6 +248,9 @@
                 } catch (error) {
                     listErrorText.textContent = error.message;
                     listError.classList.remove('hidden');
+                    if (!append) {
+                        skeletonContainer.classList.add('hidden');
+                    }
                 } finally {
                     state.isLoading = false;
                     if (!append) hideSkeleton();
@@ -300,7 +305,6 @@
                 }
             }
             
-            // FIXED: 同時處理內文和簽名檔的圖片
             function renderDetailContent(data, article) {
                 let processedContent = data.content;
                 let processedSignature = data.signature || '';
@@ -336,11 +340,7 @@
             }
 
             function goBack() {
-                if (!imageModal.classList.contains('hidden')) {
-                    closeImageModal();
-                } else if (state.currentView === 'detail') {
-                    history.back();
-                }
+                history.back();
             }
 
             boardSelector.addEventListener('change', (e) => {
@@ -357,13 +357,21 @@
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
-            window.addEventListener('popstate', () => {
-                state.currentView = 'list';
-                listView.classList.remove('hidden');
-                detailView.classList.add('hidden');
-                floatingBackBtn.classList.add('hidden');
-                updateHeader();
+            
+            window.addEventListener('popstate', (event) => {
+                const isModalOpen = !imageModal.classList.contains('hidden');
+                if (isModalOpen) {
+                    closeImageModal();
+                } else if (history.state && history.state.view === 'list') {
+                     // This condition might need adjustment based on your state management
+                    state.currentView = 'list';
+                    listView.classList.remove('hidden');
+                    detailView.classList.add('hidden');
+                    floatingBackBtn.classList.add('hidden');
+                    updateHeader();
+                }
             });
+
             articlesList.addEventListener('scroll', () => {
                 if (state.isLoading || !state.prevPageUrl || state.currentView !== 'list') return;
                 const { scrollTop, scrollHeight, clientHeight } = articlesList;
@@ -386,11 +394,10 @@
             const closeModalBtn = document.getElementById('close-modal-btn');
             const downloadBtn = document.getElementById('download-btn');
             
-            // FIXED: 強化圖片 Modal 功能與錯誤處理
             window.openImageModal = (imgElement) => {
                 if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
                 pinchZoomTarget.innerHTML = '';
-                pinchZoomTarget.className = 'pinch-zoom-container'; // 恢復預設 class
+                pinchZoomTarget.className = 'pinch-zoom-container';
                 
                 const newImg = imgElement.cloneNode(true);
                 newImg.removeAttribute('onclick');
@@ -399,6 +406,7 @@
 
                 downloadBtn.href = imgElement.src;
                 imageModal.classList.remove('hidden');
+                history.pushState({ view: 'image-modal' }, 'Image', '#image');
 
                 try {
                     if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
@@ -413,14 +421,38 @@
             }
             
             const closeImageModal = () => {
+                if (imageModal.classList.contains('hidden')) return; // Avoid multiple calls
                 if (state.pinchZoomInstance) {
                     state.pinchZoomInstance.destroy();
                     state.pinchZoomInstance = null;
                 }
                 imageModal.classList.add('hidden');
             };
-            closeModalBtn.addEventListener('click', closeImageModal);
-            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) closeImageModal(); });
+
+            // --- FIXED: New robust closing logic ---
+            const handleCloseRequest = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // If the modal is open, go back in history, which will trigger the popstate listener to close it.
+                if (!imageModal.classList.contains('hidden')) {
+                    history.back();
+                }
+            };
+            
+            // Use both touchend and click for maximum compatibility
+            closeModalBtn.addEventListener('touchend', handleCloseRequest);
+            closeModalBtn.addEventListener('click', handleCloseRequest);
+            imageModal.addEventListener('touchend', (e) => {
+                if (e.target === imageModal) {
+                    handleCloseRequest(e);
+                }
+            });
+            imageModal.addEventListener('click', (e) => {
+                if (e.target === imageModal) {
+                    handleCloseRequest(e);
+                }
+            });
             
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             
