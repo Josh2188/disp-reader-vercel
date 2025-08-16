@@ -171,6 +171,7 @@
             // --- Firebase 設定 ---
             const firebaseConfig = {
               apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
+              // *** FIX: 明確指定 authDomain 來解決驗證問題 ***
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
               projectId: "my-english-learning-app-5d864",
               storageBucket: "my-english-learning-app-5d864.firebasestorage.app",
@@ -781,7 +782,6 @@
             function updateFavoritesButtonState() {
                 favIconOutline.classList.toggle('hidden', state.viewingFavorites);
                 favIconSolid.classList.toggle('hidden', !state.viewingFavorites);
-                // *** FIX: 移除背景色切換，只靠圖示顏色來區分 ***
             }
 
             toggleFavoritesBtn.addEventListener('click', () => {
