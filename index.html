@@ -16,7 +16,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        #image-modal.hidden { display: none; }
+        #image-modal.hidden, #image-modal-controls.hidden { display: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
         .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
@@ -64,16 +64,17 @@
     </div>
 
     <!-- 圖片放大 Modal -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism">
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism" onclick="handleCloseRequest(event)">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
-        <div class="absolute top-0 right-0 m-4 flex gap-2 z-[60]">
-             <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            </a>
-            <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
+    </div>
+    <!-- 獨立的控制按鈕圖層 -->
+    <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
+        <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        </a>
+        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
     </div>
     
     <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
@@ -112,6 +113,7 @@
             const showFavoritesBtn = document.getElementById('show-favorites-btn');
             const floatingBackBtn = document.getElementById('floating-back-btn');
             const imageModal = document.getElementById('image-modal');
+            const imageModalControls = document.getElementById('image-modal-controls');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
@@ -359,11 +361,9 @@
             floatingBackBtn.addEventListener('click', goBack);
             
             window.addEventListener('popstate', (event) => {
-                // This listener now primarily handles the browser's back button
                 if (!imageModal.classList.contains('hidden')) {
-                    closeImageModal(); // If modal is open, back button should close it
+                    closeImageModal();
                 } else if (state.currentView === 'detail') {
-                    // If in detail view, back button should go to list view
                     state.currentView = 'list';
                     listView.classList.remove('hidden');
                     detailView.classList.add('hidden');
@@ -391,7 +391,6 @@
             updateHeader();
 
             const pinchZoomTarget = document.getElementById('pinch-zoom-target');
-            const closeModalBtn = document.getElementById('close-modal-btn');
             const downloadBtn = document.getElementById('download-btn');
             
             window.openImageModal = (imgElement) => {
@@ -406,10 +405,10 @@
 
                 downloadBtn.href = imgElement.src;
                 imageModal.classList.remove('hidden');
+                imageModalControls.classList.remove('hidden');
                 history.pushState({ view: 'image-modal' }, 'Image', '#image');
 
                 try {
-                    // pinch-zoom-js is primarily for touch devices. Desktop zoom is not supported out-of-the-box.
                     if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
                         throw new Error('PinchZoom library is not loaded correctly.');
                     }
@@ -421,42 +420,32 @@
                 }
             }
             
-            // --- FIXED: New, more direct closing logic ---
-            const closeImageModal = () => {
+            // --- FINAL FIX: Robust close function with safety check ---
+            window.closeImageModal = () => {
                 if (imageModal.classList.contains('hidden')) return;
-                if (state.pinchZoomInstance) {
+                
+                // Safety check: only call destroy if it exists and is a function
+                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
                     state.pinchZoomInstance.destroy();
-                    state.pinchZoomInstance = null;
                 }
+                state.pinchZoomInstance = null; // Always nullify to prevent memory leaks
+                
                 imageModal.classList.add('hidden');
+                imageModalControls.classList.add('hidden');
             };
 
-            const handleCloseRequest = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            window.handleCloseRequest = (e) => {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
                 
-                // First, visually close the modal immediately.
                 closeImageModal();
                 
-                // Then, if the history state is the modal, go back to clean up the URL.
                 if (history.state && history.state.view === 'image-modal') {
                     history.back();
                 }
             };
-            
-            // Use both touchend and click for maximum compatibility on all devices.
-            closeModalBtn.addEventListener('touchend', handleCloseRequest);
-            closeModalBtn.addEventListener('click', handleCloseRequest);
-            imageModal.addEventListener('touchend', (e) => {
-                if (e.target === imageModal) {
-                    handleCloseRequest(e);
-                }
-            });
-            imageModal.addEventListener('click', (e) => {
-                if (e.target === imageModal) {
-                    handleCloseRequest(e);
-                }
-            });
             
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             
