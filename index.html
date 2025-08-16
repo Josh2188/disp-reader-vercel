@@ -586,7 +586,7 @@
 
                     wheelListener = (event) => {
                         event.preventDefault();
-                        if (!state.pinchZoomInstance) return;
+                        if (!state.pinchZoomInstance || typeof state.pinchZoomInstance.getScale !== 'function') return;
                         const rect = pinchZoomTarget.getBoundingClientRect();
                         const scale = state.pinchZoomInstance.getScale();
                         const newScale = event.deltaY > 0 ? scale / 1.2 : scale * 1.2;
@@ -601,7 +601,7 @@
                     };
 
                     mouseMoveListener = (event) => {
-                        if (!isDragging || !state.pinchZoomInstance) return;
+                        if (!isDragging || !state.pinchZoomInstance || typeof state.pinchZoomInstance.panBy !== 'function') return;
                         event.preventDefault();
                         const deltaX = event.clientX - lastPos.x;
                         const deltaY = event.clientY - lastPos.y;
