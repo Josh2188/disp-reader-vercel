@@ -76,7 +76,7 @@
     <!-- 圖片放大 Modal -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
-        <div class="absolute top-0 right-0 m-4 flex gap-2">
+        <div class="absolute top-0 right-0 m-4 flex gap-2 z-10">
              <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             </a>
@@ -107,7 +107,6 @@
             };
 
             // --- DOM 元素 ---
-            const appContainer = document.getElementById('app-container');
             const docEl = document.documentElement;
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
@@ -377,10 +376,8 @@
             const applyTheme = (theme) => {
                 if (theme === 'dark') {
                     docEl.classList.add('dark');
-                    appContainer.classList.add('dark');
                 } else {
                     docEl.classList.remove('dark');
-                    appContainer.classList.remove('dark');
                 }
                 document.querySelector('#theme-icon-light').classList.toggle('hidden', theme !== 'dark');
                 document.querySelector('#theme-icon-dark').classList.toggle('hidden', theme === 'dark');
