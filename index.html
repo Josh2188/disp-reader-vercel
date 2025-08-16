@@ -52,8 +52,9 @@
         <!-- 頁面容器 -->
         <div class="flex-grow relative">
             <div id="list-view" class="absolute inset-0 flex flex-col">
-                <div id="initial-loader" class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>
-                <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></main>
+                <!-- NEW: 骨架屏容器 -->
+                <div id="skeleton-container" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></div>
+                <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar hidden"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div></div>
                 <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
             </div>
@@ -82,6 +83,9 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- NEW: API 快取 ---
+            const apiCache = new Map();
+
             // --- 狀態與資料管理 ---
             let state = {
                 currentBoard: 'Gossiping',
@@ -100,7 +104,7 @@
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
             const articlesList = document.getElementById('articles-list');
-            const initialLoader = document.getElementById('initial-loader');
+            const skeletonContainer = document.getElementById('skeleton-container'); // NEW
             const infiniteLoader = document.getElementById('infinite-loader');
             const listError = document.getElementById('list-error');
             const listErrorText = document.getElementById('list-error-text');
@@ -137,6 +141,36 @@
                     headerTitle.classList.add('hidden');
                     headerFavoriteBtn.classList.add('hidden');
                 }
+            }
+            
+            // --- NEW: 骨架屏相關函式 ---
+            function createSkeletonItem() {
+                return `
+                    <div class="flex items-start p-3 gap-3 animate-pulse">
+                        <div class="flex flex-col overflow-hidden flex-grow">
+                            <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div>
+                        </div>
+                        <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div>
+                    </div>
+                `;
+            }
+
+            function showSkeleton() {
+                let skeletonHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    skeletonHTML += createSkeletonItem();
+                }
+                skeletonContainer.innerHTML = skeletonHTML;
+                skeletonContainer.classList.remove('hidden');
+                articlesList.classList.add('hidden');
+            }
+
+            function hideSkeleton() {
+                skeletonContainer.classList.add('hidden');
+                articlesList.classList.remove('hidden');
             }
 
             function updateFavoriteIcon(isFav) {
@@ -178,38 +212,52 @@
                 return item;
             }
             
-            // --- 核心功能邏輯 ---
+            // --- 核心功能邏輯 (已修改) ---
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
+                
+                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+
+                // NEW: 檢查快取
+                if (!append && apiCache.has(fetchUrl)) {
+                    const data = apiCache.get(fetchUrl);
+                    state.prevPageUrl = data.prev_page_url;
+                    renderArticles(data.articles, false);
+                    hideSkeleton(); // 從快取載入，直接隱藏骨架屏
+                    return;
+                }
+
                 state.isLoading = true;
                 
                 if (append) {
                     infiniteLoader.classList.remove('hidden');
                 } else {
                     state.currentView = 'list';
-                    articlesList.innerHTML = '';
+                    articlesList.innerHTML = ''; // 清空舊內容
                     infiniteLoader.classList.add('hidden');
                     listError.classList.add('hidden');
-                    initialLoader.classList.remove('hidden');
+                    showSkeleton(); // 顯示骨架屏
                     updateHeader();
                 }
-                
-                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
 
                 try {
                     const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`);
                     if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
                     const data = await response.json();
                     
+                    // NEW: 存入快取
+                    if (!append) {
+                       apiCache.set(fetchUrl, data);
+                    }
+                    
                     state.prevPageUrl = data.prev_page_url;
-
                     renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')), append);
                 } catch (error) {
                     listErrorText.textContent = error.message;
                     listError.classList.remove('hidden');
                 } finally {
                     state.isLoading = false;
-                    initialLoader.classList.add('hidden');
+                    if (!append) hideSkeleton(); // 結束後隱藏骨架屏
                     infiniteLoader.classList.add('hidden');
                 }
             }
@@ -242,37 +290,52 @@
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
                 history.pushState({view: 'detail'}, '', '#detail');
 
+                // NEW: 檢查內文快取
+                const articleUrl = article.link;
+                if (apiCache.has(articleUrl)) {
+                    renderDetailContent(apiCache.get(articleUrl), article);
+                    return;
+                }
+
                 try {
-                    const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
+                    const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(articleUrl)}`);
                     if (!response.ok) throw new Error(`無法載入內文: ${response.status}`);
                     const data = await response.json();
                     
-                    let processedContent = data.content;
-                    if (data.youtube_ids?.length > 0) {
-                        processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => 
-                            data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match
-                        );
-                    }
-                    data.images.forEach(imgUrl => {
-                        processedContent = processedContent.replace(new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'), `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal(this)">`);
-                    });
-                    const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
-                    let pushesHTML = '';
-                    if (data.pushes?.length > 0) {
-                        pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => {
-                            let tagColor = 'text-gray-500 dark:text-gray-400';
-                            if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
-                            if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
-                            return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${p.content}</span></div>`;
-                        }).join('')}</div>`;
-                    }
-                    detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${processedContent}</div>${signatureHTML}${pushesHTML}`;
-                    detailContent.scrollTop = 0;
+                    // NEW: 存入內文快取
+                    apiCache.set(articleUrl, data);
+                    renderDetailContent(data, article);
+
                 } catch (error) {
                     detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
                 }
             }
             
+            // NEW: 獨立出內文渲染函式，方便快取和 fetch 共用
+            function renderDetailContent(data, article) {
+                let processedContent = data.content;
+                if (data.youtube_ids?.length > 0) {
+                    processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => 
+                        data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match
+                    );
+                }
+                data.images.forEach(imgUrl => {
+                    processedContent = processedContent.replace(new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'), `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal(this)">`);
+                });
+                const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
+                let pushesHTML = '';
+                if (data.pushes?.length > 0) {
+                    pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => {
+                        let tagColor = 'text-gray-500 dark:text-gray-400';
+                        if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
+                        if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
+                        return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${p.content}</span></div>`;
+                    }).join('')}</div>`;
+                }
+                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${processedContent}</div>${signatureHTML}${pushesHTML}`;
+                detailContent.scrollTop = 0;
+            }
+
             function goBack() {
                 if (!imageModal.classList.contains('hidden')) {
                     closeImageModal();
@@ -290,7 +353,7 @@
                 state.currentView = 'favorites';
                 renderArticles(state.favorites);
                 updateHeader();
-                initialLoader.classList.add('hidden');
+                hideSkeleton();
                 listError.classList.add('hidden');
             });
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
