@@ -32,10 +32,16 @@
             <header class="bg-gray-50 dark:bg-gray-800 shadow-sm sticky top-0 z-20 p-3">
                 <div class="flex items-center gap-3">
                     <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
-                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
-                        <svg id="theme-icon-light" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        <svg id="theme-icon-dark" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    <!-- 修改開始：新增全螢幕按鈕 -->
+                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
+                        <svg id="fullscreen-enter-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1v4m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5 5" /></svg>
+                        <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4l-5 5m0 0l5 5m-5-5h12a2 2 0 012 2v2M4 9v2a2 2 0 002 2h12m-5 5l5-5m0 0l-5-5" /></svg>
                     </button>
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
+                        <svg id="theme-icon-light" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <svg id="theme-icon-dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    </button>
+                    <!-- 修改結束 -->
                 </div>
             </header>
             <main id="articles-list" class="divide-y divide-gray-200 dark:divide-gray-700"></main>
@@ -101,28 +107,63 @@
                 boardSelector.appendChild(option);
             }
 
-            // 主題切換
+            // --- 修改開始：修正主題切換與新增全螢幕功能 ---
             const themeToggle = document.getElementById('theme-toggle');
             const themeIconLight = document.getElementById('theme-icon-light');
             const themeIconDark = document.getElementById('theme-icon-dark');
+            const fullscreenToggle = document.getElementById('fullscreen-toggle');
+            const fullscreenEnterIcon = document.getElementById('fullscreen-enter-icon');
+            const fullscreenExitIcon = document.getElementById('fullscreen-exit-icon');
+
+            // 應用主題 (light/dark)
             const applyTheme = (theme) => {
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
+                    // 黑夜模式下，顯示「切換到白天」的太陽圖示
                     themeIconLight.classList.remove('hidden');
                     themeIconDark.classList.add('hidden');
                 } else {
                     document.documentElement.classList.remove('dark');
+                    // 白天模式下，顯示「切換到黑夜」的月亮圖示
                     themeIconLight.classList.add('hidden');
                     themeIconDark.classList.remove('hidden');
                 }
             };
+
+            // 初始化主題
             const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             applyTheme(currentTheme);
+
+            // 主題切換按鈕事件
             themeToggle.addEventListener('click', () => {
                 const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
                 localStorage.setItem('theme', newTheme);
                 applyTheme(newTheme);
             });
+
+            // 全螢幕切換功能
+            function toggleFullScreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+            fullscreenToggle.addEventListener('click', toggleFullScreen);
+
+            // 監聽全螢幕狀態變化以更新圖示
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    fullscreenEnterIcon.classList.add('hidden');
+                    fullscreenExitIcon.classList.remove('hidden');
+                } else {
+                    fullscreenEnterIcon.classList.remove('hidden');
+                    fullscreenExitIcon.classList.add('hidden');
+                }
+            });
+            // --- 修改結束 ---
 
             function showListView() {
                 detailView.classList.add('hidden');
@@ -143,7 +184,7 @@
                 let thumbnailHTML = `
                     <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
                         ${article.thumbnail ? 
-                            `<img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover">` :
+                            `<img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy">` :
                             `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"></path></svg>`
                         }
                     </div>
@@ -219,7 +260,7 @@
                             if (data.youtube_ids.includes(videoId)) {
                                 return `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
                             }
-                            return match; // 如果 ID 不在列表裡，則不替換
+                            return match;
                         });
                     }
 
@@ -230,10 +271,8 @@
                         processedContent = processedContent.replace(urlPattern, imgTag);
                     });
 
-                    // 處理簽名檔
                     const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
                     
-                    // 處理推文
                     let pushesHTML = '';
                     if (data.pushes && data.pushes.length > 0) {
                         const pushList = data.pushes.map(p => {

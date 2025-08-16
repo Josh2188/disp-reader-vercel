@@ -37,20 +37,24 @@ def get_article_preview_data(article_url):
         first_image_url = None
         first_youtube_id = None
 
-        # 尋找第一張圖片和第一個 YouTube 連結
+        # --- 修改開始：使用更寬鬆的規則尋找圖片 ---
         for link in main_content.select('a'):
             href = link.get('href', '')
+            if not href: continue
+
+            # 尋找 YouTube 連結
             if not first_youtube_id:
                 youtube_id = extract_youtube_id(href)
                 if youtube_id:
                     first_youtube_id = youtube_id
             
-            if not first_image_url and href.startswith('https://i.imgur.com/') and href.endswith(('.jpg', '.jpeg', '.png', '.gif')):
+            # 尋找圖片連結 (不限制圖床)
+            if not first_image_url and re.search(r'^https?://\S+\.(?:jpg|jpeg|png|gif)$', href, re.IGNORECASE):
                 first_image_url = href
             
-            # 如果都找到了就提前結束
             if first_image_url and first_youtube_id:
                 break
+        # --- 修改結束 ---
         
         thumbnail = None
         if first_youtube_id:
@@ -59,7 +63,6 @@ def get_article_preview_data(article_url):
             thumbnail = first_image_url
 
         # 提取內文預覽
-        # 移除所有 meta 和 push 標籤以取得乾淨的內文
         for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2'):
             tag.decompose()
         snippet = main_content.get_text(strip=True)[:80] + "..."
@@ -133,7 +136,7 @@ def fetch_ptt_article_content(article_url):
         if '※ 發信站:' in f2_span.get_text() or '※ 編輯:' in f2_span.get_text():
             f2_span.decompose()
 
-    images = [link.get('href', '') for link in main_content.select('a') if link.get('href', '').endswith(('.jpg', '.jpeg', '.png', '.gif'))]
+    images = [link.get('href', '') for link in main_content.select('a') if re.search(r'\.(jpg|jpeg|png|gif)$', link.get('href', ''), re.IGNORECASE)]
     youtube_ids = [extract_youtube_id(link.get('href', '')) for link in main_content.select('a') if extract_youtube_id(link.get('href', ''))]
     
     for br in main_content.find_all("br"): br.replace_with("\n")
@@ -144,8 +147,8 @@ def fetch_ptt_article_content(article_url):
 
     return {
         "author_full": author_full, "timestamp": timestamp, "content": content,
-        "signature": signature, "images": images, "pushes": pushes,
-        "youtube_ids": list(dict.fromkeys(youtube_ids)) # 移除重複的 ID
+        "signature": signature, "images": list(dict.fromkeys(images)), 
+        "pushes": pushes, "youtube_ids": list(dict.fromkeys(youtube_ids))
     }
 
 @app.route('/api/scraper', methods=['GET'])
