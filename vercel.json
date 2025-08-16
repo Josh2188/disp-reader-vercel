@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/scraper",
+      "destination": "/api/scraper.py"
+    }
+  ]
+}
