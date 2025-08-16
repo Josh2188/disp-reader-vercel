@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -16,104 +17,98 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #image-modal.hidden { display: none; }
-        .line-clamp-2 {
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-        }
-        .glassmorphism {
-            background-color: rgba(255, 255, 255, 0.7);
-            -webkit-backdrop-filter: blur(8px);
-            backdrop-filter: blur(8px);
-        }
-        .dark .glassmorphism {
-            background-color: rgba(26, 32, 44, 0.7);
-        }
-        /* 按鈕禁用時的樣式 */
-        button:disabled {
-            background-color: #9ca3af; /* gray-400 */
-            cursor: not-allowed;
-        }
-        .dark button:disabled {
-            background-color: #4b5563; /* dark:gray-600 */
-        }
+        .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+        .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); } /* dark:bg-gray-900/70 */
+        button:disabled { background-color: #9ca3af; cursor: not-allowed; }
+        .dark button:disabled { background-color: #4b5563; }
+        /* Pinch Zoom 容器 */
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-200">
+<body class="bg-gray-100 dark:bg-black text-gray-900 dark:text-gray-100">
 
-    <div class="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-lg">
-        <!-- 文章列表視圖 -->
-        <div id="list-view">
-            <header class="bg-gray-50/70 dark:bg-gray-800/70 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
-                <div class="flex items-center gap-2">
-                    <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
-                    <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
+    <div class="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-lg flex flex-col">
+        <!-- 統一工具列 -->
+        <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
+            <div class="flex items-center gap-2">
+                <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
+                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
+                
+                <div class="flex-shrink-0 flex items-center gap-1">
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    </button>
+                    <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                     </button>
-                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
+                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                         <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
                         <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>
                     </button>
-                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                         <svg id="theme-icon-light" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         <svg id="theme-icon-dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                     </button>
                 </div>
-            </header>
-            <main id="articles-list" class="divide-y divide-gray-200 dark:divide-gray-700"></main>
-            <div id="list-loader" class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>
-            <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
-            <div id="pagination" class="flex justify-center items-center my-4 space-x-2 hidden">
-                <button id="page-prev" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">前一頁</button>
-                <button id="page-next" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">下一頁</button>
-                <button id="page-latest" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">最新頁</button>
             </div>
-        </div>
+        </header>
 
-        <!-- 文章內文視圖 -->
-        <div id="detail-view" class="hidden h-screen flex flex-col">
-            <header class="bg-blue-600/80 dark:bg-blue-800/80 text-white shadow-md sticky top-0 z-20 p-3 glassmorphism">
-                <button id="back-button" class="p-2 rounded-full hover:bg-blue-500 dark:hover:bg-blue-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                <h2 id="detail-title" class="font-bold text-lg truncate">文章內文</h2>
-            </header>
-            <main id="detail-content" class="flex-grow p-4 overflow-y-auto no-scrollbar"></main>
+        <!-- 頁面容器 -->
+        <div class="flex-grow relative">
+            <div id="list-view" class="absolute inset-0 flex flex-col">
+                <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto"></main>
+                <div id="list-loader" class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>
+                <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
+                <div id="pagination" class="flex justify-center items-center my-4 space-x-2 hidden">
+                    <button id="page-prev" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">前一頁</button>
+                    <button id="page-next" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">下一頁</button>
+                    <button id="page-latest" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">最新頁</button>
+                </div>
+            </div>
+            <div id="detail-view" class="absolute inset-0 hidden">
+                <main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-4"></main>
+            </div>
         </div>
     </div>
 
     <!-- 圖片放大 Modal -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 glassmorphism">
-        <div class="relative max-w-4xl max-h-full">
-            <img id="modal-image" src="" alt="放大的圖片" class="max-w-full max-h-[85vh] object-contain">
-            <div class="absolute top-0 right-0 m-4 flex gap-2">
-                 <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                </a>
-                <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism">
+        <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
+        <div class="absolute top-0 right-0 m-4 flex gap-2">
+             <a id="download-btn" href="#" download="image.jpg" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            </a>
+            <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         </div>
     </div>
     
-    <button id="fullscreen-back-btn" class="hidden fixed bottom-5 right-5 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
+    <button id="floating-back-btn" class="fixed bottom-5 right-5 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
     </button>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- 狀態與資料管理 ---
-            let currentBoard = 'Gossiping';
-            let currentPageUrl = null;
-            let prevPageUrl = null; // API 回傳的上一頁 (更舊)
-            let pageHistory = []; // 用來記錄瀏覽路徑，實現「下一頁」
-            let currentView = 'list'; // 'list' 或 'favorites'
-            
-            // 從 localStorage 讀取資料
-            let favorites = JSON.parse(localStorage.getItem('favoriteArticles')) || [];
-            let readArticles = new Set(JSON.parse(localStorage.getItem('readArticles')) || []);
+            let state = {
+                currentBoard: 'Gossiping',
+                currentPageUrl: null,
+                prevPageUrl: null,
+                pageHistory: [],
+                currentView: 'list', // 'list', 'detail', 'favorites'
+                currentArticle: null,
+                favorites: JSON.parse(localStorage.getItem('favoriteArticles')) || [],
+                readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
+                pinchZoomInstance: null,
+                inactivityTimer: null
+            };
 
             // --- DOM 元素 ---
+            const docEl = document.documentElement;
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
             const articlesList = document.getElementById('articles-list');
@@ -125,97 +120,100 @@
             const pageNextBtn = document.getElementById('page-next');
             const pageLatestBtn = document.getElementById('page-latest');
             const boardSelector = document.getElementById('board-selector');
-            const backButton = document.getElementById('back-button');
-            const detailTitle = document.getElementById('detail-title');
+            const headerBackBtn = document.getElementById('header-back-btn');
+            const headerTitle = document.getElementById('header-title');
+            const headerFavoriteBtn = document.getElementById('header-favorite-btn');
             const detailContent = document.getElementById('detail-content');
             const showFavoritesBtn = document.getElementById('show-favorites-btn');
-
+            const floatingBackBtn = document.getElementById('floating-back-btn');
+            
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
             // --- localStorage 輔助函式 ---
-            const saveFavorites = () => localStorage.setItem('favoriteArticles', JSON.stringify(favorites));
-            const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...readArticles]));
-            const isFavorite = (link) => favorites.some(fav => fav.link === link);
+            const saveFavorites = () => localStorage.setItem('favoriteArticles', JSON.stringify(state.favorites));
+            const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
+            const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
 
-            // --- UI 渲染函式 ---
+            // --- UI 渲染與更新 ---
+            function updateHeader() {
+                if (state.currentView === 'detail') {
+                    boardSelector.classList.add('hidden');
+                    showFavoritesBtn.classList.add('hidden');
+                    headerBackBtn.classList.remove('hidden');
+                    headerTitle.classList.remove('hidden');
+                    headerFavoriteBtn.classList.remove('hidden');
+                    headerTitle.textContent = state.currentArticle.title;
+                    updateFavoriteIcon(isFavorite(state.currentArticle.link));
+                } else { // list or favorites
+                    boardSelector.classList.remove('hidden');
+                    showFavoritesBtn.classList.remove('hidden');
+                    headerBackBtn.classList.add('hidden');
+                    headerTitle.classList.add('hidden');
+                    headerFavoriteBtn.classList.add('hidden');
+                }
+            }
+
+            function updateFavoriteIcon(isFav) {
+                const svg = headerFavoriteBtn.querySelector('svg');
+                svg.classList.toggle('text-pink-500', isFav);
+                svg.classList.toggle('fill-current', isFav);
+                svg.classList.toggle('text-gray-400', !isFav);
+            }
+
             function renderArticles(articleData) {
                 articlesList.innerHTML = '';
-                articleData.forEach(article => articlesList.appendChild(createListItem(article)));
+                if (articleData.length === 0 && state.currentView === 'favorites') {
+                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">尚未收藏任何文章</p>`;
+                } else {
+                    articleData.forEach(article => articlesList.appendChild(createListItem(article)));
+                }
             }
 
             function createListItem(article) {
                 const item = document.createElement('div');
-                const isRead = readArticles.has(article.link);
+                const isRead = state.readArticles.has(article.link);
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
-                item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`; // 建立唯一 ID
+                item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`;
                 
                 let thumbnailHTML = '';
                 if (article.thumbnail) {
                     thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
                 }
 
-                const isFav = isFavorite(article.link);
-                const favIconHTML = `
-                    <button data-link="${article.link}" class="favorite-btn p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 flex-shrink-0">
-                        <svg class="w-5 h-5 ${isFav ? 'text-pink-500 fill-current' : 'text-gray-400'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
-                    </button>
-                `;
-
                 item.innerHTML = `
-                    <div class="flex flex-col overflow-hidden flex-grow" data-link="${article.link}">
-                        <h3 class="font-bold text-base leading-tight text-gray-900 dark:text-white line-clamp-2">${article.title}</h3>
+                    <div class="flex flex-col overflow-hidden flex-grow">
+                        <h3 class="font-bold text-base leading-tight line-clamp-2">${article.title}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">${article.snippet || ''}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
                     </div>
                     ${thumbnailHTML}
-                    ${favIconHTML}
                 `;
-                
-                // 事件委派，點擊主體看文章，點擊按鈕收藏
-                item.addEventListener('click', (e) => {
-                    if (e.target.closest('.favorite-btn')) {
-                        toggleFavorite(article, e.target.closest('.favorite-btn'));
-                    } else {
-                        showDetailView(article);
-                    }
-                });
-
+                item.addEventListener('click', () => showDetailView(article));
                 return item;
             }
-
+            
             // --- 核心功能邏輯 ---
             async function loadArticles(board, url = null) {
-                currentView = 'list';
+                state.currentView = 'list';
                 listLoader.classList.remove('hidden');
                 articlesList.innerHTML = '';
                 listError.classList.add('hidden');
                 pagination.classList.add('hidden');
+                updateHeader();
                 
-                // 如果是從看板選單或最新頁按鈕觸發，重置歷史
-                if (!url || url.endsWith('index.html')) {
-                    pageHistory = [];
-                }
-                
+                if (!url || url.endsWith('index.html')) state.pageHistory = [];
                 const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
 
                 try {
-                    const apiUrl = `/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`;
-                    const response = await fetch(apiUrl);
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ error: `請求失敗: ${response.status}` }));
-                        throw new Error(errorData.error);
-                    }
+                    const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`);
+                    if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
                     const data = await response.json();
                     
-                    if (!url) currentPageUrl = `https://www.ptt.cc/bbs/${board}/index.html`;
-                    else currentPageUrl = url;
-                    
-                    prevPageUrl = data.prev_page_url;
+                    state.currentPageUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+                    state.prevPageUrl = data.prev_page_url;
 
-                    const filteredArticles = data.articles.filter(a => a.title && !a.title.includes('[公告]'));
-                    renderArticles(filteredArticles);
+                    renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')));
                     updatePagination();
-
                 } catch (error) {
                     listErrorText.textContent = error.message;
                     listError.classList.remove('hidden');
@@ -225,60 +223,45 @@
             }
 
             function updatePagination() {
-                if (currentView !== 'list') {
+                if (state.currentView !== 'list') {
                     pagination.classList.add('hidden');
                     return;
                 }
                 pagination.classList.remove('hidden');
-
-                pagePrevBtn.disabled = !prevPageUrl;
-                pageNextBtn.disabled = pageHistory.length === 0;
-                pageLatestBtn.disabled = currentPageUrl.endsWith('index.html');
+                pagePrevBtn.disabled = !state.prevPageUrl;
+                pageNextBtn.disabled = state.pageHistory.length === 0;
+                pageLatestBtn.disabled = state.currentPageUrl.endsWith('index.html');
             }
             
-            function toggleFavorite(article, btnElement) {
-                const link = article.link;
-                const index = favorites.findIndex(fav => fav.link === link);
-
-                if (index > -1) { // 已收藏，移除
-                    favorites.splice(index, 1);
-                } else { // 未收藏，加入
-                    favorites.push(article);
-                }
+            function toggleFavorite() {
+                if (!state.currentArticle) return;
+                const article = state.currentArticle;
+                const index = state.favorites.findIndex(fav => fav.link === article.link);
+                if (index > -1) state.favorites.splice(index, 1);
+                else state.favorites.push(article);
                 saveFavorites();
-                
-                // 更新圖示
-                const svg = btnElement.querySelector('svg');
-                svg.classList.toggle('text-pink-500');
-                svg.classList.toggle('fill-current');
-                svg.classList.toggle('text-gray-400');
-
-                // 如果在我的最愛視圖中操作，直接移除該項目
-                if (currentView === 'favorites' && index > -1) {
-                    document.getElementById(`article-${link.replace(/[^a-zA-Z0-9]/g, '')}`).remove();
-                }
+                updateFavoriteIcon(index === -1);
             }
 
             async function showDetailView(article) {
-                // 標記為已讀
-                if (!readArticles.has(article.link)) {
-                    readArticles.add(article.link);
+                state.currentArticle = article;
+                state.currentView = 'detail';
+                updateHeader();
+
+                if (!state.readArticles.has(article.link)) {
+                    state.readArticles.add(article.link);
                     saveReadArticles();
                     document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60');
                 }
 
                 listView.classList.add('hidden');
                 detailView.classList.remove('hidden');
-                detailTitle.textContent = article.title;
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
                 history.pushState({view: 'detail'}, '', '#detail');
 
                 try {
                     const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
-                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ error: `無法載入內文: ${response.status}` }));
-                        throw new Error(errorData.error);
-                    }
+                    if (!response.ok) throw new Error(`無法載入內文: ${response.status}`);
                     const data = await response.json();
                     
                     let processedContent = data.content;
@@ -288,7 +271,7 @@
                         );
                     }
                     data.images.forEach(imgUrl => {
-                        processedContent = processedContent.replace(new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'), `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal('${imgUrl}')">`);
+                        processedContent = processedContent.replace(new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'), `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal(this)">`);
                     });
                     const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
                     let pushesHTML = '';
@@ -309,121 +292,104 @@
 
             // --- 事件監聽器 ---
             boardSelector.addEventListener('change', (e) => {
-                currentBoard = e.target.value;
-                loadArticles(currentBoard);
+                state.currentBoard = e.target.value;
+                loadArticles(state.currentBoard);
             });
-            
             pagePrevBtn.addEventListener('click', () => {
-                if (prevPageUrl) {
-                    pageHistory.push(currentPageUrl); // 將當前頁存入歷史
-                    loadArticles(currentBoard, prevPageUrl);
+                if (state.prevPageUrl) {
+                    state.pageHistory.push(state.currentPageUrl);
+                    loadArticles(state.currentBoard, state.prevPageUrl);
                 }
             });
-
             pageNextBtn.addEventListener('click', () => {
-                if (pageHistory.length > 0) {
-                    const nextUrl = pageHistory.pop(); // 從歷史中取出下一頁
-                    loadArticles(currentBoard, nextUrl);
-                }
+                if (state.pageHistory.length > 0) loadArticles(state.currentBoard, state.pageHistory.pop());
             });
-
-            pageLatestBtn.addEventListener('click', () => loadArticles(currentBoard));
-            
+            pageLatestBtn.addEventListener('click', () => loadArticles(state.currentBoard));
             showFavoritesBtn.addEventListener('click', () => {
-                currentView = 'favorites';
-                renderArticles(favorites);
+                state.currentView = 'favorites';
+                renderArticles(state.favorites);
+                updateHeader();
                 listLoader.classList.add('hidden');
                 listError.classList.add('hidden');
                 pagination.classList.add('hidden');
             });
-
-            backButton.addEventListener('click', () => history.back());
-            window.addEventListener('popstate', (event) => { if (location.hash !== '#detail') showListView() });
+            headerFavoriteBtn.addEventListener('click', toggleFavorite);
+            headerBackBtn.addEventListener('click', () => history.back());
+            window.addEventListener('popstate', () => {
+                state.currentView = 'list';
+                listView.classList.remove('hidden');
+                detailView.classList.add('hidden');
+                updateHeader();
+                updatePagination();
+            });
 
             // --- 初始化 ---
-            // 載入看板列表
             for (const board_en in TOP_BOARDS) {
                 const option = document.createElement('option');
                 option.value = board_en;
                 option.textContent = `${TOP_BOARDS[board_en]}`;
                 boardSelector.appendChild(option);
             }
-            // 初始載入
             history.replaceState({view: 'list'}, '', '#list');
-            loadArticles(currentBoard);
+            loadArticles(state.currentBoard);
+            updateHeader();
 
-            // --- 圖片 Modal 和全螢幕的程式碼 (與之前相同) ---
+            // --- 圖片 Modal 和全螢幕 ---
             const imageModal = document.getElementById('image-modal');
-            const modalImage = document.getElementById('modal-image');
+            const pinchZoomTarget = document.getElementById('pinch-zoom-target');
             const closeModalBtn = document.getElementById('close-modal-btn');
             const downloadBtn = document.getElementById('download-btn');
-            window.openImageModal = (src) => {
-                modalImage.src = src;
-                downloadBtn.href = src;
+            window.openImageModal = (imgElement) => {
+                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
+                pinchZoomTarget.innerHTML = '';
+                const newImg = imgElement.cloneNode(true);
+                newImg.removeAttribute('onclick');
+                newImg.className = '';
+                pinchZoomTarget.appendChild(newImg);
+                state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
+                downloadBtn.href = imgElement.src;
                 imageModal.classList.remove('hidden');
             }
-            const closeImageModal = () => imageModal.classList.add('hidden');
+            const closeImageModal = () => {
+                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
+                imageModal.classList.add('hidden');
+            };
             closeModalBtn.addEventListener('click', closeImageModal);
-            imageModal.addEventListener('click', (e) => {
-                if (e.target === imageModal) closeImageModal();
-            });
+            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) closeImageModal(); });
             
             const themeToggle = document.getElementById('theme-toggle');
-            const themeIconLight = document.getElementById('theme-icon-light');
-            const themeIconDark = document.getElementById('theme-icon-dark');
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             const fullscreenEnterIcon = document.getElementById('fullscreen-enter-icon');
             const fullscreenExitIcon = document.getElementById('fullscreen-exit-icon');
-            const fsBackButton = document.getElementById('fullscreen-back-btn');
-            let inactivityTimer;
             const applyTheme = (theme) => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                    themeIconLight.classList.remove('hidden');
-                    themeIconDark.classList.add('hidden');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    themeIconLight.classList.add('hidden');
-                    themeIconDark.classList.remove('hidden');
-                }
+                if (theme === 'dark') docEl.classList.add('dark'); else docEl.classList.remove('dark');
+                document.querySelector('#theme-icon-light').classList.toggle('hidden', theme !== 'dark');
+                document.querySelector('#theme-icon-dark').classList.toggle('hidden', theme === 'dark');
             };
             const initialTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             applyTheme(initialTheme);
             themeToggle.addEventListener('click', () => {
-                const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+                const newTheme = docEl.classList.contains('dark') ? 'light' : 'dark';
                 localStorage.setItem('theme', newTheme);
                 applyTheme(newTheme);
             });
             fullscreenToggle.addEventListener('click', () => {
-                if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.error(err));
+                if (!document.fullscreenElement) docEl.requestFullscreen().catch(err => console.error(err));
                 else if (document.exitFullscreen) document.exitFullscreen();
             });
-            function showFsBackButton() {
-                fsBackButton.classList.remove('opacity-0');
-                clearTimeout(inactivityTimer);
-                inactivityTimer = setTimeout(() => fsBackButton.classList.add('opacity-0'), 3000);
+            function showFloatingBackButton() {
+                floatingBackBtn.classList.remove('opacity-0');
+                clearTimeout(state.inactivityTimer);
+                state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000);
             }
             document.addEventListener('fullscreenchange', () => {
-                if (document.fullscreenElement) {
-                    fullscreenEnterIcon.classList.add('hidden');
-                    fullscreenExitIcon.classList.remove('hidden');
-                    fsBackButton.classList.remove('hidden');
-                    document.addEventListener('mousemove', showFsBackButton);
-                    document.addEventListener('touchstart', showFsBackButton);
-                    showFsBackButton();
-                } else {
-                    fullscreenEnterIcon.classList.remove('hidden');
-                    fullscreenExitIcon.classList.add('hidden');
-                    fsBackButton.classList.add('hidden');
-                    document.removeEventListener('mousemove', showFsBackButton);
-                    document.removeEventListener('touchstart', showFsBackButton);
-                    clearTimeout(inactivityTimer);
-                }
+                fullscreenEnterIcon.classList.toggle('hidden', !!document.fullscreenElement);
+                fullscreenExitIcon.classList.toggle('hidden', !document.fullscreenElement);
             });
-            fsBackButton.addEventListener('click', () => {
-                if (document.fullscreenElement) document.exitFullscreen();
-                history.back();
-            });
+            floatingBackBtn.addEventListener('click', () => history.back());
+            document.addEventListener('mousemove', showFloatingBackButton);
+            document.addEventListener('touchstart', showFloatingBackButton);
+            showFloatingBackButton();
         });
     </script>
 </body>
