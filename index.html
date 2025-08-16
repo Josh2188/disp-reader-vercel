@@ -520,64 +520,33 @@
 
             // --- 圖片瀏覽器邏輯 (已重構) ---
             // *** FIX: Refactored the entire image viewer logic for stability ***
-            let desktopZoomHandlers = {};
+            let wheelListener = null;
+            let mouseDownListener = null;
+            let mouseMoveListener = null;
+            let mouseUpListener = null;
 
             function cleanupImageInstance() {
-                // Clean up desktop controls
-                if (Object.keys(desktopZoomHandlers).length > 0) {
-                    pinchZoomTarget.removeEventListener('wheel', desktopZoomHandlers.onWheel);
-                    pinchZoomTarget.removeEventListener('mousedown', desktopZoomHandlers.onMouseDown);
-                    window.removeEventListener('mousemove', desktopZoomHandlers.onMouseMove);
-                    window.removeEventListener('mouseup', desktopZoomHandlers.onMouseUp);
-                    desktopZoomHandlers = {};
+                if (wheelListener) {
+                    pinchZoomTarget.removeEventListener('wheel', wheelListener);
+                    wheelListener = null;
                 }
-                // Clean up pinch-zoom instance
+                if (mouseDownListener) {
+                    pinchZoomTarget.removeEventListener('mousedown', mouseDownListener);
+                    mouseDownListener = null;
+                }
+                if (mouseMoveListener) {
+                    window.removeEventListener('mousemove', mouseMoveListener);
+                    mouseMoveListener = null;
+                }
+                if (mouseUpListener) {
+                    window.removeEventListener('mouseup', mouseUpListener);
+                    mouseUpListener = null;
+                }
                 if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
                     state.pinchZoomInstance.destroy();
                 }
                 state.pinchZoomInstance = null;
                 pinchZoomTarget.innerHTML = '';
-            }
-
-            function setupDesktopControls() {
-                if (!state.pinchZoomInstance) return;
-                
-                let isDragging = false;
-                let lastPos = { x: 0, y: 0 };
-
-                desktopZoomHandlers = {
-                    onWheel: (event) => {
-                        event.preventDefault();
-                        if (!state.pinchZoomInstance) return;
-                        const rect = pinchZoomTarget.getBoundingClientRect();
-                        const scale = state.pinchZoomInstance.getScale();
-                        const newScale = event.deltaY > 0 ? scale / 1.2 : scale * 1.2;
-                        state.pinchZoomInstance.zoomTo(newScale, { x: event.clientX - rect.left, y: event.clientY - rect.top });
-                    },
-                    onMouseDown: (event) => {
-                        event.preventDefault();
-                        isDragging = true;
-                        pinchZoomTarget.classList.add('is-dragging');
-                        lastPos = { x: event.clientX, y: event.clientY };
-                    },
-                    onMouseMove: (event) => {
-                        if (!isDragging || !state.pinchZoomInstance) return;
-                        event.preventDefault();
-                        const deltaX = event.clientX - lastPos.x;
-                        const deltaY = event.clientY - lastPos.y;
-                        lastPos = { x: event.clientX, y: event.clientY };
-                        state.pinchZoomInstance.panBy({ x: deltaX, y: deltaY });
-                    },
-                    onMouseUp: () => {
-                        isDragging = false;
-                        pinchZoomTarget.classList.remove('is-dragging');
-                    }
-                };
-
-                pinchZoomTarget.addEventListener('wheel', desktopZoomHandlers.onWheel);
-                pinchZoomTarget.addEventListener('mousedown', desktopZoomHandlers.onMouseDown);
-                window.addEventListener('mousemove', desktopZoomHandlers.onMouseMove);
-                window.addEventListener('mouseup', desktopZoomHandlers.onMouseUp);
             }
             
             detailContent.addEventListener('click', (e) => {
@@ -591,7 +560,7 @@
             });
 
             function openImageModal(index) {
-                cleanupImageInstance(); // Always clean up before opening a new one
+                cleanupImageInstance();
                 
                 state.currentImageIndex = index;
                 const imageUrl = state.currentArticleImages[state.currentImageIndex];
@@ -611,7 +580,45 @@
 
                 try {
                     state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 5 });
-                    setupDesktopControls();
+                    
+                    let isDragging = false;
+                    let lastPos = { x: 0, y: 0 };
+
+                    wheelListener = (event) => {
+                        event.preventDefault();
+                        if (!state.pinchZoomInstance) return;
+                        const rect = pinchZoomTarget.getBoundingClientRect();
+                        const scale = state.pinchZoomInstance.getScale();
+                        const newScale = event.deltaY > 0 ? scale / 1.2 : scale * 1.2;
+                        state.pinchZoomInstance.zoomTo(newScale, { x: event.clientX - rect.left, y: event.clientY - rect.top });
+                    };
+
+                    mouseDownListener = (event) => {
+                        event.preventDefault();
+                        isDragging = true;
+                        pinchZoomTarget.classList.add('is-dragging');
+                        lastPos = { x: event.clientX, y: event.clientY };
+                    };
+
+                    mouseMoveListener = (event) => {
+                        if (!isDragging || !state.pinchZoomInstance) return;
+                        event.preventDefault();
+                        const deltaX = event.clientX - lastPos.x;
+                        const deltaY = event.clientY - lastPos.y;
+                        lastPos = { x: event.clientX, y: event.clientY };
+                        state.pinchZoomInstance.panBy({ x: deltaX, y: deltaY });
+                    };
+
+                    mouseUpListener = () => {
+                        isDragging = false;
+                        pinchZoomTarget.classList.remove('is-dragging');
+                    };
+
+                    pinchZoomTarget.addEventListener('wheel', wheelListener);
+                    pinchZoomTarget.addEventListener('mousedown', mouseDownListener);
+                    window.addEventListener('mousemove', mouseMoveListener);
+                    window.addEventListener('mouseup', mouseUpListener);
+
                 } catch (e) {
                     console.error("PinchZoom 初始化失敗:", e);
                     pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
