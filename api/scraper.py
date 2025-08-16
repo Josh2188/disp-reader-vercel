@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request, Response, stream_with_context
 import requests
 from bs4 import BeautifulSoup
 import re
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 # Vercel 會尋找名為 'app' 的 Flask 實例
@@ -26,7 +25,7 @@ def parse_push_count(push_str):
         try:
             if push_str.strip() == 'XX':
                 return -100
-            return -1 * int(push_str.strip()[1:]) * 10
+            return -1 * int(push_str.strip()[1:])
         except (ValueError, IndexError):
             return -1
     try:
@@ -116,11 +115,13 @@ def process_article_item(item, board):
     
     if title_tag and title_tag.get('href') and meta_tag:
         article_link = "https://www.ptt.cc" + title_tag['href']
-        preview_data = get_article_preview_data(article_link)
         
         push_text = push_tag.get_text(strip=True) if push_tag else ''
         push_count = parse_push_count(push_text)
 
+        # For stability, we fetch preview data later if needed, not here for the whole list.
+        # This makes the list loading much more robust.
+        # The frontend will show basic info first.
         return {
             "title": title_tag.text.strip(),
             "link": article_link,
@@ -129,10 +130,10 @@ def process_article_item(item, board):
             "date": meta_tag.select_one('.date').get_text(strip=True) or '',
             "push_count": push_count,
             "push_text": push_text,
-            "timestamp": preview_data.get("timestamp"),
-            "formatted_timestamp": preview_data.get("formatted_timestamp"),
-            "thumbnail": preview_data.get("thumbnail"),
-            "snippet": preview_data.get("snippet")
+            "timestamp": None, # Will be fetched on detail view
+            "formatted_timestamp": None, # Will be fetched on detail view
+            "thumbnail": None, # Will be fetched on detail view
+            "snippet": "" # Will be fetched on detail view
         }
     return None
 
@@ -142,14 +143,16 @@ def fetch_ptt_article_list(board, page_url):
     soup = BeautifulSoup(response.text, 'html.parser')
     articles = soup.select('div.r-ent')
     article_list = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_article = {executor.submit(process_article_item, item, board): item for item in articles}
-        for future in future_to_article:
-            try:
-                result = future.result()
-                if result: article_list.append(result)
-            except Exception as exc:
-                print(f'Article processing generated an exception: {exc}')
+    
+    # REMOVED ThreadPoolExecutor for stability on Vercel
+    for item in articles:
+        try:
+            result = process_article_item(item, board)
+            if result:
+                article_list.append(result)
+        except Exception as exc:
+            print(f'Article processing generated an exception: {exc}')
+            
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
     prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
     return {"articles": article_list, "prev_page_url": prev_page_url}
@@ -191,15 +194,12 @@ def fetch_ptt_article_content(article_url):
         "youtube_ids": list(dict.fromkeys(youtube_ids))
     }
 
-# This is the main handler Vercel will call
 @app.route('/api/scraper', methods=['GET'])
 def handler():
-    # Check if this is a proxy request first
     proxy_url = request.args.get('proxy_url')
     if proxy_url:
         return proxy_image(proxy_url)
 
-    # Otherwise, handle as scraper
     try:
         board = request.args.get('board', 'Gossiping')
         list_url = request.args.get('list_url')
@@ -233,6 +233,5 @@ def proxy_image(url):
         print(f"Error proxying image {url}: {e}")
         return str(e), 502
 
-# This part is for local development and will not be used by Vercel
 if __name__ == '__main__':
     app.run(debug=True)
