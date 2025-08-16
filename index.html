@@ -22,6 +22,22 @@
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
         }
+        .glassmorphism {
+            background-color: rgba(255, 255, 255, 0.7);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+        .dark .glassmorphism {
+            background-color: rgba(26, 32, 44, 0.7);
+        }
+        /* 按鈕禁用時的樣式 */
+        button:disabled {
+            background-color: #9ca3af; /* gray-400 */
+            cursor: not-allowed;
+        }
+        .dark button:disabled {
+            background-color: #4b5563; /* dark:gray-600 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-200">
@@ -29,30 +45,35 @@
     <div class="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-lg">
         <!-- 文章列表視圖 -->
         <div id="list-view">
-            <header class="bg-gray-50 dark:bg-gray-800 shadow-sm sticky top-0 z-20 p-3">
-                <div class="flex items-center gap-3">
+            <header class="bg-gray-50/70 dark:bg-gray-800/70 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
+                <div class="flex items-center gap-2">
                     <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
-                    <!-- 修改開始：新增全螢幕按鈕 -->
+                    <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    </button>
                     <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
-                        <svg id="fullscreen-enter-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1v4m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5 5" /></svg>
-                        <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4l-5 5m0 0l5 5m-5-5h12a2 2 0 012 2v2M4 9v2a2 2 0 002 2h12m-5 5l5-5m0 0l-5-5" /></svg>
+                        <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>
                     </button>
                     <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none flex-shrink-0">
-                        <svg id="theme-icon-light" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <svg id="theme-icon-light" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         <svg id="theme-icon-dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                     </button>
-                    <!-- 修改結束 -->
                 </div>
             </header>
             <main id="articles-list" class="divide-y divide-gray-200 dark:divide-gray-700"></main>
             <div id="list-loader" class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>
             <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
-            <div id="pagination" class="flex justify-center items-center my-4 space-x-4 hidden"><button id="prev-page" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">舊文章</button><button id="next-page" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">最新頁</button></div>
+            <div id="pagination" class="flex justify-center items-center my-4 space-x-2 hidden">
+                <button id="page-prev" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">前一頁</button>
+                <button id="page-next" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">下一頁</button>
+                <button id="page-latest" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">最新頁</button>
+            </div>
         </div>
 
         <!-- 文章內文視圖 -->
         <div id="detail-view" class="hidden h-screen flex flex-col">
-            <header class="bg-blue-600 dark:bg-blue-800 text-white shadow-md sticky top-0 z-20 p-3 flex items-center gap-3">
+            <header class="bg-blue-600/80 dark:bg-blue-800/80 text-white shadow-md sticky top-0 z-20 p-3 glassmorphism">
                 <button id="back-button" class="p-2 rounded-full hover:bg-blue-500 dark:hover:bg-blue-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 <h2 id="detail-title" class="font-bold text-lg truncate">文章內文</h2>
             </header>
@@ -61,7 +82,7 @@
     </div>
 
     <!-- 圖片放大 Modal -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 glassmorphism">
         <div class="relative max-w-4xl max-h-full">
             <img id="modal-image" src="" alt="放大的圖片" class="max-w-full max-h-[85vh] object-contain">
             <div class="absolute top-0 right-0 m-4 flex gap-2">
@@ -74,10 +95,25 @@
             </div>
         </div>
     </div>
+    
+    <button id="fullscreen-back-btn" class="hidden fixed bottom-5 right-5 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+    </button>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // DOM 元素
+            // --- 狀態與資料管理 ---
+            let currentBoard = 'Gossiping';
+            let currentPageUrl = null;
+            let prevPageUrl = null; // API 回傳的上一頁 (更舊)
+            let pageHistory = []; // 用來記錄瀏覽路徑，實現「下一頁」
+            let currentView = 'list'; // 'list' 或 'favorites'
+            
+            // 從 localStorage 讀取資料
+            let favorites = JSON.parse(localStorage.getItem('favoriteArticles')) || [];
+            let readArticles = new Set(JSON.parse(localStorage.getItem('readArticles')) || []);
+
+            // --- DOM 元素 ---
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
             const articlesList = document.getElementById('articles-list');
@@ -85,224 +121,242 @@
             const listError = document.getElementById('list-error');
             const listErrorText = document.getElementById('list-error-text');
             const pagination = document.getElementById('pagination');
-            const prevPageBtn = document.getElementById('prev-page');
-            const nextPageBtn = document.getElementById('next-page');
+            const pagePrevBtn = document.getElementById('page-prev');
+            const pageNextBtn = document.getElementById('page-next');
+            const pageLatestBtn = document.getElementById('page-latest');
             const boardSelector = document.getElementById('board-selector');
             const backButton = document.getElementById('back-button');
             const detailTitle = document.getElementById('detail-title');
             const detailContent = document.getElementById('detail-content');
-            const imageModal = document.getElementById('image-modal');
-            const modalImage = document.getElementById('modal-image');
-            const closeModalBtn = document.getElementById('close-modal-btn');
-            const downloadBtn = document.getElementById('download-btn');
-            
-            let prevPageUrl = null;
+            const showFavoritesBtn = document.getElementById('show-favorites-btn');
+
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
-            // 初始化看板選單
+            // --- localStorage 輔助函式 ---
+            const saveFavorites = () => localStorage.setItem('favoriteArticles', JSON.stringify(favorites));
+            const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...readArticles]));
+            const isFavorite = (link) => favorites.some(fav => fav.link === link);
+
+            // --- UI 渲染函式 ---
+            function renderArticles(articleData) {
+                articlesList.innerHTML = '';
+                articleData.forEach(article => articlesList.appendChild(createListItem(article)));
+            }
+
+            function createListItem(article) {
+                const item = document.createElement('div');
+                const isRead = readArticles.has(article.link);
+                item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
+                item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`; // 建立唯一 ID
+                
+                let thumbnailHTML = '';
+                if (article.thumbnail) {
+                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
+                }
+
+                const isFav = isFavorite(article.link);
+                const favIconHTML = `
+                    <button data-link="${article.link}" class="favorite-btn p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 flex-shrink-0">
+                        <svg class="w-5 h-5 ${isFav ? 'text-pink-500 fill-current' : 'text-gray-400'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    </button>
+                `;
+
+                item.innerHTML = `
+                    <div class="flex flex-col overflow-hidden flex-grow" data-link="${article.link}">
+                        <h3 class="font-bold text-base leading-tight text-gray-900 dark:text-white line-clamp-2">${article.title}</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">${article.snippet || ''}</p>
+                    </div>
+                    ${thumbnailHTML}
+                    ${favIconHTML}
+                `;
+                
+                // 事件委派，點擊主體看文章，點擊按鈕收藏
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.favorite-btn')) {
+                        toggleFavorite(article, e.target.closest('.favorite-btn'));
+                    } else {
+                        showDetailView(article);
+                    }
+                });
+
+                return item;
+            }
+
+            // --- 核心功能邏輯 ---
+            async function loadArticles(board, url = null) {
+                currentView = 'list';
+                listLoader.classList.remove('hidden');
+                articlesList.innerHTML = '';
+                listError.classList.add('hidden');
+                pagination.classList.add('hidden');
+                
+                // 如果是從看板選單或最新頁按鈕觸發，重置歷史
+                if (!url || url.endsWith('index.html')) {
+                    pageHistory = [];
+                }
+                
+                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+
+                try {
+                    const apiUrl = `/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`;
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: `請求失敗: ${response.status}` }));
+                        throw new Error(errorData.error);
+                    }
+                    const data = await response.json();
+                    
+                    if (!url) currentPageUrl = `https://www.ptt.cc/bbs/${board}/index.html`;
+                    else currentPageUrl = url;
+                    
+                    prevPageUrl = data.prev_page_url;
+
+                    const filteredArticles = data.articles.filter(a => a.title && !a.title.includes('[公告]'));
+                    renderArticles(filteredArticles);
+                    updatePagination();
+
+                } catch (error) {
+                    listErrorText.textContent = error.message;
+                    listError.classList.remove('hidden');
+                } finally {
+                    listLoader.classList.add('hidden');
+                }
+            }
+
+            function updatePagination() {
+                if (currentView !== 'list') {
+                    pagination.classList.add('hidden');
+                    return;
+                }
+                pagination.classList.remove('hidden');
+
+                pagePrevBtn.disabled = !prevPageUrl;
+                pageNextBtn.disabled = pageHistory.length === 0;
+                pageLatestBtn.disabled = currentPageUrl.endsWith('index.html');
+            }
+            
+            function toggleFavorite(article, btnElement) {
+                const link = article.link;
+                const index = favorites.findIndex(fav => fav.link === link);
+
+                if (index > -1) { // 已收藏，移除
+                    favorites.splice(index, 1);
+                } else { // 未收藏，加入
+                    favorites.push(article);
+                }
+                saveFavorites();
+                
+                // 更新圖示
+                const svg = btnElement.querySelector('svg');
+                svg.classList.toggle('text-pink-500');
+                svg.classList.toggle('fill-current');
+                svg.classList.toggle('text-gray-400');
+
+                // 如果在我的最愛視圖中操作，直接移除該項目
+                if (currentView === 'favorites' && index > -1) {
+                    document.getElementById(`article-${link.replace(/[^a-zA-Z0-9]/g, '')}`).remove();
+                }
+            }
+
+            async function showDetailView(article) {
+                // 標記為已讀
+                if (!readArticles.has(article.link)) {
+                    readArticles.add(article.link);
+                    saveReadArticles();
+                    document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60');
+                }
+
+                listView.classList.add('hidden');
+                detailView.classList.remove('hidden');
+                detailTitle.textContent = article.title;
+                detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
+                history.pushState({view: 'detail'}, '', '#detail');
+
+                try {
+                    const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
+                     if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: `無法載入內文: ${response.status}` }));
+                        throw new Error(errorData.error);
+                    }
+                    const data = await response.json();
+                    
+                    let processedContent = data.content;
+                    if (data.youtube_ids?.length > 0) {
+                        processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => 
+                            data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match
+                        );
+                    }
+                    data.images.forEach(imgUrl => {
+                        processedContent = processedContent.replace(new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g'), `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal('${imgUrl}')">`);
+                    });
+                    const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
+                    let pushesHTML = '';
+                    if (data.pushes?.length > 0) {
+                        pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => {
+                            let tagColor = 'text-gray-500 dark:text-gray-400';
+                            if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
+                            if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
+                            return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${p.content}</span></div>`;
+                        }).join('')}</div>`;
+                    }
+                    detailContent.innerHTML = `<div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg text-sm mb-4"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${processedContent}</div>${signatureHTML}${pushesHTML}`;
+                    detailContent.scrollTop = 0;
+                } catch (error) {
+                    detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
+                }
+            }
+
+            // --- 事件監聽器 ---
+            boardSelector.addEventListener('change', (e) => {
+                currentBoard = e.target.value;
+                loadArticles(currentBoard);
+            });
+            
+            pagePrevBtn.addEventListener('click', () => {
+                if (prevPageUrl) {
+                    pageHistory.push(currentPageUrl); // 將當前頁存入歷史
+                    loadArticles(currentBoard, prevPageUrl);
+                }
+            });
+
+            pageNextBtn.addEventListener('click', () => {
+                if (pageHistory.length > 0) {
+                    const nextUrl = pageHistory.pop(); // 從歷史中取出下一頁
+                    loadArticles(currentBoard, nextUrl);
+                }
+            });
+
+            pageLatestBtn.addEventListener('click', () => loadArticles(currentBoard));
+            
+            showFavoritesBtn.addEventListener('click', () => {
+                currentView = 'favorites';
+                renderArticles(favorites);
+                listLoader.classList.add('hidden');
+                listError.classList.add('hidden');
+                pagination.classList.add('hidden');
+            });
+
+            backButton.addEventListener('click', () => history.back());
+            window.addEventListener('popstate', (event) => { if (location.hash !== '#detail') showListView() });
+
+            // --- 初始化 ---
+            // 載入看板列表
             for (const board_en in TOP_BOARDS) {
                 const option = document.createElement('option');
                 option.value = board_en;
                 option.textContent = `${TOP_BOARDS[board_en]}`;
                 boardSelector.appendChild(option);
             }
+            // 初始載入
+            history.replaceState({view: 'list'}, '', '#list');
+            loadArticles(currentBoard);
 
-            // --- 修改開始：修正主題切換與新增全螢幕功能 ---
-            const themeToggle = document.getElementById('theme-toggle');
-            const themeIconLight = document.getElementById('theme-icon-light');
-            const themeIconDark = document.getElementById('theme-icon-dark');
-            const fullscreenToggle = document.getElementById('fullscreen-toggle');
-            const fullscreenEnterIcon = document.getElementById('fullscreen-enter-icon');
-            const fullscreenExitIcon = document.getElementById('fullscreen-exit-icon');
-
-            // 應用主題 (light/dark)
-            const applyTheme = (theme) => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                    // 黑夜模式下，顯示「切換到白天」的太陽圖示
-                    themeIconLight.classList.remove('hidden');
-                    themeIconDark.classList.add('hidden');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    // 白天模式下，顯示「切換到黑夜」的月亮圖示
-                    themeIconLight.classList.add('hidden');
-                    themeIconDark.classList.remove('hidden');
-                }
-            };
-
-            // 初始化主題
-            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            applyTheme(currentTheme);
-
-            // 主題切換按鈕事件
-            themeToggle.addEventListener('click', () => {
-                const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-                localStorage.setItem('theme', newTheme);
-                applyTheme(newTheme);
-            });
-
-            // 全螢幕切換功能
-            function toggleFullScreen() {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
-                } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
-                }
-            }
-            fullscreenToggle.addEventListener('click', toggleFullScreen);
-
-            // 監聽全螢幕狀態變化以更新圖示
-            document.addEventListener('fullscreenchange', () => {
-                if (document.fullscreenElement) {
-                    fullscreenEnterIcon.classList.add('hidden');
-                    fullscreenExitIcon.classList.remove('hidden');
-                } else {
-                    fullscreenEnterIcon.classList.remove('hidden');
-                    fullscreenExitIcon.classList.add('hidden');
-                }
-            });
-            // --- 修改結束 ---
-
-            function showListView() {
-                detailView.classList.add('hidden');
-                listView.classList.remove('hidden');
-            }
-
-            window.addEventListener('popstate', (event) => {
-                if (location.hash !== '#detail') {
-                    showListView();
-                }
-            });
-
-            // 建立文章列表項目
-            function createListItem(article) {
-                const item = document.createElement('div');
-                item.className = 'flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
-                
-                let thumbnailHTML = `
-                    <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
-                        ${article.thumbnail ? 
-                            `<img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy">` :
-                            `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"></path></svg>`
-                        }
-                    </div>
-                `;
-
-                item.innerHTML = `
-                    <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base leading-tight text-gray-900 dark:text-white line-clamp-2">${article.title}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">${article.snippet || ''}</p>
-                    </div>
-                    ${thumbnailHTML}
-                `;
-                item.addEventListener('click', () => showDetailView(article));
-                return item;
-            }
-
-            // 載入文章列表
-            async function loadArticles(board, url = null) {
-                listLoader.classList.remove('hidden');
-                articlesList.innerHTML = '';
-                listError.classList.add('hidden');
-                pagination.classList.add('hidden');
-
-                try {
-                    const apiUrl = url ? `/api/scraper?board=${board}&list_url=${encodeURIComponent(url)}` : `/api/scraper?board=${board}`;
-                    const response = await fetch(apiUrl);
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ error: `請求失敗，狀態碼: ${response.status}` }));
-                        throw new Error(errorData.error);
-                    }
-                    const data = await response.json();
-                    
-                    const filteredArticles = data.articles.filter(a => a.title && !a.title.includes('[公告]'));
-                    filteredArticles.forEach(article => articlesList.appendChild(createListItem(article)));
-
-                    listLoader.classList.add('hidden');
-                    pagination.classList.remove('hidden');
-                    
-                    prevPageUrl = data.prev_page_url;
-                    prevPageBtn.disabled = !prevPageUrl;
-
-                } catch (error) {
-                    listLoader.classList.add('hidden');
-                    listErrorText.textContent = error.message;
-                    listError.classList.remove('hidden');
-                }
-            }
-            
-            // 顯示文章內文
-            async function showDetailView(article) {
-                listView.classList.add('hidden');
-                detailView.classList.remove('hidden');
-                detailTitle.textContent = article.title;
-                detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
-                
-                history.pushState({view: 'detail'}, '', '#detail');
-
-                try {
-                    const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
-                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ error: `無法載入內文，狀態碼: ${response.status}` }));
-                        throw new Error(errorData.error);
-                    }
-                    const data = await response.json();
-
-                    let processedContent = data.content;
-
-                    // 內嵌 YouTube 影片
-                    if (data.youtube_ids && data.youtube_ids.length > 0) {
-                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g;
-                        processedContent = processedContent.replace(youtubeRegex, (match, videoId) => {
-                            if (data.youtube_ids.includes(videoId)) {
-                                return `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-                            }
-                            return match;
-                        });
-                    }
-
-                    // 替換圖片連結
-                    data.images.forEach(imgUrl => {
-                        const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal('${imgUrl}')">`;
-                        const urlPattern = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
-                        processedContent = processedContent.replace(urlPattern, imgTag);
-                    });
-
-                    const signatureHTML = data.signature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${data.signature}</div>` : '';
-                    
-                    let pushesHTML = '';
-                    if (data.pushes && data.pushes.length > 0) {
-                        const pushList = data.pushes.map(p => {
-                            let tagColor = 'text-gray-500 dark:text-gray-400';
-                            if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
-                            if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
-                            return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${p.content}</span></div>`;
-                        }).join('');
-                        pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${pushList}</div>`;
-                    }
-
-                    detailContent.innerHTML = `
-                        <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg text-sm mb-4">
-                            <p><strong>看板:</strong> ${article.board}</p>
-                            <p><strong>作者:</strong> ${data.author_full}</p>
-                            <p><strong>標題:</strong> ${article.title}</p>
-                            <p><strong>時間:</strong> ${data.timestamp}</p>
-                        </div>
-                        <div class="text-base leading-relaxed whitespace-pre-wrap break-words">${processedContent}</div>
-                        ${signatureHTML}
-                        ${pushesHTML}
-                    `;
-                    detailContent.scrollTop = 0;
-
-                } catch (error) {
-                    detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
-                }
-            }
-
-            // 圖片 Modal 控制
+            // --- 圖片 Modal 和全螢幕的程式碼 (與之前相同) ---
+            const imageModal = document.getElementById('image-modal');
+            const modalImage = document.getElementById('modal-image');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const downloadBtn = document.getElementById('download-btn');
             window.openImageModal = (src) => {
                 modalImage.src = src;
                 downloadBtn.href = src;
@@ -314,18 +368,62 @@
                 if (e.target === imageModal) closeImageModal();
             });
             
-            backButton.addEventListener('click', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIconLight = document.getElementById('theme-icon-light');
+            const themeIconDark = document.getElementById('theme-icon-dark');
+            const fullscreenToggle = document.getElementById('fullscreen-toggle');
+            const fullscreenEnterIcon = document.getElementById('fullscreen-enter-icon');
+            const fullscreenExitIcon = document.getElementById('fullscreen-exit-icon');
+            const fsBackButton = document.getElementById('fullscreen-back-btn');
+            let inactivityTimer;
+            const applyTheme = (theme) => {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    themeIconLight.classList.remove('hidden');
+                    themeIconDark.classList.add('hidden');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    themeIconLight.classList.add('hidden');
+                    themeIconDark.classList.remove('hidden');
+                }
+            };
+            const initialTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(initialTheme);
+            themeToggle.addEventListener('click', () => {
+                const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+            fullscreenToggle.addEventListener('click', () => {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.error(err));
+                else if (document.exitFullscreen) document.exitFullscreen();
+            });
+            function showFsBackButton() {
+                fsBackButton.classList.remove('opacity-0');
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => fsBackButton.classList.add('opacity-0'), 3000);
+            }
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    fullscreenEnterIcon.classList.add('hidden');
+                    fullscreenExitIcon.classList.remove('hidden');
+                    fsBackButton.classList.remove('hidden');
+                    document.addEventListener('mousemove', showFsBackButton);
+                    document.addEventListener('touchstart', showFsBackButton);
+                    showFsBackButton();
+                } else {
+                    fullscreenEnterIcon.classList.remove('hidden');
+                    fullscreenExitIcon.classList.add('hidden');
+                    fsBackButton.classList.add('hidden');
+                    document.removeEventListener('mousemove', showFsBackButton);
+                    document.removeEventListener('touchstart', showFsBackButton);
+                    clearTimeout(inactivityTimer);
+                }
+            });
+            fsBackButton.addEventListener('click', () => {
+                if (document.fullscreenElement) document.exitFullscreen();
                 history.back();
             });
-            
-            // 事件監聽
-            boardSelector.addEventListener('change', () => loadArticles(boardSelector.value));
-            prevPageBtn.addEventListener('click', () => { if(prevPageUrl) loadArticles(boardSelector.value, prevPageUrl); });
-            nextPageBtn.addEventListener('click', () => loadArticles(boardSelector.value));
-
-            // 初始載入
-            history.replaceState({view: 'list'}, '', '#list');
-            loadArticles(boardSelector.value);
         });
     </script>
 </body>
