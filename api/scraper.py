@@ -19,17 +19,18 @@ def parse_push_count(push_str):
     """Converts PTT push count string (e.g., '爆', '99', 'X1') to an integer."""
     if not push_str:
         return 0
-    if push_str.strip() == '爆':
+    push_str = push_str.strip()
+    if push_str == '爆':
         return 100
-    if push_str.strip().startswith('X'):
+    if push_str.startswith('X'):
         try:
-            if push_str.strip() == 'XX':
+            if push_str == 'XX':
                 return -100
-            return -1 * int(push_str.strip()[1:])
+            return -1 * int(push_str[1:])
         except (ValueError, IndexError):
             return -1
     try:
-        return int(push_str.strip())
+        return int(push_str)
     except ValueError:
         return 0
 
@@ -63,101 +64,50 @@ def extract_youtube_id(url):
             return match.group(1)
     return None
 
-def get_article_preview_data(article_url):
-    try:
-        response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        main_content = soup.select_one('#main-content')
-        if not main_content: return {"thumbnail": None, "snippet": "", "timestamp": None, "formatted_timestamp": None}
-
-        timestamp = None
-        meta_lines = soup.select('.article-metaline, .article-metaline-right')
-        for line in meta_lines:
-            tag = line.select_one('.article-meta-tag')
-            value = line.select_one('.article-meta-value')
-            if tag and value and tag.get_text(strip=True) == '時間':
-                timestamp = value.get_text(strip=True)
-                break
-        
-        first_image_url, first_youtube_id = None, None
-        for link in main_content.select('a'):
-            href = link.get('href', '')
-            if not href: continue
-            if not first_youtube_id:
-                youtube_id = extract_youtube_id(href)
-                if youtube_id: first_youtube_id = youtube_id
-            if not first_image_url and re.search(r'^https?://\S+\.(?:jpg|jpeg|png|gif|avif)$', href, re.IGNORECASE):
-                first_image_url = href
-            if first_image_url and first_youtube_id: break
-        
-        thumbnail = f"https://i.ytimg.com/vi/{first_youtube_id}/hqdefault.jpg" if first_youtube_id else first_image_url
-
-        for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2'):
-            tag.decompose()
-        snippet = main_content.get_text(strip=True)[:80] + "..."
-
-        return {
-            "thumbnail": thumbnail, 
-            "snippet": snippet, 
-            "timestamp": timestamp,
-            "formatted_timestamp": format_ptt_time(timestamp)
-        }
-    except Exception as e:
-        print(f"Failed to fetch preview for {article_url}: {e}")
-        return {"thumbnail": None, "snippet": "", "timestamp": None, "formatted_timestamp": None}
-
-def process_article_item(item, board):
+def process_article_item_for_list(item, board):
+    """
+    Processes a single article item from the list page.
+    This version is optimized for speed and stability on serverless platforms.
+    It ONLY parses data available directly on the list page.
+    """
     title_tag = item.select_one('.title a')
     meta_tag = item.select_one('.meta')
     push_tag = item.select_one('.nrec span')
     
     if title_tag and title_tag.get('href') and meta_tag:
-        article_link = "https://www.ptt.cc" + title_tag['href']
-        
         push_text = push_tag.get_text(strip=True) if push_tag else ''
         push_count = parse_push_count(push_text)
 
-        # For stability, we fetch preview data later if needed, not here for the whole list.
-        # This makes the list loading much more robust.
-        # The frontend will show basic info first.
         return {
             "title": title_tag.text.strip(),
-            "link": article_link,
+            "link": "https://www.ptt.cc" + title_tag['href'],
             "board": board,
             "author": meta_tag.select_one('.author').get_text(strip=True) or '',
             "date": meta_tag.select_one('.date').get_text(strip=True) or '',
             "push_count": push_count,
             "push_text": push_text,
-            "timestamp": None, # Will be fetched on detail view
-            "formatted_timestamp": None, # Will be fetched on detail view
-            "thumbnail": None, # Will be fetched on detail view
-            "snippet": "" # Will be fetched on detail view
         }
     return None
 
 def fetch_ptt_article_list(board, page_url):
+    """Fetches a list of articles. This is a fast and robust version."""
     response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     articles = soup.select('div.r-ent')
     article_list = []
     
-    # REMOVED ThreadPoolExecutor for stability on Vercel
     for item in articles:
-        try:
-            result = process_article_item(item, board)
-            if result:
-                article_list.append(result)
-        except Exception as exc:
-            print(f'Article processing generated an exception: {exc}')
+        result = process_article_item_for_list(item, board)
+        if result:
+            article_list.append(result)
             
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
     prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
     return {"articles": article_list, "prev_page_url": prev_page_url}
 
 def fetch_ptt_article_content(article_url):
+    """Fetches the full content of a single article, including images and timestamps."""
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -176,6 +126,15 @@ def fetch_ptt_article_content(article_url):
     for p in main_content.select('.push'): p.decompose()
     for f2 in main_content.select('span.f2'):
         if '※ 發信站:' in f2.get_text() or '※ 編輯:' in f2.get_text(): f2.decompose()
+    
+    # Find first image for thumbnail
+    first_image_url = None
+    for link in main_content.select('a'):
+        href = link.get('href', '')
+        if href and IMAGE_REGEX.search(href):
+            first_image_url = href
+            break
+    
     images = [link.get('href') for link in main_content.select('a') if link.get('href') and IMAGE_REGEX.search(link.get('href'))]
     youtube_ids = [yt_id for link in main_content.select('a') if (yt_id := extract_youtube_id(link.get('href')))]
     for br in main_content.find_all("br"): br.replace_with("\n")
@@ -183,6 +142,11 @@ def fetch_ptt_article_content(article_url):
     content_parts = re.split(r'\n--\n', full_text, 1)
     content = content_parts[0].strip()
     signature = content_parts[1].strip() if len(content_parts) > 1 else ''
+    
+    for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2'):
+            tag.decompose()
+    snippet = main_content.get_text(strip=True)[:80] + "..."
+
     return {
         "author_full": author_full, 
         "timestamp": timestamp, 
@@ -190,6 +154,8 @@ def fetch_ptt_article_content(article_url):
         "content": content,
         "signature": signature, 
         "images": list(dict.fromkeys(images)), 
+        "thumbnail": first_image_url, # Add thumbnail to content data
+        "snippet": snippet, # Add snippet to content data
         "pushes": pushes, 
         "youtube_ids": list(dict.fromkeys(youtube_ids))
     }
