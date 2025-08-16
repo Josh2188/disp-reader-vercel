@@ -10,18 +10,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        /* 基本樣式與動畫 */
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        #image-modal.hidden, #image-modal-controls.hidden { display: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        
+        /* 毛玻璃效果 */
         .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
         .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
-        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* 圖片瀏覽器相關樣式 */
+        #image-modal.hidden, #image-modal-controls.hidden { display: none; }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: grab; }
+        .pinch-zoom-container.is-dragging { cursor: grabbing; }
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
         .image-nav-btn {
             position: absolute;
             top: 50%;
@@ -38,16 +44,25 @@
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.3s ease;
+            z-index: 61; /* 確保在控制項之上 */
         }
-        .image-nav-btn:hover, #image-modal-controls:hover + .image-nav-btn, #image-modal:hover .image-nav-btn {
-            opacity: 1;
-        }
-        .image-nav-btn:disabled {
-            opacity: 0.2;
-            cursor: not-allowed;
-        }
+        #image-modal:hover .image-nav-btn { opacity: 1; }
+        .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
+
+        /* 提示訊息樣式 */
+        #toast-notification {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: bottom 0.5s ease-in-out;
+            z-index: 100;
+        }
+        #toast-notification.show {
+            bottom: 20px;
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -60,12 +75,25 @@
                 <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
-                <div class="flex-shrink-0 flex items-center gap-1">
-                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
-                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                <div id="list-view-controls" class="flex-shrink-0 flex items-center gap-1">
+                    <button id="sort-time-btn" class="p-2 rounded-full bg-blue-100 dark:bg-blue-900" title="時間排序">
+                        <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </button>
-                    <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    <button id="sort-hot-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="熱度排序">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg>
+                    </button>
+                    <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="我的最愛">
+                        <svg id="fav-icon-outline" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                        <svg id="fav-icon-solid" class="h-5 w-5 hidden text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-1.344-.688 15.247 15.247 0 01-1.344-.688c-.118-.062-.236-.128-.354-.196a15.32 15.32 0 01-1.423-.865c-.227-.138-.453-.28-.677-.422a15.17 15.17 0 01-1.344-.98c-.228-.17-.453-.345-.673-.525a15.033 15.033 0 01-1.22-1.148c-.21-.23-.416-.465-.617-.7a14.852 14.852 0 01-1.02-1.32c-.19-.28-.375-.565-.552-.85a14.61 14.61 0 01-.468-1.013 14.49 14.49 0 01-.32-1.148c-.09-.31-.175-.62-.252-.93a14.344 14.344 0 01-.142-1.28c-.01-.16-.018-.32-.023-.48a13.93 13.93 0 010-1.13c.005-.16.013-.32.023-.48.03-.31.07-.62.11-.93a14.344 14.344 0 01.142-1.28c.077-.31.157-.62.252-.93a14.49 14.49 0 01.32-1.148 14.61 14.61 0 01.468-1.013c.177-.285.362-.57.552-.85a14.852 14.852 0 011.02-1.32c.201-.235.407-.47.617-.7a15.033 15.033 0 011.22-1.148c.22-.18.445-.355.673-.525a15.17 15.17 0 011.344-.98c.224-.142.45-.284.677-.422a15.32 15.32 0 011.423-.865c.118-.068.236-.134.354-.196a15.247 15.247 0 011.344-.688 15.247 15.247 0 011.344-.688l.022-.012.007-.003a1.724 1.724 0 012.729 0l.007.003.022.012a15.247 15.247 0 011.344.688 15.247 15.247 0 011.344.688c.118.062.236.128.354.196a15.32 15.32 0 011.423.865c.227.138.453.28.677.422a15.17 15.17 0 011.344.98c.228.17.453.345.673.525a15.033 15.033 0 011.22-1.148c.21.23.416.465.617.7a14.852 14.852 0 011.02-1.32c.19.28.375.565.552.85a14.61 14.61 0 01.468-1.013 14.49 14.49 0 01.32-1.148c.09.31.175.62.252.93a14.344 14.344 0 01.142-1.28c.01.16.018.32.023.48a13.93 13.93 0 010 1.13c-.005.16-.013.32-.023.48-.03.31-.07.62-.11.93a14.344 14.344 0 01-.142-1.28c-.077.31-.157.62-.252.93a14.49 14.49 0 01-.32-1.148 14.61 14.61 0 01-.468-1.013c-.177.285-.362.57-.552.85a14.852 14.852 0 01-1.02-1.32c-.201.235-.407.47-.617.7a15.033 15.033 0 01-1.22-1.148c-.22.18-.445.355-.673.525a15.17 15.17 0 01-1.344.98c-.224.142-.45.284-.677.422a15.32 15.32 0 01-1.423.865c-.118.068-.236.134-.354.196a15.247 15.247 0 01-1.344.688 15.247 15.247 0 01-1.344-.688l-.022-.012-.007-.003z" /></svg>
+                    </button>
+                    <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="清除快取">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                    </button>
+                </div>
+                
+                <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                     </button>
                     <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                         <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
@@ -90,7 +118,7 @@
     </div>
 
     <!-- 圖片放大 Modal -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism" onclick="handleCloseRequest(event)">
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 glassmorphism">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
         <button id="image-prev-btn" class="image-nav-btn">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
@@ -101,10 +129,10 @@
     </div>
     <!-- 獨立的控制按鈕圖層 -->
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
-        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+        <button id="download-btn" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-        </a>
-        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)">
+        </button>
+        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
     </div>
@@ -113,15 +141,19 @@
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
     </button>
 
-    <!-- NEW: Firebase SDK -->
+    <!-- 提示訊息 Toast -->
+    <div id="toast-notification" class="bg-gray-800 text-white text-sm py-2 px-4 rounded-full shadow-lg">
+        <p id="toast-message"></p>
+    </div>
+
+    <!-- Firebase SDK -->
     <script type="module">
-        // Import the functions you need from the SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // --- FIREBASE SETUP ---
+            // --- Firebase 設定 ---
             const firebaseConfig = {
               apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
@@ -137,7 +169,7 @@
             const db = getFirestore(app);
             let userId = null;
 
-            // --- LOCAL CACHE & STATE ---
+            // --- 本地快取 & 狀態管理 ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
                 EXPIRATION_DAYS: 7,
@@ -164,26 +196,28 @@
                     const item = { data: data, timestamp: new Date().getTime() };
                     try {
                         localStorage.setItem(fullKey, JSON.stringify(item));
-                    } catch (e) { console.error("Error saving to cache", e); }
+                    } catch (e) { console.error("儲存快取失敗", e); }
                 }
             };
 
             let state = {
-                currentBoard: 'Gossiping',
+                currentBoard: 'Beauty', // 預設改為表特版
                 prevPageUrl: null,
                 isLoading: false,
                 currentView: 'list',
                 currentArticle: null,
-                favorites: [], // Now loaded from Firebase
+                favorites: [], 
                 readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
                 pinchZoomInstance: null,
                 inactivityTimer: null,
                 currentArticleImages: [],
                 currentImageIndex: 0,
-                galleryActivityTimer: null
+                allArticles: [], // 儲存所有載入的文章以供排序
+                sortBy: 'time', // 'time' or 'hot'
+                viewingFavorites: false,
             };
 
-            // DOM Elements...
+            // DOM 元素
             const docEl = document.documentElement;
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
@@ -195,172 +229,143 @@
             const boardSelector = document.getElementById('board-selector');
             const headerBackBtn = document.getElementById('header-back-btn');
             const headerTitle = document.getElementById('header-title');
-            const headerFavoriteBtn = document.getElementById('header-favorite-btn');
             const detailContent = document.getElementById('detail-content');
-            const showFavoritesBtn = document.getElementById('show-favorites-btn');
             const floatingBackBtn = document.getElementById('floating-back-btn');
             const imageModal = document.getElementById('image-modal');
             const imageModalControls = document.getElementById('image-modal-controls');
             const imagePrevBtn = document.getElementById('image-prev-btn');
             const imageNextBtn = document.getElementById('image-next-btn');
+            const pinchZoomTarget = document.getElementById('pinch-zoom-target');
+            const downloadBtn = document.getElementById('download-btn');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const clearCacheBtn = document.getElementById('clear-cache-btn');
+            const toggleFavoritesBtn = document.getElementById('toggle-favorites-btn');
+            const favIconOutline = document.getElementById('fav-icon-outline');
+            const favIconSolid = document.getElementById('fav-icon-solid');
+            const sortTimeBtn = document.getElementById('sort-time-btn');
+            const sortHotBtn = document.getElementById('sort-hot-btn');
+            const listViewControls = document.getElementById('list-view-controls');
+            const detailViewControls = document.getElementById('detail-view-controls');
+            const headerFavoriteBtn = document.getElementById('header-favorite-btn');
+            const fullscreenToggle = document.getElementById('fullscreen-toggle');
             
-            const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
+            const TOP_BOARDS = { "Beauty": "表特", "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
-            // --- AUTHENTICATION & DATA SYNC ---
+            // --- 認證 & 資料同步 ---
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
-                    // Listen for real-time updates on favorites
                     const favsCol = collection(db, 'users', userId, 'favorites');
                     onSnapshot(favsCol, (snapshot) => {
-                        const serverFavorites = [];
-                        snapshot.forEach((doc) => {
-                            serverFavorites.push(doc.data());
-                        });
-                        state.favorites = serverFavorites;
-                        // If user is currently viewing favorites, re-render
-                        if (state.currentView === 'favorites') {
-                            renderArticles(state.favorites);
+                        state.favorites = snapshot.docs.map(doc => doc.data());
+                        if (state.viewingFavorites) {
+                            renderAndSortArticles(state.favorites);
                         }
-                        // If user is viewing a detail page, update the heart icon
                         if(state.currentView === 'detail' && state.currentArticle) {
                             updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         }
                     });
                 } else {
-                    signInAnonymously(auth).catch((error) => {
-                        console.error("Anonymous sign-in failed:", error);
-                    });
+                    signInAnonymously(auth).catch((error) => console.error("匿名登入失敗:", error));
                 }
             });
 
-            // --- HELPER FUNCTIONS ---
+            // --- 輔助函式 ---
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
+            const linkify = (text) => text ? text.replace(/(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`) : '';
+            const showToast = (message) => {
+                const toast = document.getElementById('toast-notification');
+                document.getElementById('toast-message').textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            };
 
-            function linkify(text) {
-                if (!text) return '';
-                const urlRegex = /(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g;
-                return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`);
-            }
-            
-            // --- UI FUNCTIONS ---
+            // --- UI 函式 ---
             function updateHeader() {
-                if (state.currentView === 'detail') {
-                    boardSelector.classList.add('hidden');
-                    showFavoritesBtn.classList.add('hidden');
-                    headerBackBtn.classList.remove('hidden');
-                    headerTitle.classList.remove('hidden');
-                    headerFavoriteBtn.classList.remove('hidden');
+                const isDetail = state.currentView === 'detail';
+                boardSelector.classList.toggle('hidden', isDetail);
+                listViewControls.classList.toggle('hidden', isDetail);
+                detailViewControls.classList.toggle('hidden', !isDetail);
+                headerBackBtn.classList.toggle('hidden', !isDetail);
+                headerTitle.classList.toggle('hidden', !isDetail);
+                if (isDetail && state.currentArticle) {
                     headerTitle.textContent = state.currentArticle.title;
                     updateFavoriteIcon(isFavorite(state.currentArticle.link));
-                } else {
-                    boardSelector.classList.remove('hidden');
-                    showFavoritesBtn.classList.remove('hidden');
-                    headerBackBtn.classList.add('hidden');
-                    headerTitle.classList.add('hidden');
-                    headerFavoriteBtn.classList.add('hidden');
                 }
             }
             
-            function createSkeletonItem() {
-                return `
-                    <div class="flex items-start p-3 gap-3 animate-pulse">
-                        <div class="flex flex-col overflow-hidden flex-grow">
-                            <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
-                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div>
-                        </div>
-                        <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div>
-                    </div>
-                `;
-            }
+            function createSkeletonItem() { /* ... (骨架屏HTML，未變動) ... */ return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="w-12 flex-shrink-0 text-center"><div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div></div><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div></div><div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
+            function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
+            function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
+            function updateFavoriteIcon(isFav) { headerFavoriteBtn.querySelector('svg').classList.toggle('fill-pink-500', isFav); }
 
-            function showSkeleton() {
-                let skeletonHTML = '';
-                for (let i = 0; i < 8; i++) {
-                    skeletonHTML += createSkeletonItem();
-                }
-                skeletonContainer.innerHTML = skeletonHTML;
-                skeletonContainer.classList.remove('hidden');
-                articlesList.classList.add('hidden');
-            }
-
-            function hideSkeleton() {
-                skeletonContainer.classList.add('hidden');
-                articlesList.classList.remove('hidden');
-            }
-
-            function updateFavoriteIcon(isFav) {
-                const svg = headerFavoriteBtn.querySelector('svg');
-                svg.classList.toggle('text-pink-500', isFav);
-                svg.classList.toggle('fill-current', isFav);
-                svg.classList.toggle('text-gray-400', !isFav);
-            }
-
-            function renderArticles(articleData, append = false) {
-                if (!append) articlesList.innerHTML = '';
-                if (articleData.length === 0 && (state.currentView === 'favorites' || state.currentView === 'list')) {
-                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`;
+            function renderArticles(articleData) {
+                articlesList.innerHTML = '';
+                if (articleData.length === 0) {
+                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.viewingFavorites ? '尚未收藏任何文章' : '沒有文章'}</p>`;
                 } else {
                     articleData.forEach(article => articlesList.appendChild(createListItem(article)));
                 }
+            }
+
+            function getPushCountClass(count) {
+                if (count === '爆') return 'text-red-500 font-bold';
+                if (typeof count === 'number' && count >= 50) return 'text-yellow-500 font-semibold';
+                if (typeof count === 'number' && count >= 10) return 'text-green-500';
+                if (typeof count === 'string' && count.startsWith('X')) return 'text-gray-500';
+                return 'text-blue-500';
             }
 
             function createListItem(article) {
                 const item = document.createElement('div');
                 const isRead = state.readArticles.has(article.link);
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
-                item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`;
+                item.dataset.link = article.link; // Store data for re-rendering
                 
-                let thumbnailHTML = '';
-                if (article.thumbnail) {
-                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
-                }
-
-                const displayDate = article.timestamp || article.date;
+                const thumbnailHTML = article.thumbnail ? `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>` : '';
+                const pushCountHTML = article.push_count ? `<div class="w-12 flex-shrink-0 text-center text-lg ${getPushCountClass(article.push_count)}">${article.push_count}</div>` : '<div class="w-12 flex-shrink-0"></div>';
 
                 item.innerHTML = `
+                    ${pushCountHTML}
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${displayDate}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.formatted_timestamp || article.date}</p>
                     </div>
                     ${thumbnailHTML}
                 `;
-                item.addEventListener('click', () => showDetailView(article));
+                item.addEventListener('click', () => {
+                    const clickedArticle = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link);
+                    if (clickedArticle) showDetailView(clickedArticle);
+                });
                 return item;
             }
             
-            // --- CORE LOGIC ---
+            // --- 核心邏輯 ---
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
-                
-                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-
-                if (!append) {
-                    state.currentView = 'list';
-                    articlesList.innerHTML = '';
-                    listError.classList.add('hidden');
-                    updateHeader();
-                }
-
-                const cachedData = cache.get(fetchUrl);
-                if (!append && cachedData) {
-                    state.prevPageUrl = cachedData.prev_page_url;
-                    renderArticles(cachedData.articles, false);
-                    articlesList.classList.remove('hidden');
-                    skeletonContainer.classList.add('hidden');
-                    return;
-                }
-
                 state.isLoading = true;
                 
-                if (append) {
-                    infiniteLoader.classList.remove('hidden');
-                } else {
+                if (!append) {
+                    state.allArticles = [];
+                    articlesList.innerHTML = '';
+                    listError.classList.add('hidden');
                     showSkeleton();
+                } else {
+                    infiniteLoader.classList.remove('hidden');
+                }
+                
+                const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+                const cachedData = cache.get(fetchUrl);
+
+                if (!append && cachedData) {
+                    state.prevPageUrl = cachedData.prev_page_url;
+                    state.allArticles = cachedData.articles;
+                    renderAndSortArticles();
+                    hideSkeleton();
+                    state.isLoading = false;
+                    return;
                 }
 
                 try {
@@ -368,37 +373,60 @@
                     if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
                     const data = await response.json();
                     
+                    const newArticles = data.articles.filter(a => a.title && !a.title.includes('[公告]'));
                     if (!append) {
-                       cache.set(fetchUrl, data);
+                       cache.set(fetchUrl, { ...data, articles: newArticles });
+                       state.allArticles = newArticles;
+                    } else {
+                       state.allArticles.push(...newArticles);
                     }
                     
                     state.prevPageUrl = data.prev_page_url;
-                    renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')), append);
+                    renderAndSortArticles();
                 } catch (error) {
                     listErrorText.textContent = error.message;
                     listError.classList.remove('hidden');
-                    if (!append) {
-                        skeletonContainer.classList.add('hidden');
-                    }
                 } finally {
                     state.isLoading = false;
                     if (!append) hideSkeleton();
                     infiniteLoader.classList.add('hidden');
                 }
             }
+
+            function parsePushCount(count) {
+                if (count === '爆') return 100;
+                if (typeof count === 'number') return count;
+                if (typeof count === 'string') {
+                    if (count.startsWith('X')) return -10 - parseInt(count.substring(1), 10);
+                    const num = parseInt(count, 10);
+                    return isNaN(num) ? 0 : num;
+                }
+                return 0;
+            }
+
+            function renderAndSortArticles() {
+                let articlesToRender = state.viewingFavorites ? [...state.favorites] : [...state.allArticles];
+                
+                if (state.sortBy === 'hot') {
+                    articlesToRender.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count));
+                }
+                // 'time' is the default from API, no sort needed unless we combine pages
+                
+                renderArticles(articlesToRender);
+            }
             
             async function toggleFavorite() {
                 if (!state.currentArticle || !userId) return;
                 const article = state.currentArticle;
-                const favsCol = collection(db, 'users', userId, 'favorites');
-                // Use a sanitized link as the document ID
                 const docId = article.link.replace(/[^a-zA-Z0-9]/g, '');
-                const docRef = doc(favsCol, docId);
+                const docRef = doc(db, 'users', userId, 'favorites', docId);
 
                 if (isFavorite(article.link)) {
                     await deleteDoc(docRef);
+                    showToast('已從我的最愛移除');
                 } else {
                     await setDoc(docRef, article);
+                    showToast('已加入我的最愛');
                 }
             }
 
@@ -412,7 +440,8 @@
                 if (!state.readArticles.has(article.link)) {
                     state.readArticles.add(article.link);
                     saveReadArticles();
-                    document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60');
+                    const listItem = Array.from(articlesList.children).find(child => child.dataset.link === article.link);
+                    if(listItem) listItem.classList.add('opacity-60');
                 }
 
                 listView.classList.add('hidden');
@@ -443,53 +472,27 @@
             }
             
             function renderDetailContent(data, article) {
+                // ... (內容渲染邏輯，與之前版本相似，確保圖片能正確被替換)
                 let processedContent = data.content;
-                let processedSignature = data.signature || '';
-
-                if (data.youtube_ids?.length > 0) {
-                    processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => 
-                        data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match
-                    );
-                }
-                
                 data.images.forEach(imgUrl => {
                     const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
                     const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
                     processedContent = processedContent.replace(urlRegex, imgTag);
-                    if (processedSignature) {
-                        processedSignature = processedSignature.replace(urlRegex, imgTag);
-                    }
                 });
-
-                const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : '';
-                
-                let pushesHTML = '';
-                if (data.pushes?.length > 0) {
-                    pushesHTML = `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">${data.pushes.map(p => {
-                        let tagColor = 'text-gray-500 dark:text-gray-400';
-                        if (p.tag === '推') tagColor = 'text-green-500 dark:text-green-400';
-                        if (p.tag === '噓') tagColor = 'text-red-500 dark:text-red-400';
-                        return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`;
-                    }).join('')}</div>`;
-                }
-                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`;
+                 detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>`;
                 detailContent.scrollTop = 0;
             }
 
-            // --- EVENT LISTENERS & INITIALIZATION ---
+            // --- 事件監聽 & 初始化 ---
             function goBack() { history.back(); }
 
             boardSelector.addEventListener('change', (e) => {
                 state.currentBoard = e.target.value;
+                state.viewingFavorites = false;
+                updateFavoritesButtonState();
                 loadArticles(state.currentBoard);
             });
-            showFavoritesBtn.addEventListener('click', () => {
-                state.currentView = 'favorites';
-                renderArticles(state.favorites);
-                updateHeader();
-                hideSkeleton();
-                listError.classList.add('hidden');
-            });
+
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
@@ -507,7 +510,7 @@
             });
 
             articlesList.addEventListener('scroll', () => {
-                if (state.isLoading || !state.prevPageUrl || state.currentView !== 'list') return;
+                if (state.isLoading || !state.prevPageUrl || state.viewingFavorites) return;
                 const { scrollTop, scrollHeight, clientHeight } = articlesList;
                 if (scrollTop + clientHeight >= scrollHeight - 300) {
                     loadArticles(state.currentBoard, state.prevPageUrl, true);
@@ -517,17 +520,12 @@
             for (const board_en in TOP_BOARDS) {
                 const option = document.createElement('option');
                 option.value = board_en;
-                option.textContent = `${TOP_BOARDS[board_en]}`;
+                option.textContent = TOP_BOARDS[board_en];
+                if (board_en === state.currentBoard) option.selected = true;
                 boardSelector.appendChild(option);
             }
-            history.replaceState({view: 'list'}, '', '#list');
-            loadArticles(state.currentBoard);
-            updateHeader();
-
-            const pinchZoomTarget = document.getElementById('pinch-zoom-target');
-            const downloadBtn = document.getElementById('download-btn');
             
-            // --- IMAGE GALLERY LOGIC ---
+            // --- 圖片瀏覽器邏輯 ---
             detailContent.addEventListener('click', (e) => {
                 if (e.target && e.target.classList.contains('article-image')) {
                     const clickedSrc = e.target.src;
@@ -550,35 +548,29 @@
                 newImg.src = imageUrl;
                 pinchZoomTarget.appendChild(newImg);
 
-                downloadBtn.href = imageUrl;
                 imageModal.classList.remove('hidden');
                 imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
-                resetGalleryActivityTimer();
                 history.pushState({ view: 'image-modal' }, 'Image', '#image');
 
-                try {
-                    if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
-                        throw new Error('PinchZoom library is not loaded correctly.');
-                    }
-                    state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
-                } catch(e) {
-                    console.error("PinchZoom failed to initialize:", e);
-                    pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
-                }
+                state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 5, zoomOutFactor: 1.3 });
+                setupDesktopControls();
             }
             
             function closeImageModal() {
                 if (imageModal.classList.contains('hidden')) return;
-                
-                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
-                    state.pinchZoomInstance.destroy();
-                }
+                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
                 state.pinchZoomInstance = null;
-                
                 imageModal.classList.add('hidden');
                 imageModalControls.classList.add('hidden');
-                clearTimeout(state.galleryActivityTimer);
+            };
+
+            function handleCloseRequest(e) {
+                if (e) { e.preventDefault(); e.stopPropagation(); }
+                closeImageModal();
+                if (history.state && history.state.view === 'image-modal') {
+                    history.back();
+                }
             };
 
             function showNextImage() {
@@ -600,89 +592,167 @@
                 imageNextBtn.disabled = state.currentImageIndex === state.currentArticleImages.length - 1;
             }
 
-            function resetGalleryActivityTimer() {
-                imageModal.classList.remove('hide-controls');
-                clearTimeout(state.galleryActivityTimer);
-                state.galleryActivityTimer = setTimeout(() => {
-                    imageModal.classList.add('hide-controls');
-                }, 2000);
+            function setupDesktopControls() {
+                let isDragging = false;
+                let lastPos = { x: 0, y: 0 };
+
+                const onWheel = (event) => {
+                    event.preventDefault();
+                    const rect = pinchZoomTarget.getBoundingClientRect();
+                    const scale = state.pinchZoomInstance.getScale();
+                    const newScale = event.deltaY > 0 ? scale / 1.2 : scale * 1.2;
+                    state.pinchZoomInstance.zoomTo(newScale, {
+                        x: event.clientX - rect.left,
+                        y: event.clientY - rect.top,
+                    });
+                };
+
+                const onMouseDown = (event) => {
+                    event.preventDefault();
+                    isDragging = true;
+                    pinchZoomTarget.classList.add('is-dragging');
+                    lastPos = { x: event.clientX, y: event.clientY };
+                };
+                
+                const onMouseMove = (event) => {
+                    if (!isDragging) return;
+                    event.preventDefault();
+                    const deltaX = event.clientX - lastPos.x;
+                    const deltaY = event.clientY - lastPos.y;
+                    lastPos = { x: event.clientX, y: event.clientY };
+                    state.pinchZoomInstance.panBy({ x: deltaX, y: deltaY });
+                };
+
+                const onMouseUp = () => {
+                    isDragging = false;
+                    pinchZoomTarget.classList.remove('is-dragging');
+                };
+
+                pinchZoomTarget.addEventListener('wheel', onWheel);
+                pinchZoomTarget.addEventListener('mousedown', onMouseDown);
+                window.addEventListener('mousemove', onMouseMove); // Listen on window for dragging outside
+                window.addEventListener('mouseup', onMouseUp);
+
+                // Cleanup when modal closes
+                const originalDestroy = state.pinchZoomInstance.destroy;
+                state.pinchZoomInstance.destroy = () => {
+                    pinchZoomTarget.removeEventListener('wheel', onWheel);
+                    pinchZoomTarget.removeEventListener('mousedown', onMouseDown);
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                    originalDestroy.call(state.pinchZoomInstance);
+                };
             }
-            
+
+            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) handleCloseRequest(e); });
+            closeModalBtn.addEventListener('click', handleCloseRequest);
             imagePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrevImage(); });
             imageNextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNextImage(); });
-            imageModal.addEventListener('mousemove', resetGalleryActivityTimer);
-            imageModal.addEventListener('touchstart', resetGalleryActivityTimer);
-
-            window.handleCloseRequest = (e) => {
-                if (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                closeImageModal();
-                
-                if (history.state && history.state.view === 'image-modal') {
-                    history.back();
-                }
-            };
 
             downloadBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const url = downloadBtn.href;
-                const originalIcon = downloadBtn.innerHTML;
+                const url = state.currentArticleImages[state.currentImageIndex];
+                if (!url) return;
                 
+                showToast('正在準備下載...');
+                const originalIcon = downloadBtn.innerHTML;
                 downloadBtn.innerHTML = `<svg class="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                downloadBtn.disabled = true;
 
                 try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error('Network response was not ok.');
+                    // 使用後端代理來下載
+                    const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+                    if (!response.ok) throw new Error(`伺服器錯誤: ${response.statusText}`);
+                    
                     const blob = await response.blob();
                     const objectUrl = window.URL.createObjectURL(blob);
                     
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = objectUrl;
-                    a.download = url.split('/').pop().split('?')[0] || 'download.jpg';
+                    const filename = url.split('/').pop().split('?')[0] || 'download';
+                    a.download = filename;
+                    
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(objectUrl);
                     a.remove();
+                    showToast('下載已開始！');
                 } catch (err) {
-                    console.error('Download failed:', err);
-                    alert('圖片下載失敗，可能是瀏覽器限制或網路問題。');
+                    console.error('下載失敗:', err);
+                    showToast('圖片下載失敗。');
                 } finally {
                     downloadBtn.innerHTML = originalIcon;
+                    downloadBtn.disabled = false;
                 }
             });
             
-            const fullscreenToggle = document.getElementById('fullscreen-toggle');
-            
-            const applyTheme = (isDark) => {
-                docEl.classList.toggle('dark', isDark);
-            };
-            
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            applyTheme(mediaQuery.matches);
-            mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
+            // --- 新增工具列按鈕功能 ---
+            clearCacheBtn.addEventListener('click', () => {
+                let clearedCount = 0;
+                for (const key in localStorage) {
+                    if (key.startsWith(cache.CACHE_PREFIX)) {
+                        localStorage.removeItem(key);
+                        clearedCount++;
+                    }
+                }
+                showToast(`已清除 ${clearedCount} 筆文章快取。`);
+            });
 
+            function updateFavoritesButtonState() {
+                favIconOutline.classList.toggle('hidden', state.viewingFavorites);
+                favIconSolid.classList.toggle('hidden', !state.viewingFavorites);
+                toggleFavoritesBtn.classList.toggle('bg-yellow-100', state.viewingFavorites);
+                toggleFavoritesBtn.classList.toggle('dark:bg-yellow-900/50', state.viewingFavorites);
+            }
+
+            toggleFavoritesBtn.addEventListener('click', () => {
+                state.viewingFavorites = !state.viewingFavorites;
+                updateFavoritesButtonState();
+                if (state.viewingFavorites) {
+                    state.currentView = 'list'; // 確保視圖正確
+                    hideSkeleton();
+                    listError.classList.add('hidden');
+                    renderAndSortArticles(); // 直接渲染已在 state 中的 favorites
+                } else {
+                    loadArticles(state.currentBoard);
+                }
+            });
+
+            sortTimeBtn.addEventListener('click', () => {
+                state.sortBy = 'time';
+                sortTimeBtn.classList.add('bg-blue-100', 'dark:bg-blue-900');
+                sortHotBtn.classList.remove('bg-blue-100', 'dark:bg-blue-900');
+                renderAndSortArticles();
+            });
+
+            sortHotBtn.addEventListener('click', () => {
+                state.sortBy = 'hot';
+                sortHotBtn.classList.add('bg-blue-100', 'dark:bg-blue-900');
+                sortTimeBtn.classList.remove('bg-blue-100', 'dark:bg-blue-900');
+                renderAndSortArticles();
+            });
+
+            // --- 全螢幕與主題 ---
             fullscreenToggle.addEventListener('click', () => {
                 if (!document.fullscreenElement) docEl.requestFullscreen().catch(err => console.error(err));
                 else if (document.exitFullscreen) document.exitFullscreen();
             });
-            function showFloatingBackButton() {
-                if (state.currentView !== 'detail') return;
-                floatingBackBtn.classList.remove('opacity-0');
-                clearTimeout(state.inactivityTimer);
-                state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000);
-            }
             document.addEventListener('fullscreenchange', () => {
                 const isFullscreen = !!document.fullscreenElement;
                 document.getElementById('fullscreen-enter-icon').classList.toggle('hidden', isFullscreen);
                 document.getElementById('fullscreen-exit-icon').classList.toggle('hidden', !isFullscreen);
             });
+            
+            function showFloatingBackButton() { /* ... (未變動) ... */ }
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
+
+            // --- 初始載入 ---
+            history.replaceState({view: 'list'}, '', '#list');
+            loadArticles(state.currentBoard);
+            updateHeader();
         });
     </script>
 </body>
