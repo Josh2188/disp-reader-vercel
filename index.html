@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
+    <!-- *** FIX: 移除舊的 pinch-zoom-js，更換為 Panzoom 函式庫 *** -->
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom/dist/panzoom.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -25,9 +26,10 @@
 
         /* 圖片瀏覽器相關樣式 */
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
-        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: grab; }
-        .pinch-zoom-container.is-dragging { cursor: grabbing; }
-        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        /* Panzoom 會直接在 img 元素上操作，我們可以設定 img 的游標 */
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: grab; }
+        .pinch-zoom-container img:active { cursor: grabbing; }
         .image-nav-btn {
             position: absolute;
             top: 50%;
@@ -119,7 +121,9 @@
 
     <!-- 圖片放大 Modal -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 glassmorphism">
-        <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
+        <div id="pinch-zoom-target" class="pinch-zoom-container">
+            <!-- Panzoom 會將圖片放在這裡 -->
+        </div>
         <button id="image-prev-btn" class="image-nav-btn">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
         </button>
@@ -208,14 +212,13 @@
                 currentArticle: null,
                 favorites: [], 
                 readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
-                pinchZoomInstance: null,
+                panzoomInstance: null, // *** FIX: 變數名稱變更 ***
                 inactivityTimer: null,
                 currentArticleImages: [],
                 currentImageIndex: 0,
                 allArticles: [],
                 sortBy: 'time',
                 viewingFavorites: false,
-                isImageModalOpen: false, // *** FIX: 新增狀態來追蹤 Modal 是否開啟 ***
             };
 
             // DOM 元素
@@ -500,7 +503,7 @@
             floatingBackBtn.addEventListener('click', goBack);
             
             window.addEventListener('popstate', (event) => {
-                if (state.isImageModalOpen) {
+                if (!imageModal.classList.contains('hidden')) {
                     closeImageModal();
                 } else if (state.currentView === 'detail') {
                     state.currentView = 'list';
@@ -519,12 +522,12 @@
                 }
             });
 
-            // --- 圖片瀏覽器邏輯 (已重構) ---
+            // --- 圖片瀏覽器邏輯 (使用 Panzoom) ---
             function cleanupImageInstance() {
-                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
-                    state.pinchZoomInstance.destroy();
+                if (state.panzoomInstance) {
+                    state.panzoomInstance.destroy();
+                    state.panzoomInstance = null;
                 }
-                state.pinchZoomInstance = null;
                 pinchZoomTarget.innerHTML = '';
             }
             
@@ -545,8 +548,6 @@
                 const imageUrl = state.currentArticleImages[state.currentImageIndex];
                 if (!imageUrl) return;
 
-                state.isImageModalOpen = true;
-
                 const newImg = document.createElement('img');
                 newImg.src = imageUrl;
                 pinchZoomTarget.appendChild(newImg);
@@ -560,19 +561,23 @@
                 }
 
                 try {
-                    state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, {
-                        minZoom: 0.5,
-                        maxZoom: 8,
+                    // *** FIX: 初始化 Panzoom ***
+                    state.panzoomInstance = Panzoom(newImg, {
+                        maxScale: 8,
+                        minScale: 0.5,
+                        contain: 'outside', // 確保縮小時圖片仍在可見範圍內
+                        canvas: true, // 推薦選項，提升渲染效能
                     });
+                    // *** FIX: 將滾輪事件綁定到容器上，並使用 Panzoom 內建的處理函式 ***
+                    pinchZoomTarget.addEventListener('wheel', state.panzoomInstance.zoomWithWheel);
                 } catch (e) {
-                    console.error("PinchZoom 初始化失敗:", e);
+                    console.error("Panzoom 初始化失敗:", e);
                     pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
                 }
             }
             
             function closeImageModal() {
-                if (!state.isImageModalOpen) return;
-                state.isImageModalOpen = false;
+                if (imageModal.classList.contains('hidden')) return;
                 cleanupImageInstance();
                 imageModal.classList.add('hidden');
                 imageModalControls.classList.add('hidden');
@@ -608,7 +613,8 @@
 
             imageModal.addEventListener('click', handleCloseRequest);
             closeModalBtn.addEventListener('click', handleCloseRequest);
-            pinchZoomTarget.addEventListener('click', (e) => e.stopPropagation());
+            // *** FIX: Panzoom 會處理自己的點擊/拖曳事件，我們不需要阻止傳播 ***
+            // pinchZoomTarget.addEventListener('click', (e) => e.stopPropagation());
             imagePrevBtn.addEventListener('click', showPrevImage);
             imageNextBtn.addEventListener('click', showNextImage);
 
@@ -704,35 +710,7 @@
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
 
-            // *** FIX: 建立一個全域的滾輪事件監聽器，以提高穩定性 ***
-            window.addEventListener('wheel', (event) => {
-                // 只有當圖片 Modal 開啟且 pinch-zoom 實例存在時才作用
-                if (!state.isImageModalOpen || !state.pinchZoomInstance) return;
-
-                // 阻止背景頁面滾動
-                event.preventDefault();
-
-                const rect = pinchZoomTarget.getBoundingClientRect();
-                
-                // 計算滑鼠相對於圖片容器的位置，作為縮放中心點
-                const zoomPoint = { 
-                    x: event.clientX - rect.left, 
-                    y: event.clientY - rect.top 
-                };
-                
-                // 如果滑鼠不在圖片容器範圍內，則不進行縮放
-                if (zoomPoint.x < 0 || zoomPoint.x > rect.width || zoomPoint.y < 0 || zoomPoint.y > rect.height) {
-                    return;
-                }
-                
-                const scale = state.pinchZoomInstance.getScale();
-                // 根據滾輪方向計算新的縮放比例
-                const newScale = event.deltaY < 0 ? scale * 1.2 : scale / 1.2;
-                
-                // 執行縮放
-                state.pinchZoomInstance.zoomTo(newScale, zoomPoint);
-
-            }, { passive: false }); // 使用 passive: false 才能讓 preventDefault() 生效
+            // *** FIX: 移除舊的全域滾輪監聽器 ***
 
             // --- 初始載入 ---
             for (const board_en in TOP_BOARDS) {
