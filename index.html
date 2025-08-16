@@ -43,7 +43,6 @@
         .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
-        /* Make app container take full height */
         html, body { height: 100%; margin: 0; }
         body { display: flex; flex-direction: column; }
     </style>
@@ -120,8 +119,9 @@
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // --- FIREBASE SETUP ---
             const firebaseConfig = {
-              apiKey: "YOUR_NEW_API_KEY", // <-- 請貼上您新的、已限制的 API 金鑰
+              apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
               projectId: "my-english-learning-app-5d864",
               storageBucket: "my-english-learning-app-5d864.firebasestorage.app",
@@ -135,6 +135,7 @@
             const db = getFirestore(app);
             let userId = null;
 
+            // --- LOCAL CACHE & STATE ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
                 EXPIRATION_DAYS: 7,
@@ -218,7 +219,12 @@
                         }
                     });
                 } else {
-                    signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("Anonymous sign-in failed:", error);
+                        listErrorText.textContent = "無法連接到雲端同步服務，請檢查 API 金鑰是否正確。";
+                        listError.classList.remove('hidden');
+                        skeletonContainer.classList.add('hidden');
+                    });
                 }
             });
 
@@ -231,6 +237,15 @@
                 return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`);
             }
             
+            function updateFavoriteIcon(isFav) {
+                const svg = headerFavoriteBtn.querySelector('svg');
+                if (svg) {
+                    svg.classList.toggle('text-pink-500', isFav);
+                    svg.classList.toggle('fill-current', isFav);
+                    svg.classList.toggle('text-gray-400', !isFav);
+                }
+            }
+
             function updateHeader() {
                 const isDetail = state.currentView === 'detail';
                 boardSelector.parentElement.classList.toggle('hidden', isDetail && !isDesktop());
@@ -239,7 +254,7 @@
                 headerTitle.classList.toggle('hidden', !isDetail);
                 headerFavoriteBtn.classList.toggle('hidden', !isDetail);
 
-                if (isDetail) {
+                if (isDetail && state.currentArticle) {
                     headerTitle.textContent = state.currentArticle.title;
                     updateFavoriteIcon(isFavorite(state.currentArticle.link));
                 }
@@ -249,7 +264,7 @@
                 const item = document.createElement('div');
                 const isRead = state.readArticles.has(article.link);
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
-                item.dataset.link = article.link; // Use data attribute
+                item.dataset.link = article.link;
                 
                 if (article.link === state.activeArticleLink) {
                     item.classList.add('bg-blue-100', 'dark:bg-blue-900/50');
@@ -257,7 +272,8 @@
                 
                 let thumbnailHTML = '';
                 if (article.thumbnail) {
-                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
+                    const secureThumbnail = article.thumbnail.replace(/^http:\/\//i, 'https://');
+                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${secureThumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
                 }
 
                 const displayDate = article.timestamp || article.date;
@@ -344,7 +360,6 @@
                 state.currentArticle = article;
                 state.currentView = 'detail';
                 
-                // Highlight logic
                 if (state.activeArticleLink) {
                     const oldActive = articlesList.querySelector(`[data-link="${state.activeArticleLink}"]`);
                     oldActive?.classList.remove('bg-blue-100', 'dark:bg-blue-900/50');
@@ -401,7 +416,8 @@
                 let processedSignature = data.signature || '';
                 
                 data.images.forEach(imgUrl => {
-                    const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
+                    const secureImgUrl = imgUrl.replace(/^http:\/\//i, 'https://');
+                    const imgTag = `<img src="${secureImgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
                     const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
                     processedContent = processedContent.replace(urlRegex, imgTag);
                     if (processedSignature) processedSignature = processedSignature.replace(urlRegex, imgTag);
@@ -422,6 +438,7 @@
                 targetContent.scrollTop = 0;
             }
 
+            // --- EVENT LISTENERS & INITIALIZATION ---
             function goBack() { history.back(); }
 
             boardSelector.addEventListener('change', (e) => {
@@ -501,6 +518,16 @@
                 imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
                 history.pushState({ view: 'image-modal' }, 'Image', '#image');
+
+                try {
+                    if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
+                        throw new Error('PinchZoom library is not loaded correctly.');
+                    }
+                    state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
+                } catch(e) {
+                    console.error("PinchZoom failed to initialize:", e);
+                    pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
+                }
             }
             
             function closeImageModal() {
