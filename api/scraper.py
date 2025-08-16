@@ -18,11 +18,9 @@ def get_first_image_from_article(article_url):
             soup = BeautifulSoup(response.text, 'html.parser')
             main_content = soup.select_one('#main-content')
             if main_content:
-                # 尋找所有圖片連結
                 image_links = main_content.select('a')
                 for link in image_links:
                     href = link.get('href', '')
-                    # 判斷是否為 Imgur 圖片連結
                     if href.startswith('https://i.imgur.com/') and href.endswith(('.jpg', '.jpeg', '.png', '.gif')):
                         return href
     except Exception as e:
@@ -32,7 +30,7 @@ def get_first_image_from_article(article_url):
 def fetch_ptt_article_list(board, page_url):
     """抓取 PTT 看板的文章列表"""
     response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
-    response.raise_for_status()  # 如果請求失敗，會拋出異常
+    response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     
     articles = soup.select('div.r-ent')
@@ -48,7 +46,6 @@ def fetch_ptt_article_list(board, page_url):
             article_link = "https://www.ptt.cc" + title_tag['href']
             thumbnail = None
             
-            # 為了提升效能，只抓取前幾篇文章的縮圖
             if index < 8: 
                 thumbnail = get_first_image_from_article(article_link)
 
@@ -57,7 +54,6 @@ def fetch_ptt_article_list(board, page_url):
                 "author": author, "date": date, "thumbnail": thumbnail
             })
             
-    # 尋找「上頁」按鈕的連結
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
     prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
     return {"articles": article_list, "prev_page_url": prev_page_url}
@@ -82,10 +78,8 @@ def fetch_ptt_article_content(article_url):
             elif tag.get_text(strip=True) == '時間':
                 timestamp = value.get_text(strip=True)
 
-    # 移除文章內的 meta 資訊、推文和引言
     for meta_line in main_content.select('.article-metaline, .article-metaline-right, .push, span.f2'):
         meta_line.decompose()
-    # 將 <br> 標籤轉換為換行符
     for br in main_content.find_all("br"):
         br.replace_with("\n")
         
@@ -93,26 +87,22 @@ def fetch_ptt_article_content(article_url):
     images = [link.get('href', '') for link in main_content.select('a') if link.get('href', '').endswith(('.jpg', '.jpeg', '.png', '.gif'))]
     return {"author_full": author_full, "timestamp": timestamp, "content": content_text, "images": images}
 
-# --- 修改開始：將 Flask 路由修正回 '/api/scraper' ---
-@app.route('/api/scraper', methods=['GET'])
+# --- 修改開始：Vercel 會自動處理 /api/scraper 路由，所以這裡只需要處理根路徑 ---
+@app.route('/', methods=['GET'])
 # --- 修改結束 ---
 def scraper_endpoint():
-    """API 的主要進入點，根據傳入的參數決定要執行的動作"""
     try:
         board = request.args.get('board', 'Gossiping')
         list_url = request.args.get('list_url')
         article_url = request.args.get('article_url')
 
         if list_url:
-            # 抓取指定頁面的文章列表
             data = fetch_ptt_article_list(board, list_url)
             return jsonify(data)
         elif article_url:
-            # 抓取單篇文章內容
             data = fetch_ptt_article_content(article_url)
             return jsonify(data)
         else:
-            # 抓取看板首頁的文章列表
             initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
             data = fetch_ptt_article_list(board, initial_url)
             return jsonify(data)
