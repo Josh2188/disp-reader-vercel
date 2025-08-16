@@ -2,17 +2,22 @@ from flask import Flask, jsonify, request
 import requests
 from bs4 import BeautifulSoup
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
-# 定義請求標頭和 Cookies
+# Define request headers and cookies
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
 }
 COOKIES = {'over18': '1'}
 
+# Regex for various image formats including AVIF
+IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif)$', re.IGNORECASE)
+
 def extract_youtube_id(url):
-    """從各種 YouTube 網址格式中提取影片 ID"""
+    """Extracts video ID from various YouTube URL formats"""
+    if not url: return None
     patterns = [
         r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})',
         r'(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})',
@@ -25,92 +30,113 @@ def extract_youtube_id(url):
     return None
 
 def get_article_preview_data(article_url):
-    """抓取文章的預覽資料：縮圖 (優先YouTube)、內文預覽"""
+    """Fetches article preview data: thumbnail (YouTube preferred), snippet, and full timestamp."""
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
-        if response.status_code != 200: return {"thumbnail": None, "snippet": ""}
+        response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         main_content = soup.select_one('#main-content')
-        if not main_content: return {"thumbnail": None, "snippet": ""}
+        if not main_content: return {"thumbnail": None, "snippet": "", "timestamp": None}
 
+        # --- Get full timestamp ---
+        timestamp = None
+        meta_lines = soup.select('.article-metaline, .article-metaline-right')
+        for line in meta_lines:
+            tag = line.select_one('.article-meta-tag')
+            value = line.select_one('.article-meta-value')
+            if tag and value and tag.get_text(strip=True) == '時間':
+                timestamp = value.get_text(strip=True)
+                break
+        
         first_image_url = None
         first_youtube_id = None
 
-        # --- 修改開始：使用更寬鬆的規則尋找圖片 ---
         for link in main_content.select('a'):
             href = link.get('href', '')
             if not href: continue
 
-            # 尋找 YouTube 連結
+            # Find YouTube link
             if not first_youtube_id:
                 youtube_id = extract_youtube_id(href)
                 if youtube_id:
                     first_youtube_id = youtube_id
             
-            # 尋找圖片連結 (不限制圖床)
-            if not first_image_url and re.search(r'^https?://\S+\.(?:jpg|jpeg|png|gif)$', href, re.IGNORECASE):
+            # Find image link (including AVIF)
+            if not first_image_url and re.search(r'^https?://\S+\.(?:jpg|jpeg|png|gif|avif)$', href, re.IGNORECASE):
                 first_image_url = href
             
             if first_image_url and first_youtube_id:
                 break
-        # --- 修改結束 ---
         
-        thumbnail = None
-        if first_youtube_id:
-            thumbnail = f"https://i.ytimg.com/vi/{first_youtube_id}/hqdefault.jpg"
-        elif first_image_url:
-            thumbnail = first_image_url
+        thumbnail = f"https://i.ytimg.com/vi/{first_youtube_id}/hqdefault.jpg" if first_youtube_id else first_image_url
 
-        # 提取內文預覽
+        # Extract snippet
         for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2'):
             tag.decompose()
         snippet = main_content.get_text(strip=True)[:80] + "..."
 
-        return {"thumbnail": thumbnail, "snippet": snippet}
+        return {"thumbnail": thumbnail, "snippet": snippet, "timestamp": timestamp}
 
     except Exception as e:
-        print(f"抓取預覽失敗 {article_url}: {e}")
-        return {"thumbnail": None, "snippet": ""}
+        print(f"Failed to fetch preview for {article_url}: {e}")
+        return {"thumbnail": None, "snippet": "", "timestamp": None}
+
+def process_article_item(item, board):
+    """Processes a single article item from the list page."""
+    title_tag = item.select_one('.title a')
+    meta_tag = item.select_one('.meta')
+    
+    if title_tag and title_tag.get('href') and meta_tag:
+        article_link = "https://www.ptt.cc" + title_tag['href']
+        
+        # Fetch preview data which now includes the full timestamp
+        preview_data = get_article_preview_data(article_link)
+        
+        return {
+            "title": title_tag.text.strip(),
+            "link": article_link,
+            "board": board,
+            "author": meta_tag.select_one('.author').get_text(strip=True) or '',
+            "date": meta_tag.select_one('.date').get_text(strip=True) or '',
+            "timestamp": preview_data.get("timestamp"), # NEW: Full timestamp
+            "thumbnail": preview_data.get("thumbnail"),
+            "snippet": preview_data.get("snippet")
+        }
+    return None
 
 def fetch_ptt_article_list(board, page_url):
-    """抓取 PTT 看板的文章列表"""
+    """Fetches a list of articles from a PTT board using concurrent requests for previews."""
     response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     
     articles = soup.select('div.r-ent')
     article_list = []
-    
-    for item in articles:
-        title_tag = item.select_one('.title a')
-        meta_tag = item.select_one('.meta')
-        
-        if title_tag and title_tag.get('href') and meta_tag:
-            article_link = "https://www.ptt.cc" + title_tag['href']
-            preview_data = get_article_preview_data(article_link)
-            
-            article_list.append({
-                "title": title_tag.text.strip(),
-                "link": article_link,
-                "board": board,
-                "author": meta_tag.select_one('.author').get_text(strip=True) or '',
-                "date": meta_tag.select_one('.date').get_text(strip=True) or '',
-                "thumbnail": preview_data["thumbnail"],
-                "snippet": preview_data["snippet"]
-            })
-            
+
+    # Use ThreadPoolExecutor to fetch previews concurrently
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Map process_article_item over all items
+        future_to_article = {executor.submit(process_article_item, item, board): item for item in articles}
+        for future in future_to_article:
+            try:
+                result = future.result()
+                if result:
+                    article_list.append(result)
+            except Exception as exc:
+                print(f'Article processing generated an exception: {exc}')
+
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
     prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
     return {"articles": article_list, "prev_page_url": prev_page_url}
 
 def fetch_ptt_article_content(article_url):
-    """抓取單篇文章的詳細內容，包含內文、簽名檔、推文和YouTube影片"""
+    """Fetches detailed content of a single article."""
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     main_content = soup.select_one('#main-content')
-    if not main_content: raise Exception("找不到 #main-content 區塊。")
+    if not main_content: raise Exception("Could not find #main-content block.")
 
     author_full, timestamp = '', ''
     meta_lines = main_content.select('.article-metaline, .article-metaline-right')
@@ -122,22 +148,20 @@ def fetch_ptt_article_content(article_url):
             elif tag.get_text(strip=True) == '時間': timestamp = value.get_text(strip=True)
         line.decompose()
 
-    pushes = []
-    for push in main_content.select('.push'):
-        pushes.append({
-            "tag": push.select_one('.push-tag').get_text(strip=True) if push.select_one('.push-tag') else '',
-            "userid": push.select_one('.push-userid').get_text(strip=True) if push.select_one('.push-userid') else '',
-            "content": push.select_one('.push-content').get_text(strip=True) if push.select_one('.push-content') else '',
-            "ipdatetime": push.select_one('.push-ipdatetime').get_text(strip=True) if push.select_one('.push-ipdatetime') else ''
-        })
-        push.decompose()
+    pushes = [{
+        "tag": p.select_one('.push-tag').get_text(strip=True) if p.select_one('.push-tag') else '',
+        "userid": p.select_one('.push-userid').get_text(strip=True) if p.select_one('.push-userid') else '',
+        "content": p.select_one('.push-content').get_text(strip=True) if p.select_one('.push-content') else '',
+    } for p in main_content.select('.push')]
+    for p in main_content.select('.push'): p.decompose()
+    
+    for f2 in main_content.select('span.f2'):
+        if '※ 發信站:' in f2.get_text() or '※ 編輯:' in f2.get_text():
+            f2.decompose()
 
-    for f2_span in main_content.select('span.f2'):
-        if '※ 發信站:' in f2_span.get_text() or '※ 編輯:' in f2_span.get_text():
-            f2_span.decompose()
-
-    images = [link.get('href', '') for link in main_content.select('a') if re.search(r'\.(jpg|jpeg|png|gif)$', link.get('href', ''), re.IGNORECASE)]
-    youtube_ids = [extract_youtube_id(link.get('href', '')) for link in main_content.select('a') if extract_youtube_id(link.get('href', ''))]
+    # UPDATED: Use IMAGE_REGEX to find images, including AVIF
+    images = [link.get('href') for link in main_content.select('a') if link.get('href') and IMAGE_REGEX.search(link.get('href'))]
+    youtube_ids = [yt_id for link in main_content.select('a') if (yt_id := extract_youtube_id(link.get('href')))]
     
     for br in main_content.find_all("br"): br.replace_with("\n")
     full_text = main_content.get_text()
@@ -169,5 +193,8 @@ def scraper_endpoint():
             data = fetch_ptt_article_list(board, initial_url)
             return jsonify(data)
     except Exception as e:
-        print(f"處理請求時發生錯誤: {e}")
+        print(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
