@@ -52,6 +52,7 @@
         <!-- 頁面容器 -->
         <div class="flex-grow relative">
             <div id="list-view" class="absolute inset-0 flex flex-col">
+                <div id="initial-loader" class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>
                 <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div></div>
                 <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
@@ -99,6 +100,7 @@
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
             const articlesList = document.getElementById('articles-list');
+            const initialLoader = document.getElementById('initial-loader');
             const infiniteLoader = document.getElementById('infinite-loader');
             const listError = document.getElementById('list-error');
             const listErrorText = document.getElementById('list-error-text');
@@ -188,7 +190,7 @@
                     articlesList.innerHTML = '';
                     infiniteLoader.classList.add('hidden');
                     listError.classList.add('hidden');
-                    listLoader.classList.remove('hidden');
+                    initialLoader.classList.remove('hidden');
                     updateHeader();
                 }
                 
@@ -207,7 +209,7 @@
                     listError.classList.remove('hidden');
                 } finally {
                     state.isLoading = false;
-                    listLoader.classList.add('hidden');
+                    initialLoader.classList.add('hidden');
                     infiniteLoader.classList.add('hidden');
                 }
             }
@@ -288,7 +290,7 @@
                 state.currentView = 'favorites';
                 renderArticles(state.favorites);
                 updateHeader();
-                listLoader.classList.add('hidden');
+                initialLoader.classList.add('hidden');
                 listError.classList.add('hidden');
             });
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
