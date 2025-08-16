@@ -5,6 +5,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
+# Vercel 會尋找名為 'app' 的 Flask 實例
 app = Flask(__name__)
 
 # Define request headers and cookies
@@ -15,33 +16,39 @@ COOKIES = {'over18': '1'}
 
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif)$', re.IGNORECASE)
 
+def parse_push_count(push_str):
+    """Converts PTT push count string (e.g., '爆', '99', 'X1') to an integer."""
+    if not push_str:
+        return 0
+    if push_str.strip() == '爆':
+        return 100
+    if push_str.strip().startswith('X'):
+        try:
+            if push_str.strip() == 'XX':
+                return -100
+            return -1 * int(push_str.strip()[1:]) * 10
+        except (ValueError, IndexError):
+            return -1
+    try:
+        return int(push_str.strip())
+    except ValueError:
+        return 0
+
 def format_ptt_time(time_str):
-    """
-    Converts PTT's English timestamp to 'YYYY/MM/DD HH:MM 週X' format.
-    This version is environment-independent and does not rely on locale.
-    """
+    """Converts PTT's English timestamp to 'YYYY/MM/DD HH:MM 週X' format."""
     if not time_str:
         return None
     try:
-        # PTT time format e.g., "Fri Aug 15 04:13:45 2025"
         dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        
-        # Manual mapping for weekdays to avoid locale issues
         weekday_map = {
             'Sunday': '週日', 'Monday': '週一', 'Tuesday': '週二', 
             'Wednesday': '週三', 'Thursday': '週四', 'Friday': '週五', 
             'Saturday': '週六'
         }
-        
-        # Format to YYYY/MM/DD HH:MM and get English weekday name
         formatted_date = dt_obj.strftime('%Y/%m/%d %H:%M')
         english_weekday = dt_obj.strftime('%A')
-        
-        # Combine and return
         return f"{formatted_date} {weekday_map.get(english_weekday, '')}"
-        
     except (ValueError, TypeError):
-        # If parsing fails, return the original string
         return time_str
 
 def extract_youtube_id(url):
@@ -105,15 +112,23 @@ def get_article_preview_data(article_url):
 def process_article_item(item, board):
     title_tag = item.select_one('.title a')
     meta_tag = item.select_one('.meta')
+    push_tag = item.select_one('.nrec span')
+    
     if title_tag and title_tag.get('href') and meta_tag:
         article_link = "https://www.ptt.cc" + title_tag['href']
         preview_data = get_article_preview_data(article_link)
+        
+        push_text = push_tag.get_text(strip=True) if push_tag else ''
+        push_count = parse_push_count(push_text)
+
         return {
             "title": title_tag.text.strip(),
             "link": article_link,
             "board": board,
             "author": meta_tag.select_one('.author').get_text(strip=True) or '',
             "date": meta_tag.select_one('.date').get_text(strip=True) or '',
+            "push_count": push_count,
+            "push_text": push_text,
             "timestamp": preview_data.get("timestamp"),
             "formatted_timestamp": preview_data.get("formatted_timestamp"),
             "thumbnail": preview_data.get("thumbnail"),
@@ -176,8 +191,15 @@ def fetch_ptt_article_content(article_url):
         "youtube_ids": list(dict.fromkeys(youtube_ids))
     }
 
+# This is the main handler Vercel will call
 @app.route('/api/scraper', methods=['GET'])
-def scraper_endpoint():
+def handler():
+    # Check if this is a proxy request first
+    proxy_url = request.args.get('proxy_url')
+    if proxy_url:
+        return proxy_image(proxy_url)
+
+    # Otherwise, handle as scraper
     try:
         board = request.args.get('board', 'Gossiping')
         list_url = request.args.get('list_url')
@@ -196,9 +218,7 @@ def scraper_endpoint():
         print(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/proxy-image')
-def proxy_image():
-    url = request.args.get('url')
+def proxy_image(url):
     if not url: return "Missing URL parameter", 400
     try:
         req = requests.get(url, stream=True, headers=HEADERS, timeout=20)
@@ -213,6 +233,6 @@ def proxy_image():
         print(f"Error proxying image {url}: {e}")
         return str(e), 502
 
-# This is for local development, Vercel will use its own entry point
+# This part is for local development and will not be used by Vercel
 if __name__ == '__main__':
     app.run(debug=True)
