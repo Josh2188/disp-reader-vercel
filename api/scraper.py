@@ -29,26 +29,12 @@ def format_ptt_time(time_str):
         return None
     try:
         dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        # 使用 locale 的 strftime 來獲取中文星期名稱
         return dt_obj.strftime('%Y/%m/%d %H:%M %A')
     except (ValueError, TypeError):
         return time_str
 
-def extract_youtube_id(url):
-    if not url: return None
-    patterns = [
-        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})',
-        r'(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})',
-        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})'
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    return None
-
 def get_article_preview_data(article_url):
-    """獲取文章預覽所需的部分資料，減少請求時間。"""
+    """獲取文章預覽所需的部分資料，包括縮圖、時間和內文摘要。"""
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
         response.raise_for_status()
@@ -65,20 +51,30 @@ def get_article_preview_data(article_url):
                 break
         
         first_image_url = None
+        snippet = ""
         main_content = soup.select_one('#main-content')
         if main_content:
+            # 尋找第一張圖片
             for link in main_content.select('a'):
                 href = link.get('href', '')
                 if href and IMAGE_REGEX.search(href):
                     first_image_url = href
                     break
-        
+            
+            # 提取文字摘要
+            # 移除所有不需要的元素以獲得乾淨的文字
+            for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
+                tag.decompose()
+            snippet = main_content.get_text(strip=True)[:100] + "..."
+
         return {
             "thumbnail": first_image_url,
-            "formatted_timestamp": format_ptt_time(timestamp)
+            "formatted_timestamp": format_ptt_time(timestamp),
+            "snippet": snippet
         }
-    except Exception:
-        return {"thumbnail": None, "formatted_timestamp": None}
+    except Exception as e:
+        print(f"獲取預覽失敗 {article_url}: {e}")
+        return {"thumbnail": None, "formatted_timestamp": None, "snippet": ""}
 
 def process_article_item(item, board):
     """處理單個文章列表項目，提取所需資訊。"""
@@ -112,7 +108,8 @@ def process_article_item(item, board):
             "date": meta_tag.select_one('.date').get_text(strip=True) or '',
             "push_count": push_count,
             "thumbnail": preview_data.get("thumbnail"),
-            "formatted_timestamp": preview_data.get("formatted_timestamp")
+            "formatted_timestamp": preview_data.get("formatted_timestamp"),
+            "snippet": preview_data.get("snippet")
         }
     return None
 
@@ -125,7 +122,6 @@ def fetch_ptt_article_list(board, page_url):
     articles = soup.select('div.r-ent')
     article_list = []
     
-    # 使用線程池並行處理文章，加快速度
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_article = {executor.submit(process_article_item, item, board): item for item in articles}
         for future in future_to_article:
@@ -135,7 +131,6 @@ def fetch_ptt_article_list(board, page_url):
             except Exception as exc:
                 print(f'文章處理時發生錯誤: {exc}')
                 
-    # 列表是從舊到新，反轉以符合習慣
     article_list.reverse()
     
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
@@ -162,13 +157,10 @@ def fetch_ptt_article_content(article_url):
             elif tag.get_text(strip=True) == '時間': timestamp = value.get_text(strip=True)
         line.decompose()
         
-    # 移除推文和底部資訊
-    for p in main_content.select('.push, span.f2'): p.decompose()
+    for p in main_content.select('.push, span.f2, script, style'): p.decompose()
     
-    # 提取所有符合格式的圖片連結
     images = [link.get('href') for link in main_content.select('a') if link.get('href') and IMAGE_REGEX.search(link.get('href'))]
     
-    # 將 <br> 轉換為換行符
     for br in main_content.find_all("br"): br.replace_with("\n")
     
     content = main_content.get_text().strip()
@@ -177,7 +169,7 @@ def fetch_ptt_article_content(article_url):
         "author_full": author_full, 
         "formatted_timestamp": format_ptt_time(timestamp),
         "content": content,
-        "images": list(dict.fromkeys(images)), # 去除重複圖片
+        "images": list(dict.fromkeys(images)),
     }
 
 @app.route('/api/scraper', methods=['GET'])
@@ -213,10 +205,8 @@ def proxy_image():
         req = requests.get(url, stream=True, headers=HEADERS, timeout=20)
         req.raise_for_status()
         
-        # 從 URL 提取檔名
         filename = url.split('/')[-1].split('?')[0] or 'download'
         
-        # 回傳 Response 物件，設定正確的 content type 和 disposition
         return Response(
             stream_with_context(req.iter_content(chunk_size=8192)),
             content_type=req.headers.get('content-type'),
