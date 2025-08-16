@@ -24,17 +24,29 @@
         .dark button:disabled { background-color: #4b5563; }
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        /* --- 日夜模式強制修正 --- */
+        .dark body { background-color: #000; }
+        .dark #app-container {
+            background-color: #000;
+            color: #f3f4f6; /* gray-100 */
+        }
+        .dark #articles-list {
+            border-color: #374151; /* gray-700 */
+        }
+        .dark .article-title { color: #93c5fd; } /* blue-300 */
+        .dark .article-snippet { color: #d1d5db; } /* gray-300 */
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-black">
+<body class="bg-gray-100">
 
-    <div id="app-container" class="max-w-md mx-auto bg-white dark:bg-black text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
+    <div id="app-container" class="max-w-md mx-auto bg-white text-gray-900 min-h-screen shadow-lg flex flex-col">
         <!-- 統一工具列 -->
         <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
                 <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
-                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden text-gray-900 dark:text-gray-100"></h2>
+                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
                 <div class="flex-shrink-0 flex items-center gap-1">
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
@@ -182,9 +194,9 @@
 
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3>
+                        <h3 class="font-bold text-base leading-tight line-clamp-2 article-title">${article.title}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2 article-snippet">${article.snippet || ''}</p>
                     </div>
                     ${thumbnailHTML}
                 `;
