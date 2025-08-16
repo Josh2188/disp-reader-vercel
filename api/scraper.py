@@ -11,22 +11,64 @@ HEADERS = {
 }
 COOKIES = {'over18': '1'}
 
-def get_first_image_from_article(article_url):
-    """從文章內文中抓取第一張圖片作為縮圖"""
+def extract_youtube_id(url):
+    """從各種 YouTube 網址格式中提取影片 ID"""
+    patterns = [
+        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})',
+        r'(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})',
+        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def get_article_preview_data(article_url):
+    """抓取文章的預覽資料：縮圖 (優先YouTube)、內文預覽"""
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            main_content = soup.select_one('#main-content')
-            if main_content:
-                image_links = main_content.select('a')
-                for link in image_links:
-                    href = link.get('href', '')
-                    if href.startswith('https://i.imgur.com/') and href.endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                        return href
+        if response.status_code != 200: return {"thumbnail": None, "snippet": ""}
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        main_content = soup.select_one('#main-content')
+        if not main_content: return {"thumbnail": None, "snippet": ""}
+
+        first_image_url = None
+        first_youtube_id = None
+
+        # 尋找第一張圖片和第一個 YouTube 連結
+        for link in main_content.select('a'):
+            href = link.get('href', '')
+            if not first_youtube_id:
+                youtube_id = extract_youtube_id(href)
+                if youtube_id:
+                    first_youtube_id = youtube_id
+            
+            if not first_image_url and href.startswith('https://i.imgur.com/') and href.endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                first_image_url = href
+            
+            # 如果都找到了就提前結束
+            if first_image_url and first_youtube_id:
+                break
+        
+        thumbnail = None
+        if first_youtube_id:
+            thumbnail = f"https://i.ytimg.com/vi/{first_youtube_id}/hqdefault.jpg"
+        elif first_image_url:
+            thumbnail = first_image_url
+
+        # 提取內文預覽
+        # 移除所有 meta 和 push 標籤以取得乾淨的內文
+        for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2'):
+            tag.decompose()
+        snippet = main_content.get_text(strip=True)[:80] + "..."
+
+        return {"thumbnail": thumbnail, "snippet": snippet}
+
     except Exception as e:
-        print(f"抓取縮圖失敗 {article_url}: {e}")
-    return None
+        print(f"抓取預覽失敗 {article_url}: {e}")
+        return {"thumbnail": None, "snippet": ""}
 
 def fetch_ptt_article_list(board, page_url):
     """抓取 PTT 看板的文章列表"""
@@ -37,23 +79,22 @@ def fetch_ptt_article_list(board, page_url):
     articles = soup.select('div.r-ent')
     article_list = []
     
-    for index, item in enumerate(articles):
+    for item in articles:
         title_tag = item.select_one('.title a')
         meta_tag = item.select_one('.meta')
         
         if title_tag and title_tag.get('href') and meta_tag:
-            author = meta_tag.select_one('.author').get_text(strip=True) or ''
-            date = meta_tag.select_one('.date').get_text(strip=True) or ''
             article_link = "https://www.ptt.cc" + title_tag['href']
-            thumbnail = None
+            preview_data = get_article_preview_data(article_link)
             
-            # 為了提升效能，只抓取前幾篇文章的縮圖
-            if index < 8: 
-                thumbnail = get_first_image_from_article(article_link)
-
             article_list.append({
-                "title": title_tag.text.strip(), "link": article_link, "board": board,
-                "author": author, "date": date, "thumbnail": thumbnail
+                "title": title_tag.text.strip(),
+                "link": article_link,
+                "board": board,
+                "author": meta_tag.select_one('.author').get_text(strip=True) or '',
+                "date": meta_tag.select_one('.date').get_text(strip=True) or '',
+                "thumbnail": preview_data["thumbnail"],
+                "snippet": preview_data["snippet"]
             })
             
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
@@ -61,7 +102,7 @@ def fetch_ptt_article_list(board, page_url):
     return {"articles": article_list, "prev_page_url": prev_page_url}
 
 def fetch_ptt_article_content(article_url):
-    """抓取單篇文章的詳細內容，包含內文、簽名檔和推文"""
+    """抓取單篇文章的詳細內容，包含內文、簽名檔、推文和YouTube影片"""
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -78,28 +119,23 @@ def fetch_ptt_article_content(article_url):
             elif tag.get_text(strip=True) == '時間': timestamp = value.get_text(strip=True)
         line.decompose()
 
-    # 提取所有推文
     pushes = []
     for push in main_content.select('.push'):
-        push_tag = push.select_one('.push-tag').get_text(strip=True) if push.select_one('.push-tag') else ''
-        push_userid = push.select_one('.push-userid').get_text(strip=True) if push.select_one('.push-userid') else ''
-        push_content = push.select_one('.push-content').get_text(strip=True) if push.select_one('.push-content') else ''
-        push_ipdatetime = push.select_one('.push-ipdatetime').get_text(strip=True) if push.select_one('.push-ipdatetime') else ''
         pushes.append({
-            "tag": push_tag, "userid": push_userid,
-            "content": push_content, "ipdatetime": push_ipdatetime
+            "tag": push.select_one('.push-tag').get_text(strip=True) if push.select_one('.push-tag') else '',
+            "userid": push.select_one('.push-userid').get_text(strip=True) if push.select_one('.push-userid') else '',
+            "content": push.select_one('.push-content').get_text(strip=True) if push.select_one('.push-content') else '',
+            "ipdatetime": push.select_one('.push-ipdatetime').get_text(strip=True) if push.select_one('.push-ipdatetime') else ''
         })
         push.decompose()
 
-    # 移除 "※ 發信站:" 等資訊
     for f2_span in main_content.select('span.f2'):
         if '※ 發信站:' in f2_span.get_text() or '※ 編輯:' in f2_span.get_text():
             f2_span.decompose()
 
-    # 提取圖片連結
     images = [link.get('href', '') for link in main_content.select('a') if link.get('href', '').endswith(('.jpg', '.jpeg', '.png', '.gif'))]
+    youtube_ids = [extract_youtube_id(link.get('href', '')) for link in main_content.select('a') if extract_youtube_id(link.get('href', ''))]
     
-    # 處理內文和簽名檔
     for br in main_content.find_all("br"): br.replace_with("\n")
     full_text = main_content.get_text()
     content_parts = re.split(r'\n--\n', full_text, 1)
@@ -108,9 +144,9 @@ def fetch_ptt_article_content(article_url):
 
     return {
         "author_full": author_full, "timestamp": timestamp, "content": content,
-        "signature": signature, "images": images, "pushes": pushes
+        "signature": signature, "images": images, "pushes": pushes,
+        "youtube_ids": list(dict.fromkeys(youtube_ids)) # 移除重複的 ID
     }
-
 
 @app.route('/api/scraper', methods=['GET'])
 def scraper_endpoint():

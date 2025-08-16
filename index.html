@@ -16,6 +16,12 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #image-modal.hidden { display: none; }
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black text-gray-800 dark:text-gray-200">
@@ -118,28 +124,24 @@
                 applyTheme(newTheme);
             });
 
-            // --- 修改開始：頁面狀態管理 ---
             function showListView() {
                 detailView.classList.add('hidden');
                 listView.classList.remove('hidden');
             }
 
-            // 監聽瀏覽器歷史狀態變化 (例如：點擊手機返回鍵)
             window.addEventListener('popstate', (event) => {
-                // 如果 hash 不是 #detail，就代表要回到列表頁
                 if (location.hash !== '#detail') {
                     showListView();
                 }
             });
-            // --- 修改結束 ---
 
             // 建立文章列表項目
             function createListItem(article) {
                 const item = document.createElement('div');
-                item.className = 'flex items-center p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
+                item.className = 'flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
                 
                 let thumbnailHTML = `
-                    <div class="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
                         ${article.thumbnail ? 
                             `<img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover">` :
                             `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"></path></svg>`
@@ -148,11 +150,12 @@
                 `;
 
                 item.innerHTML = `
-                    ${thumbnailHTML}
                     <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base leading-tight text-gray-900 dark:text-white">${article.title}</h3>
+                        <h3 class="font-bold text-base leading-tight text-gray-900 dark:text-white line-clamp-2">${article.title}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">${article.snippet || ''}</p>
                     </div>
+                    ${thumbnailHTML}
                 `;
                 item.addEventListener('click', () => showDetailView(article));
                 return item;
@@ -174,7 +177,7 @@
                     }
                     const data = await response.json();
                     
-                    const filteredArticles = data.articles.filter(a => !a.title.includes('[公告]'));
+                    const filteredArticles = data.articles.filter(a => a.title && !a.title.includes('[公告]'));
                     filteredArticles.forEach(article => articlesList.appendChild(createListItem(article)));
 
                     listLoader.classList.add('hidden');
@@ -197,9 +200,7 @@
                 detailTitle.textContent = article.title;
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
                 
-                // --- 修改開始：推入新的歷史狀態 ---
                 history.pushState({view: 'detail'}, '', '#detail');
-                // --- 修改結束 ---
 
                 try {
                     const response = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
@@ -209,12 +210,24 @@
                     }
                     const data = await response.json();
 
-                    // 處理圖片
-                    let contentWithImages = data.content;
+                    let processedContent = data.content;
+
+                    // 內嵌 YouTube 影片
+                    if (data.youtube_ids && data.youtube_ids.length > 0) {
+                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g;
+                        processedContent = processedContent.replace(youtubeRegex, (match, videoId) => {
+                            if (data.youtube_ids.includes(videoId)) {
+                                return `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+                            }
+                            return match; // 如果 ID 不在列表裡，則不替換
+                        });
+                    }
+
+                    // 替換圖片連結
                     data.images.forEach(imgUrl => {
                         const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal('${imgUrl}')">`;
-                        const urlPattern = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-                        contentWithImages = contentWithImages.replace(urlPattern, imgTag);
+                        const urlPattern = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
+                        processedContent = processedContent.replace(urlPattern, imgTag);
                     });
 
                     // 處理簽名檔
@@ -239,7 +252,7 @@
                             <p><strong>標題:</strong> ${article.title}</p>
                             <p><strong>時間:</strong> ${data.timestamp}</p>
                         </div>
-                        <div class="text-base leading-relaxed whitespace-pre-wrap break-words">${contentWithImages}</div>
+                        <div class="text-base leading-relaxed whitespace-pre-wrap break-words">${processedContent}</div>
                         ${signatureHTML}
                         ${pushesHTML}
                     `;
@@ -262,11 +275,9 @@
                 if (e.target === imageModal) closeImageModal();
             });
             
-            // --- 修改開始：頁首返回按鈕使用 history.back() ---
             backButton.addEventListener('click', () => {
                 history.back();
             });
-            // --- 修改結束 ---
             
             // 事件監聽
             boardSelector.addEventListener('change', () => loadArticles(boardSelector.value));
@@ -274,9 +285,7 @@
             nextPageBtn.addEventListener('click', () => loadArticles(boardSelector.value));
 
             // 初始載入
-            // --- 修改開始：設定初始 hash 狀態 ---
             history.replaceState({view: 'list'}, '', '#list');
-            // --- 修改結束 ---
             loadArticles(boardSelector.value);
         });
     </script>
