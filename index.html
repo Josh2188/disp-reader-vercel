@@ -22,6 +22,32 @@
         .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .image-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.3);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .image-nav-btn:hover, #image-modal-controls:hover + .image-nav-btn, #image-modal:hover .image-nav-btn {
+            opacity: 1;
+        }
+        .image-nav-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+        #image-prev-btn { left: 16px; }
+        #image-next-btn { right: 16px; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -66,6 +92,12 @@
     <!-- 圖片放大 Modal -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism" onclick="handleCloseRequest(event)">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
+        <button id="image-prev-btn" class="image-nav-btn">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <button id="image-next-btn" class="image-nav-btn">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </button>
     </div>
     <!-- 獨立的控制按鈕圖層 -->
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
@@ -81,8 +113,31 @@
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
     </button>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
+    <!-- NEW: Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // --- FIREBASE SETUP ---
+            const firebaseConfig = {
+              apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
+              authDomain: "my-english-learning-app-5d864.firebaseapp.com",
+              projectId: "my-english-learning-app-5d864",
+              storageBucket: "my-english-learning-app-5d864.firebasestorage.app",
+              messagingSenderId: "748913890079",
+              appId: "1:748913890079:web:dad0719760593d43e7962a",
+              measurementId: "G-4Q99XJZJ5Z"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            let userId = null;
+
+            // --- LOCAL CACHE & STATE ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
                 EXPIRATION_DAYS: 7,
@@ -100,7 +155,6 @@
                         }
                         return item.data;
                     } catch (e) {
-                        console.error("Error reading from cache", e);
                         localStorage.removeItem(fullKey);
                         return null;
                     }
@@ -120,12 +174,16 @@
                 isLoading: false,
                 currentView: 'list',
                 currentArticle: null,
-                favorites: JSON.parse(localStorage.getItem('favoriteArticles')) || [],
+                favorites: [], // Now loaded from Firebase
                 readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
                 pinchZoomInstance: null,
-                inactivityTimer: null
+                inactivityTimer: null,
+                currentArticleImages: [],
+                currentImageIndex: 0,
+                galleryActivityTimer: null
             };
 
+            // DOM Elements...
             const docEl = document.documentElement;
             const listView = document.getElementById('list-view');
             const detailView = document.getElementById('detail-view');
@@ -143,21 +201,50 @@
             const floatingBackBtn = document.getElementById('floating-back-btn');
             const imageModal = document.getElementById('image-modal');
             const imageModalControls = document.getElementById('image-modal-controls');
+            const imagePrevBtn = document.getElementById('image-prev-btn');
+            const imageNextBtn = document.getElementById('image-next-btn');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
-            const saveFavorites = () => localStorage.setItem('favoriteArticles', JSON.stringify(state.favorites));
+            // --- AUTHENTICATION & DATA SYNC ---
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    // Listen for real-time updates on favorites
+                    const favsCol = collection(db, 'users', userId, 'favorites');
+                    onSnapshot(favsCol, (snapshot) => {
+                        const serverFavorites = [];
+                        snapshot.forEach((doc) => {
+                            serverFavorites.push(doc.data());
+                        });
+                        state.favorites = serverFavorites;
+                        // If user is currently viewing favorites, re-render
+                        if (state.currentView === 'favorites') {
+                            renderArticles(state.favorites);
+                        }
+                        // If user is viewing a detail page, update the heart icon
+                        if(state.currentView === 'detail' && state.currentArticle) {
+                            updateFavoriteIcon(isFavorite(state.currentArticle.link));
+                        }
+                    });
+                } else {
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("Anonymous sign-in failed:", error);
+                    });
+                }
+            });
+
+            // --- HELPER FUNCTIONS ---
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
 
-            // --- NEW: Helper function to turn URLs into links ---
             function linkify(text) {
                 if (!text) return '';
-                // A regex to find URLs that are not already in an <a> tag or src attribute.
                 const urlRegex = /(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g;
                 return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`);
             }
-
+            
+            // --- UI FUNCTIONS ---
             function updateHeader() {
                 if (state.currentView === 'detail') {
                     boardSelector.classList.add('hidden');
@@ -214,8 +301,8 @@
 
             function renderArticles(articleData, append = false) {
                 if (!append) articlesList.innerHTML = '';
-                if (articleData.length === 0 && state.currentView === 'favorites') {
-                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">尚未收藏任何文章</p>`;
+                if (articleData.length === 0 && (state.currentView === 'favorites' || state.currentView === 'list')) {
+                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`;
                 } else {
                     articleData.forEach(article => articlesList.appendChild(createListItem(article)));
                 }
@@ -232,10 +319,12 @@
                     thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
                 }
 
+                const displayDate = article.timestamp || article.date;
+
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${displayDate}</p>
                         <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
                     </div>
                     ${thumbnailHTML}
@@ -244,6 +333,7 @@
                 return item;
             }
             
+            // --- CORE LOGIC ---
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
                 
@@ -297,14 +387,19 @@
                 }
             }
             
-            function toggleFavorite() {
-                if (!state.currentArticle) return;
+            async function toggleFavorite() {
+                if (!state.currentArticle || !userId) return;
                 const article = state.currentArticle;
-                const index = state.favorites.findIndex(fav => fav.link === article.link);
-                if (index > -1) state.favorites.splice(index, 1);
-                else state.favorites.push(article);
-                saveFavorites();
-                updateFavoriteIcon(index === -1);
+                const favsCol = collection(db, 'users', userId, 'favorites');
+                // Use a sanitized link as the document ID
+                const docId = article.link.replace(/[^a-zA-Z0-9]/g, '');
+                const docRef = doc(favsCol, docId);
+
+                if (isFavorite(article.link)) {
+                    await deleteDoc(docRef);
+                } else {
+                    await setDoc(docRef, article);
+                }
             }
 
             async function showDetailView(article) {
@@ -328,6 +423,7 @@
                 const articleUrl = article.link;
                 const cachedData = cache.get(articleUrl);
                 if (cachedData) {
+                    state.currentArticleImages = cachedData.images || [];
                     renderDetailContent(cachedData, article);
                     return;
                 }
@@ -337,6 +433,7 @@
                     if (!response.ok) throw new Error(`無法載入內文: ${response.status}`);
                     const data = await response.json();
                     
+                    state.currentArticleImages = data.images || [];
                     cache.set(articleUrl, data);
                     renderDetailContent(data, article);
 
@@ -356,7 +453,7 @@
                 }
                 
                 data.images.forEach(imgUrl => {
-                    const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80" onclick="openImageModal(this)">`;
+                    const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
                     const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
                     processedContent = processedContent.replace(urlRegex, imgTag);
                     if (processedSignature) {
@@ -379,9 +476,8 @@
                 detailContent.scrollTop = 0;
             }
 
-            function goBack() {
-                history.back();
-            }
+            // --- EVENT LISTENERS & INITIALIZATION ---
+            function goBack() { history.back(); }
 
             boardSelector.addEventListener('change', (e) => {
                 state.currentBoard = e.target.value;
@@ -431,19 +527,34 @@
             const pinchZoomTarget = document.getElementById('pinch-zoom-target');
             const downloadBtn = document.getElementById('download-btn');
             
-            window.openImageModal = (imgElement) => {
+            // --- IMAGE GALLERY LOGIC ---
+            detailContent.addEventListener('click', (e) => {
+                if (e.target && e.target.classList.contains('article-image')) {
+                    const clickedSrc = e.target.src;
+                    const imageIndex = state.currentArticleImages.indexOf(clickedSrc);
+                    if (imageIndex > -1) {
+                        state.currentImageIndex = imageIndex;
+                        openImageModal();
+                    }
+                }
+            });
+
+            function openImageModal() {
                 if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
                 pinchZoomTarget.innerHTML = '';
-                pinchZoomTarget.className = 'pinch-zoom-container';
                 
-                const newImg = imgElement.cloneNode(true);
-                newImg.removeAttribute('onclick');
-                newImg.className = '';
+                const imageUrl = state.currentArticleImages[state.currentImageIndex];
+                if (!imageUrl) return;
+
+                const newImg = document.createElement('img');
+                newImg.src = imageUrl;
                 pinchZoomTarget.appendChild(newImg);
 
-                downloadBtn.href = imgElement.src;
+                downloadBtn.href = imageUrl;
                 imageModal.classList.remove('hidden');
                 imageModalControls.classList.remove('hidden');
+                updateImageNavButtons();
+                resetGalleryActivityTimer();
                 history.pushState({ view: 'image-modal' }, 'Image', '#image');
 
                 try {
@@ -453,12 +564,11 @@
                     state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
                 } catch(e) {
                     console.error("PinchZoom failed to initialize:", e);
-                    pinchZoomTarget.classList.add('bg-red-100', 'dark:bg-red-900', 'p-4', 'text-red-500', 'text-center');
-                    pinchZoomTarget.innerHTML = `圖片縮放功能載入失敗<br><small>${e.message}</small>`;
+                    pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
                 }
             }
             
-            window.closeImageModal = () => {
+            function closeImageModal() {
                 if (imageModal.classList.contains('hidden')) return;
                 
                 if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
@@ -468,7 +578,40 @@
                 
                 imageModal.classList.add('hidden');
                 imageModalControls.classList.add('hidden');
+                clearTimeout(state.galleryActivityTimer);
             };
+
+            function showNextImage() {
+                if (state.currentImageIndex < state.currentArticleImages.length - 1) {
+                    state.currentImageIndex++;
+                    openImageModal();
+                }
+            }
+
+            function showPrevImage() {
+                if (state.currentImageIndex > 0) {
+                    state.currentImageIndex--;
+                    openImageModal();
+                }
+            }
+
+            function updateImageNavButtons() {
+                imagePrevBtn.disabled = state.currentImageIndex === 0;
+                imageNextBtn.disabled = state.currentImageIndex === state.currentArticleImages.length - 1;
+            }
+
+            function resetGalleryActivityTimer() {
+                imageModal.classList.remove('hide-controls');
+                clearTimeout(state.galleryActivityTimer);
+                state.galleryActivityTimer = setTimeout(() => {
+                    imageModal.classList.add('hide-controls');
+                }, 2000);
+            }
+            
+            imagePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrevImage(); });
+            imageNextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNextImage(); });
+            imageModal.addEventListener('mousemove', resetGalleryActivityTimer);
+            imageModal.addEventListener('touchstart', resetGalleryActivityTimer);
 
             window.handleCloseRequest = (e) => {
                 if (e) {
