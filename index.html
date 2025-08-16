@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PTT 閱讀器</title>
+    <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,8 +20,8 @@
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
         .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
-        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.1s ease-out; }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .image-nav-btn {
             position: absolute;
             top: 50%;
@@ -39,86 +39,89 @@
             opacity: 0;
             transition: opacity 0.3s ease;
         }
-        #image-modal:hover .image-nav-btn { opacity: 1; }
-        .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .image-nav-btn:hover, #image-modal-controls:hover + .image-nav-btn, #image-modal:hover .image-nav-btn {
+            opacity: 1;
+        }
+        .image-nav-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
-        html, body { height: 100%; margin: 0; }
-        body { display: flex; flex-direction: column; }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900">
+<body class="bg-gray-100 dark:bg-black">
 
-    <!-- Header (now full-width) -->
-    <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism w-full">
-        <div class="max-w-7xl mx-auto flex items-center gap-2">
-            <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden lg:hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-            <div class="w-full lg:w-1/3">
+    <div id="app-container" class="max-w-md mx-auto bg-white dark:bg-black text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
+        <!-- 統一工具列 -->
+        <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
+            <div class="flex items-center gap-2">
+                <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
+                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
+                
+                <div class="flex-shrink-0 flex items-center gap-1">
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    </button>
+                    <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    </button>
+                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>
+                    </button>
+                </div>
             </div>
-            <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
-            
-            <div class="flex-shrink-0 flex items-center gap-1">
-                <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 hidden">
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
-                </button>
-                <button id="show-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
-                </button>
-                <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                    <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
-                    <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>
-                </button>
-            </div>
-        </div>
-    </header>
+        </header>
 
-    <!-- Main Content Area -->
-    <div class="flex-grow max-w-7xl w-full mx-auto lg:flex lg:gap-4 overflow-hidden p-4">
-        <!-- Left Column (List View) -->
-        <div id="app-container" class="w-full lg:w-1/3 lg:max-w-md bg-white dark:bg-black text-gray-900 dark:text-gray-100 shadow-lg flex flex-col h-full rounded-lg">
-            <div id="list-view" class="flex-grow flex flex-col h-full overflow-hidden">
-                <div id="skeleton-container" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar p-2"></div>
+        <!-- 頁面容器 -->
+        <div class="flex-grow relative">
+            <div id="list-view" class="absolute inset-0 flex flex-col">
+                <div id="skeleton-container" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></div>
                 <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar hidden"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div></div>
                 <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
             </div>
-        </div>
-        
-        <!-- Right Column (Detail View for Desktop) -->
-        <div id="desktop-detail-container" class="hidden lg:flex flex-grow bg-white dark:bg-black shadow-lg flex-col h-full rounded-lg">
-             <div id="detail-view" class="h-full">
+            <div id="detail-view" class="absolute inset-0 hidden">
                 <main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-4"></main>
             </div>
         </div>
     </div>
 
-    <!-- Mobile Detail View (Overlay) -->
-    <div id="mobile-detail-view" class="lg:hidden fixed inset-0 bg-white dark:bg-black z-30 hidden flex-col">
-        <main id="mobile-detail-content" class="h-full overflow-y-auto no-scrollbar"></main>
-    </div>
-
-    <!-- Image Modal & Controls -->
+    <!-- 圖片放大 Modal -->
     <div id="image-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-2 glassmorphism" onclick="handleCloseRequest(event)">
         <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
-        <button id="image-prev-btn" class="image-nav-btn"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-        <button id="image-next-btn" class="image-nav-btn"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+        <button id="image-prev-btn" class="image-nav-btn">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <button id="image-next-btn" class="image-nav-btn">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </button>
     </div>
+    <!-- 獨立的控制按鈕圖層 -->
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
-        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
-        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <a id="download-btn" href="#" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        </a>
+        <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none" onclick="handleCloseRequest(event)">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
     </div>
     
-    <button id="floating-back-btn" class="hidden lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
+    <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
     </button>
 
+    <!-- NEW: Firebase SDK -->
     <script type="module">
+        // Import the functions you need from the SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // --- FIREBASE SETUP ---
             const firebaseConfig = {
               apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ",
               authDomain: "my-english-learning-app-5d864.firebaseapp.com",
@@ -134,6 +137,7 @@
             const db = getFirestore(app);
             let userId = null;
 
+            // --- LOCAL CACHE & STATE ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
                 EXPIRATION_DAYS: 7,
@@ -170,18 +174,19 @@
                 isLoading: false,
                 currentView: 'list',
                 currentArticle: null,
-                favorites: [],
+                favorites: [], // Now loaded from Firebase
                 readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
                 pinchZoomInstance: null,
                 inactivityTimer: null,
                 currentArticleImages: [],
                 currentImageIndex: 0,
-                galleryActivityTimer: null,
-                activeArticleLink: null
+                galleryActivityTimer: null
             };
 
             // DOM Elements...
             const docEl = document.documentElement;
+            const listView = document.getElementById('list-view');
+            const detailView = document.getElementById('detail-view');
             const articlesList = document.getElementById('articles-list');
             const skeletonContainer = document.getElementById('skeleton-container');
             const infiniteLoader = document.getElementById('infinite-loader');
@@ -192,8 +197,6 @@
             const headerTitle = document.getElementById('header-title');
             const headerFavoriteBtn = document.getElementById('header-favorite-btn');
             const detailContent = document.getElementById('detail-content');
-            const mobileDetailView = document.getElementById('mobile-detail-view');
-            const mobileDetailContent = document.getElementById('mobile-detail-content');
             const showFavoritesBtn = document.getElementById('show-favorites-btn');
             const floatingBackBtn = document.getElementById('floating-back-btn');
             const imageModal = document.getElementById('image-modal');
@@ -203,15 +206,23 @@
             
             const TOP_BOARDS = { "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "Beauty": "表特", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
-            const isDesktop = () => window.innerWidth >= 1024;
-
+            // --- AUTHENTICATION & DATA SYNC ---
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
+                    // Listen for real-time updates on favorites
                     const favsCol = collection(db, 'users', userId, 'favorites');
                     onSnapshot(favsCol, (snapshot) => {
-                        state.favorites = snapshot.docs.map(doc => doc.data());
-                        if (state.currentView === 'favorites') renderArticles(state.favorites);
+                        const serverFavorites = [];
+                        snapshot.forEach((doc) => {
+                            serverFavorites.push(doc.data());
+                        });
+                        state.favorites = serverFavorites;
+                        // If user is currently viewing favorites, re-render
+                        if (state.currentView === 'favorites') {
+                            renderArticles(state.favorites);
+                        }
+                        // If user is viewing a detail page, update the heart icon
                         if(state.currentView === 'detail' && state.currentArticle) {
                             updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         }
@@ -219,13 +230,11 @@
                 } else {
                     signInAnonymously(auth).catch((error) => {
                         console.error("Anonymous sign-in failed:", error);
-                        listErrorText.textContent = "無法連接到雲端同步服務，請檢查 API 金鑰是否正確。";
-                        listError.classList.remove('hidden');
-                        skeletonContainer.classList.add('hidden');
                     });
                 }
             });
 
+            // --- HELPER FUNCTIONS ---
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = (link) => state.favorites.some(fav => fav.link === link);
 
@@ -235,43 +244,79 @@
                 return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`);
             }
             
-            function updateFavoriteIcon(isFav) {
-                const svg = headerFavoriteBtn.querySelector('svg');
-                if (svg) {
-                    svg.classList.toggle('text-pink-500', isFav);
-                    svg.classList.toggle('fill-current', isFav);
-                    svg.classList.toggle('text-gray-400', !isFav);
-                }
-            }
-
+            // --- UI FUNCTIONS ---
             function updateHeader() {
-                const isDetail = state.currentView === 'detail';
-                boardSelector.parentElement.classList.toggle('hidden', isDetail && !isDesktop());
-                showFavoritesBtn.classList.toggle('hidden', isDetail && !isDesktop());
-                headerBackBtn.classList.toggle('hidden', !isDetail || isDesktop());
-                headerTitle.classList.toggle('hidden', !isDetail);
-                headerFavoriteBtn.classList.toggle('hidden', !isDetail);
-
-                if (isDetail && state.currentArticle) {
+                if (state.currentView === 'detail') {
+                    boardSelector.classList.add('hidden');
+                    showFavoritesBtn.classList.add('hidden');
+                    headerBackBtn.classList.remove('hidden');
+                    headerTitle.classList.remove('hidden');
+                    headerFavoriteBtn.classList.remove('hidden');
                     headerTitle.textContent = state.currentArticle.title;
                     updateFavoriteIcon(isFavorite(state.currentArticle.link));
+                } else {
+                    boardSelector.classList.remove('hidden');
+                    showFavoritesBtn.classList.remove('hidden');
+                    headerBackBtn.classList.add('hidden');
+                    headerTitle.classList.add('hidden');
+                    headerFavoriteBtn.classList.add('hidden');
                 }
             }
             
+            function createSkeletonItem() {
+                return `
+                    <div class="flex items-start p-3 gap-3 animate-pulse">
+                        <div class="flex flex-col overflow-hidden flex-grow">
+                            <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div>
+                        </div>
+                        <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div>
+                    </div>
+                `;
+            }
+
+            function showSkeleton() {
+                let skeletonHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    skeletonHTML += createSkeletonItem();
+                }
+                skeletonContainer.innerHTML = skeletonHTML;
+                skeletonContainer.classList.remove('hidden');
+                articlesList.classList.add('hidden');
+            }
+
+            function hideSkeleton() {
+                skeletonContainer.classList.add('hidden');
+                articlesList.classList.remove('hidden');
+            }
+
+            function updateFavoriteIcon(isFav) {
+                const svg = headerFavoriteBtn.querySelector('svg');
+                svg.classList.toggle('text-pink-500', isFav);
+                svg.classList.toggle('fill-current', isFav);
+                svg.classList.toggle('text-gray-400', !isFav);
+            }
+
+            function renderArticles(articleData, append = false) {
+                if (!append) articlesList.innerHTML = '';
+                if (articleData.length === 0 && (state.currentView === 'favorites' || state.currentView === 'list')) {
+                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`;
+                } else {
+                    articleData.forEach(article => articlesList.appendChild(createListItem(article)));
+                }
+            }
+
             function createListItem(article) {
                 const item = document.createElement('div');
                 const isRead = state.readArticles.has(article.link);
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
-                item.dataset.link = article.link;
-                
-                if (article.link === state.activeArticleLink) {
-                    item.classList.add('bg-blue-100', 'dark:bg-blue-900/50');
-                }
+                item.id = `article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`;
                 
                 let thumbnailHTML = '';
                 if (article.thumbnail) {
-                    const secureThumbnail = article.thumbnail.replace(/^http:\/\//i, 'https://');
-                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${secureThumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
+                    thumbnailHTML = `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>`;
                 }
 
                 const displayDate = article.timestamp || article.date;
@@ -287,16 +332,8 @@
                 item.addEventListener('click', () => showDetailView(article));
                 return item;
             }
-
-            function renderArticles(articleData, append = false) {
-                if (!append) articlesList.innerHTML = '';
-                if (articleData.length === 0) {
-                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.currentView === 'favorites' ? '尚未收藏任何文章' : '沒有文章'}</p>`;
-                } else {
-                    articleData.forEach(article => articlesList.appendChild(createListItem(article)));
-                }
-            }
             
+            // --- CORE LOGIC ---
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
                 
@@ -320,22 +357,29 @@
 
                 state.isLoading = true;
                 
-                if (append) infiniteLoader.classList.remove('hidden');
-                else showSkeleton();
+                if (append) {
+                    infiniteLoader.classList.remove('hidden');
+                } else {
+                    showSkeleton();
+                }
 
                 try {
                     const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`);
                     if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
                     const data = await response.json();
                     
-                    if (!append) cache.set(fetchUrl, data);
+                    if (!append) {
+                       cache.set(fetchUrl, data);
+                    }
                     
                     state.prevPageUrl = data.prev_page_url;
                     renderArticles(data.articles.filter(a => a.title && !a.title.includes('[公告]')), append);
                 } catch (error) {
                     listErrorText.textContent = error.message;
                     listError.classList.remove('hidden');
-                    if (!append) skeletonContainer.classList.add('hidden');
+                    if (!append) {
+                        skeletonContainer.classList.add('hidden');
+                    }
                 } finally {
                     state.isLoading = false;
                     if (!append) hideSkeleton();
@@ -347,45 +391,34 @@
                 if (!state.currentArticle || !userId) return;
                 const article = state.currentArticle;
                 const favsCol = collection(db, 'users', userId, 'favorites');
+                // Use a sanitized link as the document ID
                 const docId = article.link.replace(/[^a-zA-Z0-9]/g, '');
                 const docRef = doc(favsCol, docId);
 
-                if (isFavorite(article.link)) await deleteDoc(docRef);
-                else await setDoc(docRef, article);
+                if (isFavorite(article.link)) {
+                    await deleteDoc(docRef);
+                } else {
+                    await setDoc(docRef, article);
+                }
             }
 
             async function showDetailView(article) {
                 state.currentArticle = article;
                 state.currentView = 'detail';
-                
-                if (state.activeArticleLink) {
-                    const oldActive = articlesList.querySelector(`[data-link="${state.activeArticleLink}"]`);
-                    oldActive?.classList.remove('bg-blue-100', 'dark:bg-blue-900/50');
-                }
-                const newActive = articlesList.querySelector(`[data-link="${article.link}"]`);
-                newActive?.classList.add('bg-blue-100', 'dark:bg-blue-900/50');
-                state.activeArticleLink = article.link;
-
                 updateHeader();
+                floatingBackBtn.classList.remove('hidden');
+                showFloatingBackButton();
 
                 if (!state.readArticles.has(article.link)) {
                     state.readArticles.add(article.link);
                     saveReadArticles();
-                    newActive?.classList.add('opacity-60');
+                    document.getElementById(`article-${article.link.replace(/[^a-zA-Z0-9]/g, '')}`)?.classList.add('opacity-60');
                 }
-                
-                const targetContent = isDesktop() ? detailContent : mobileDetailContent;
-                const targetView = isDesktop() ? null : mobileDetailView;
 
-                if (targetView) {
-                    targetView.classList.remove('hidden');
-                    targetView.classList.add('flex');
-                }
-                floatingBackBtn.classList.remove('hidden');
-                showFloatingBackButton();
-                targetContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
-                
-                if (!isDesktop()) history.pushState({view: 'detail'}, '', '#detail');
+                listView.classList.add('hidden');
+                detailView.classList.remove('hidden');
+                detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div></div>';
+                history.pushState({view: 'detail'}, '', '#detail');
 
                 const articleUrl = article.link;
                 const cachedData = cache.get(articleUrl);
@@ -403,22 +436,29 @@
                     state.currentArticleImages = data.images || [];
                     cache.set(articleUrl, data);
                     renderDetailContent(data, article);
+
                 } catch (error) {
-                    targetContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
+                    detailContent.innerHTML = `<p class="text-red-500 font-bold p-4">${error.message}</p>`;
                 }
             }
             
             function renderDetailContent(data, article) {
-                const targetContent = isDesktop() ? detailContent : mobileDetailContent;
                 let processedContent = data.content;
                 let processedSignature = data.signature || '';
+
+                if (data.youtube_ids?.length > 0) {
+                    processedContent = processedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s]*/g, (match, videoId) => 
+                        data.youtube_ids.includes(videoId) ? `<div class="my-4 aspect-video"><iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>` : match
+                    );
+                }
                 
                 data.images.forEach(imgUrl => {
-                    const secureImgUrl = imgUrl.replace(/^http:\/\//i, 'https://');
-                    const imgTag = `<img src="${secureImgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
+                    const imgTag = `<img src="${imgUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`;
                     const urlRegex = new RegExp(imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!")', 'g');
                     processedContent = processedContent.replace(urlRegex, imgTag);
-                    if (processedSignature) processedSignature = processedSignature.replace(urlRegex, imgTag);
+                    if (processedSignature) {
+                        processedSignature = processedSignature.replace(urlRegex, imgTag);
+                    }
                 });
 
                 const signatureHTML = processedSignature ? `<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">--\n${linkify(processedSignature)}</div>` : '';
@@ -432,8 +472,8 @@
                         return `<div class="flex text-sm mt-1 gap-2"><span class="font-bold ${tagColor}">${p.tag}</span><span class="font-semibold text-blue-500 dark:text-blue-400">${p.userid}</span><span class="flex-grow">${linkify(p.content)}</span></div>`;
                     }).join('')}</div>`;
                 }
-                targetContent.innerHTML = `<div class="p-4"><div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}</div>`;
-                targetContent.scrollTop = 0;
+                detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong class="dark:text-blue-300">標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(processedContent)}</div>${signatureHTML}${pushesHTML}`;
+                detailContent.scrollTop = 0;
             }
 
             // --- EVENT LISTENERS & INITIALIZATION ---
@@ -457,9 +497,10 @@
             window.addEventListener('popstate', (event) => {
                 if (!imageModal.classList.contains('hidden')) {
                     closeImageModal();
-                } else if (!isDesktop() && state.currentView === 'detail') {
+                } else if (state.currentView === 'detail') {
                     state.currentView = 'list';
-                    mobileDetailView.classList.add('hidden');
+                    listView.classList.remove('hidden');
+                    detailView.classList.add('hidden');
                     floatingBackBtn.classList.add('hidden');
                     updateHeader();
                 }
@@ -481,15 +522,13 @@
             }
             history.replaceState({view: 'list'}, '', '#list');
             loadArticles(state.currentBoard);
-            
-            if (isDesktop()) {
-                detailContent.innerHTML = `<div class="flex h-full items-center justify-center text-gray-400"><p>請從左側選擇一篇文章來閱讀</p></div>`;
-            }
+            updateHeader();
 
             const pinchZoomTarget = document.getElementById('pinch-zoom-target');
             const downloadBtn = document.getElementById('download-btn');
             
-            document.body.addEventListener('click', (e) => {
+            // --- IMAGE GALLERY LOGIC ---
+            detailContent.addEventListener('click', (e) => {
                 if (e.target && e.target.classList.contains('article-image')) {
                     const clickedSrc = e.target.src;
                     const imageIndex = state.currentArticleImages.indexOf(clickedSrc);
@@ -501,12 +540,7 @@
             });
 
             function openImageModal() {
-                // FIXED: Safety check for destroy method
-                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
-                    state.pinchZoomInstance.destroy();
-                }
-                state.pinchZoomInstance = null;
-                
+                if (state.pinchZoomInstance) state.pinchZoomInstance.destroy();
                 pinchZoomTarget.innerHTML = '';
                 
                 const imageUrl = state.currentArticleImages[state.currentImageIndex];
@@ -520,69 +554,31 @@
                 imageModal.classList.remove('hidden');
                 imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
+                resetGalleryActivityTimer();
                 history.pushState({ view: 'image-modal' }, 'Image', '#image');
 
-                // --- NEW: Desktop Zoom & Pan ---
-                if (!('ontouchstart' in window)) {
-                    let scale = 1, panning = false, start = { x: 0, y: 0 }, transform = { x: 0, y: 0 };
-                    
-                    const updateTransform = () => {
-                        newImg.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scale})`;
-                    };
-
-                    pinchZoomTarget.onwheel = (e) => {
-                        e.preventDefault();
-                        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                        scale = Math.min(Math.max(1, scale + delta), 4);
-                        if (scale === 1) {
-                            transform = { x: 0, y: 0 };
-                        }
-                        updateTransform();
-                    };
-
-                    pinchZoomTarget.onmousedown = (e) => {
-                        e.preventDefault();
-                        if (scale > 1) {
-                            panning = true;
-                            start = { x: e.clientX - transform.x, y: e.clientY - transform.y };
-                            pinchZoomTarget.style.cursor = 'grabbing';
-                        }
-                    };
-
-                    pinchZoomTarget.onmousemove = (e) => {
-                        if (panning) {
-                            e.preventDefault();
-                            transform.x = e.clientX - start.x;
-                            transform.y = e.clientY - start.y;
-                            updateTransform();
-                        }
-                    };
-                    
-                    const stopPan = () => {
-                        panning = false;
-                        pinchZoomTarget.style.cursor = 'grab';
-                    };
-                    pinchZoomTarget.onmouseup = stopPan;
-                    pinchZoomTarget.onmouseleave = stopPan;
-                } else {
-                    try {
-                        if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
-                            throw new Error('PinchZoom library is not loaded correctly.');
-                        }
-                        state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
-                    } catch(e) {
-                        console.error("PinchZoom failed to initialize:", e);
-                        pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
+                try {
+                    if (typeof PinchZoom === 'undefined' || !PinchZoom.default) {
+                        throw new Error('PinchZoom library is not loaded correctly.');
                     }
+                    state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 1, maxZoom: 4 });
+                } catch(e) {
+                    console.error("PinchZoom failed to initialize:", e);
+                    pinchZoomTarget.innerHTML = `<p class="text-red-500 p-4">圖片縮放功能載入失敗</p>`;
                 }
             }
             
             function closeImageModal() {
                 if (imageModal.classList.contains('hidden')) return;
-                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy();
+                
+                if (state.pinchZoomInstance && typeof state.pinchZoomInstance.destroy === 'function') {
+                    state.pinchZoomInstance.destroy();
+                }
                 state.pinchZoomInstance = null;
+                
                 imageModal.classList.add('hidden');
                 imageModalControls.classList.add('hidden');
+                clearTimeout(state.galleryActivityTimer);
             };
 
             function showNextImage() {
@@ -603,17 +599,31 @@
                 imagePrevBtn.disabled = state.currentImageIndex === 0;
                 imageNextBtn.disabled = state.currentImageIndex === state.currentArticleImages.length - 1;
             }
+
+            function resetGalleryActivityTimer() {
+                imageModal.classList.remove('hide-controls');
+                clearTimeout(state.galleryActivityTimer);
+                state.galleryActivityTimer = setTimeout(() => {
+                    imageModal.classList.add('hide-controls');
+                }, 2000);
+            }
             
             imagePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrevImage(); });
             imageNextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNextImage(); });
+            imageModal.addEventListener('mousemove', resetGalleryActivityTimer);
+            imageModal.addEventListener('touchstart', resetGalleryActivityTimer);
 
             window.handleCloseRequest = (e) => {
                 if (e) {
                     e.preventDefault();
                     e.stopPropagation();
                 }
+                
                 closeImageModal();
-                if (history.state && history.state.view === 'image-modal') history.back();
+                
+                if (history.state && history.state.view === 'image-modal') {
+                    history.back();
+                }
             };
 
             downloadBtn.addEventListener('click', async (e) => {
@@ -648,14 +658,16 @@
             
             const fullscreenToggle = document.getElementById('fullscreen-toggle');
             
-            const applyTheme = (isDark) => docEl.classList.toggle('dark', isDark);
+            const applyTheme = (isDark) => {
+                docEl.classList.toggle('dark', isDark);
+            };
             
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             applyTheme(mediaQuery.matches);
             mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
 
             fullscreenToggle.addEventListener('click', () => {
-                if (!document.fullscreenElement) document.body.requestFullscreen().catch(err => console.error(err));
+                if (!document.fullscreenElement) docEl.requestFullscreen().catch(err => console.error(err));
                 else if (document.exitFullscreen) document.exitFullscreen();
             });
             function showFloatingBackButton() {
