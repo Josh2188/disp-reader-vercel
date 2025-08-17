@@ -29,30 +29,40 @@
         #image-next-btn { right: 16px; }
         #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s ease-in-out; z-index: 100; }
         #toast-notification.show { bottom: 20px; }
-        /* === 新增縮圖樣式 === */
+        /* === 修改後縮圖樣式：只支援單張 === */
         .thumbnail-container {
-            width: 96px; /* 24 * 4 */
+            width: 96px;
             height: 96px;
             flex-shrink: 0;
-            display: flex;
-            gap: 2px;
             overflow: hidden;
-            border-radius: 0.5rem; /* rounded-lg */
+            border-radius: 0.5rem;
+            background-color: #e5e7eb; /* bg-gray-200 */
         }
-        .thumbnail-container.single-img .img-wrapper {
-            width: 100%;
-        }
-        .thumbnail-container.double-img .img-wrapper {
-            width: 50%;
-        }
-        .thumbnail-container .img-wrapper {
-            height: 100%;
-            overflow: hidden;
+        .dark .thumbnail-container {
+             background-color: #374151; /* dark:bg-gray-700 */
         }
         .thumbnail-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+        /* === 新增：自動重試提示 === */
+        #retry-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background-color: rgba(239, 68, 68, 0.8); /* bg-red-500/80 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px; /* rounded-full */
+            font-size: 0.875rem; /* text-sm */
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+        }
+        #retry-indicator.show {
+            opacity: 1;
         }
     </style>
 </head>
@@ -120,6 +130,8 @@
     </div>
     <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1.2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
     <div id="toast-notification" class="bg-gray-800 text-white text-sm py-2 px-4 rounded-full shadow-lg"><p id="toast-message"></p></div>
+    <!-- 新增：自動重試提示 -->
+    <div id="retry-indicator" class=""><p id="retry-message"></p></div>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -143,7 +155,6 @@
             let userId = null;
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
-            // === 重新啟用 7 天快取機制 ===
             const cache = {
                 get(key) {
                     const itemStr = localStorage.getItem(key);
@@ -187,7 +198,10 @@
                 allArticles: [], 
                 sortBy: 'time', 
                 viewingFavorites: false,
+                // === 新增：重試計數器 ===
+                infiniteScrollRetries: 0,
             };
+            const MAX_RETRIES = 3; // 最大重試次數
 
             const el = id => document.getElementById(id);
             const docEl = document.documentElement;
@@ -204,6 +218,7 @@
             const googleLoginBtn = el('google-login-btn'), userInfo = el('user-info'), userAvatar = el('user-avatar');
             const logoutBtn = el('logout-btn'), userControls = el('user-controls'), avatarBtn = el('avatar-btn');
             const logoutDropdown = el('logout-dropdown'), headerDislikeBtn = el('header-dislike-btn');
+            const retryIndicator = el('retry-indicator'), retryMessage = el('retry-message');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "Beauty": "表特", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
@@ -271,7 +286,7 @@
             
             function getPushCountBgClass(c) { if (c === '爆') return 'bg-red-500'; if (typeof c === 'number' && c >= 50) return 'bg-yellow-500'; if (typeof c === 'number' && c >= 10) return 'bg-green-500'; if (typeof c === 'string' && c.startsWith('X')) return 'bg-gray-500'; return 'bg-blue-500'; }
 
-            // === 全面修改：智慧縮圖列表項目 ===
+            // === 修改：單張縮圖 + 代理圖片路徑 ===
             function createListItem(article) {
                 const item = document.createElement('div');
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${state.readArticles.has(article.link) ? 'opacity-60' : ''}`;
@@ -282,15 +297,11 @@
                 const snippetText = article.snippet || '';
 
                 let thumbnailHTML = '';
-                const hasThumbnails = article.thumbnails && article.thumbnails.length > 0;
-                if (hasThumbnails) {
-                    const containerClass = article.thumbnails.length === 1 ? 'single-img' : 'double-img';
-                    const imagesHTML = article.thumbnails.map(url => `
-                        <div class="img-wrapper">
-                            <img src="${url}" alt="thumbnail" loading="lazy" onerror="this.parentElement.style.display='none';">
-                        </div>
-                    `).join('');
-                    thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-container ${containerClass}">${imagesHTML}</div>`;
+                if (article.thumbnail) {
+                    // 使用代理路徑來請求圖片
+                    const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`;
+                    const imageHTML = `<img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" onerror="this.closest('.thumbnail-container').style.display='none';">`;
+                    thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-container">${imageHTML}</div>`;
                 }
 
                 item.innerHTML = `
@@ -347,17 +358,16 @@
                     }
                 }
             }
-
-            // === 修改：實現 Stale-While-Revalidate 快取策略 ===
+            
+            // === 修改：加入自動重試機制 ===
             async function loadArticles(board, url = null, append = false) {
-                if (state.isLoading) return;
+                if (state.isLoading && !append) return; // 允許在重試時觸發
                 state.isLoading = true;
                 listError.classList.add('hidden');
 
                 const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
                 const cacheKey = `ptt-cache-${board}`;
 
-                // 1. 處理非附加載入時的快取
                 if (!append) {
                     articlesList.innerHTML = '';
                     const cachedData = cache.get(cacheKey);
@@ -365,7 +375,7 @@
                         state.allArticles = cachedData.articles;
                         state.prevPageUrl = cachedData.prevPageUrl;
                         renderAndSortArticles();
-                        fetchPreviewsInChunks(state.allArticles); // 為快取資料抓取預覽
+                        fetchPreviewsInChunks(state.allArticles);
                     } else {
                         showSkeleton();
                     }
@@ -373,14 +383,18 @@
                     infiniteLoader.classList.remove('hidden');
                 }
 
-                // 2. 永遠從網路抓取最新資料
                 try {
                     const res = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`);
-                    if (!res.ok) throw new Error(`請求列表失敗: ${res.status}`);
+                    if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const listData = await res.json();
                     
+                    if (append) {
+                        state.infiniteScrollRetries = 0; // 成功，重置計數器
+                        retryIndicator.classList.remove('show');
+                    }
+                    
                     const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
-
+                    
                     if (append) {
                         state.allArticles.push(...newArticles);
                     } else {
@@ -392,18 +406,32 @@
                     renderAndSortArticles();
                     fetchPreviewsInChunks(newArticles);
 
-                    // 3. 更新快取
                     if (!append) {
                        cache.set(cacheKey, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
                     }
 
                 } catch (error) {
-                    if (!append) { // 只有在首次載入失敗時才顯示錯誤
+                    if (append) {
+                        state.infiniteScrollRetries++;
+                        if (state.infiniteScrollRetries <= MAX_RETRIES) {
+                            retryMessage.textContent = `載入失敗，5秒後重試 (${state.infiniteScrollRetries}/${MAX_RETRIES})`;
+                            retryIndicator.classList.add('show');
+                            setTimeout(() => {
+                                loadArticles(board, url, true);
+                            }, 5000);
+                        } else {
+                            retryMessage.textContent = '自動重試失敗，請稍後再試';
+                            setTimeout(() => retryIndicator.classList.remove('show'), 3000);
+                            state.infiniteScrollRetries = 0;
+                        }
+                    } else {
                         listErrorText.textContent = error.message;
                         listError.classList.remove('hidden');
                     }
                 } finally {
-                    state.isLoading = false;
+                    if (!append || state.infiniteScrollRetries === 0 || state.infiniteScrollRetries > MAX_RETRIES) {
+                        state.isLoading = false;
+                    }
                     hideSkeleton();
                     infiniteLoader.classList.add('hidden');
                 }
@@ -456,7 +484,10 @@
             
             function renderDetailContent(data, article) {
                 let content = data.content;
-                data.images.forEach(url => { content = content.replace(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<img src="${url}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`); });
+                data.images.forEach(url => { 
+                    const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
+                    content = content.replace(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<img src="${proxiedUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`); 
+                });
                 detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words">${linkify(content)}</div>`;
                 detailContent.scrollTop = 0;
             }
@@ -486,12 +517,12 @@
             });
 
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
-            detailContent.addEventListener('click', e => { if (e.target.classList.contains('article-image')) { const idx = state.currentArticleImages.indexOf(e.target.src); if (idx > -1) openImageModal(idx); } });
+            detailContent.addEventListener('click', e => { if (e.target.classList.contains('article-image')) { const idx = state.currentArticleImages.indexOf(e.target.src.split('proxy_url=')[1] ? decodeURIComponent(e.target.src.split('proxy_url=')[1]) : e.target.src); if (idx > -1) openImageModal(idx); } });
 
             function openImageModal(index) {
                 cleanupImageInstance();
                 state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return;
-                pinchZoomTarget.innerHTML = `<img src="${url}">`;
+                pinchZoomTarget.innerHTML = `<img src="/api/scraper?proxy_url=${encodeURIComponent(url)}">`;
                 imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
                 if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image');
