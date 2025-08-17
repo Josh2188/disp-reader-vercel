@@ -54,7 +54,6 @@
                     <div id="user-info" class="hidden items-center"><div class="relative ml-auto"><button id="avatar-btn"><img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="User Avatar"></button><div id="logout-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5"><button id="logout-btn" class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700">登出</button></div></div></div>
                 </div>
                 
-                <!-- *** FIX: 更新後的內文頁按鈕 *** -->
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-2 hidden">
                     <button id="header-dislike-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">
                         Dislike
@@ -120,7 +119,7 @@
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
             const cache = {
-                CACHE_PREFIX: 'ptt-cache-v3-',
+                CACHE_PREFIX: 'ptt-cache-v4-',
                 get(key) {
                     const itemStr = localStorage.getItem(this.CACHE_PREFIX + key);
                     if (!itemStr) return null;
@@ -268,6 +267,33 @@
                 });
             }
 
+            // *** FIX: 真正實現分塊處理的核心邏輯 ***
+            async function fetchPreviewsInChunks(articles) {
+                const CHUNK_SIZE = 5; // 每次處理 5 篇文章，確保快速完成
+                const articleLinks = articles.map(a => a.link);
+
+                for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) {
+                    const chunk = articleLinks.slice(i, i + CHUNK_SIZE);
+                    if (chunk.length === 0) continue;
+
+                    try {
+                        const previewsResponse = await fetch('/api/previews', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ urls: chunk })
+                        });
+                        if (!previewsResponse.ok) {
+                            console.error(`批次請求預覽失敗 (Chunk ${i / CHUNK_SIZE})`);
+                            continue; // 如果一個批次失敗，繼續處理下一個
+                        }
+                        const previewsData = await previewsResponse.json();
+                        updatePreviewsUI(previewsData);
+                    } catch (error) {
+                        console.error(`處理批次時發生錯誤 (Chunk ${i / CHUNK_SIZE}):`, error);
+                    }
+                }
+            }
+
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
                 state.isLoading = true;
@@ -291,15 +317,8 @@
                     state.prevPageUrl = listData.prev_page_url;
                     renderAndSortArticles();
 
-                    const articleLinks = newArticles.map(a => a.link);
-                    const previewsResponse = await fetch('/api/previews', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ urls: articleLinks })
-                    });
-                    if (!previewsResponse.ok) throw new Error('批次請求預覽失敗');
-                    const previewsData = await previewsResponse.json();
-                    updatePreviewsUI(previewsData);
+                    // 呼叫新的分塊處理函式
+                    await fetchPreviewsInChunks(newArticles);
 
                 } catch (error) {
                     listErrorText.textContent = error.message;
