@@ -196,7 +196,6 @@
             const retryIndicator = el('retry-indicator'), retryMessage = el('retry-message');
             const fullscreenToggleList = el('fullscreen-toggle-list');
             const fullscreenToggleDetail = el('fullscreen-toggle-detail');
-            // === 修正：加入 headerFavoriteBtn 的宣告 ===
             const headerFavoriteBtn = el('header-favorite-btn');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "Beauty": "表特", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
@@ -419,8 +418,9 @@
                         state.isLoading = false;
                     }
                 } finally {
+                    // === 修正：確保 isLoading 狀態正確重置 ===
                     if (!append || state.infiniteScrollRetries === 0 || state.infiniteScrollRetries > MAX_RETRIES) {
-                        state.isLoading = false;
+                       state.isLoading = false;
                     }
                     hideSkeleton();
                     infiniteLoader.classList.add('hidden');
