@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 import locale
+import time
 
 # --- 設定與常數 ---
 try:
@@ -51,23 +52,40 @@ def process_article_item_basic(item, board):
     except Exception:
         return None
 
+# === 修改：增加後端重試次數與間隔 ===
 def fetch_ptt_article_list(board, page_url):
-    try:
-        response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        if err.response.status_code == 404:
-            return {"articles": [], "prev_page_url": None}
-        raise
-    soup = BeautifulSoup(response.text, 'lxml')
-    articles_tags = soup.select('div.r-ent')
-    article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
-    article_list.reverse()
-    prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
-    prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
-    return {"articles": article_list, "prev_page_url": prev_page_url}
+    max_retries = 5 # 增加重試次數
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'lxml')
+            
+            prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
+            if not prev_page_link_tag and "index1.html" not in page_url:
+                 raise ValueError("頁面不完整，缺少'上頁'按鈕")
 
-# === 修改：抓取推文、簽名檔等完整資訊 ===
+            articles_tags = soup.select('div.r-ent')
+            article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
+            article_list.reverse()
+            
+            prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
+            return {"articles": article_list, "prev_page_url": prev_page_url}
+
+        except requests.exceptions.HTTPError as err:
+            if err.response.status_code == 404:
+                return {"articles": [], "prev_page_url": None}
+            if attempt < max_retries - 1:
+                time.sleep(2) # 增加等待時間
+                continue
+            raise
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2) # 增加等待時間
+                continue
+            raise e
+
+
 def fetch_ptt_article_content(article_url):
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
@@ -75,7 +93,6 @@ def fetch_ptt_article_content(article_url):
     main_content = soup.select_one('#main-content')
     if not main_content: raise Exception("找不到主要內容區塊。")
     
-    # 提取作者、時間等 meta 資訊
     author_full, timestamp = '', ''
     for line in main_content.select('.article-metaline, .article-metaline-right'):
         if line.select_one('.article-meta-tag'):
@@ -85,7 +102,6 @@ def fetch_ptt_article_content(article_url):
             elif tag == '時間': timestamp = value
         line.decompose()
 
-    # 提取推文
     pushes = []
     for push in main_content.select('.push'):
         push_tag_span = push.select_one('.push-tag')
@@ -101,7 +117,6 @@ def fetch_ptt_article_content(article_url):
         })
         push.decompose()
 
-    # 提取圖片和影片連結
     images = []
     videos = []
     for link in main_content.select('a'):
@@ -113,7 +128,6 @@ def fetch_ptt_article_content(article_url):
             if yt_match:
                 videos.append({"id": yt_match.group(1), "url": href})
 
-    # 清理剩餘標籤並提取內文
     for tag in main_content.select('span.f2, script, style'):
         tag.decompose()
         
@@ -122,7 +136,6 @@ def fetch_ptt_article_content(article_url):
         
     full_text = main_content.get_text()
     
-    # 分離內文和簽名檔
     content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
     content = content_parts[0].strip()
     
@@ -131,7 +144,7 @@ def fetch_ptt_article_content(article_url):
         "formatted_timestamp": format_ptt_time(timestamp), 
         "content": content, 
         "images": list(dict.fromkeys(images)),
-        "videos": list({v['id']: v for v in videos}.values()), # 去重
+        "videos": list({v['id']: v for v in videos}.values()),
         "pushes": pushes
     }
 
@@ -139,7 +152,6 @@ def fetch_ptt_article_content(article_url):
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urlparse(self.path)
-        # 使用 unquote 來解碼 URL 百分比編碼
         query_params = parse_qs(unquote(parsed_path.query))
         data = {}
         error = None
