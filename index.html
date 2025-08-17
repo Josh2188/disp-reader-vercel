@@ -98,18 +98,29 @@
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 36.49 44 30.856 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>
                         使用 Google 登入同步我的最愛
                     </button>
-                    <div id="user-info" class="hidden items-center gap-2">
-                        <img id="user-avatar" class="w-8 h-8 rounded-full" src="" alt="User Avatar">
-                        <span id="user-name" class="text-sm font-medium text-gray-700 dark:text-gray-300"></span>
-                        <button id="logout-btn" class="ml-auto p-2 text-sm text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg">登出</button>
+                    <div id="user-info" class="hidden items-center">
+                        <div class="relative ml-auto">
+                            <button id="avatar-btn">
+                                <img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="User Avatar">
+                            </button>
+                            <div id="logout-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5">
+                                <button id="logout-btn" class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700">登出</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50">
+                    <!-- *** FIX: 新增不喜歡按鈕 *** -->
+                    <button id="header-dislike-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="不喜歡">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.498 15.002H5.25a2.25 2.25 0 01-2.25-2.25v-5.25a2.25 2.25 0 012.25-2.25h2.248V15.002zm2.25-10.5h-2.25V4.5a2.25 2.25 0 012.25-2.25h2.248c.621 0 1.218.25 1.658.69l3.75 3.75c.44.44.69 1.037.69 1.658V15.002a2.25 2.25 0 01-2.25 2.25h-2.25v-5.25a2.25 2.25 0 00-2.25-2.25h-2.25V4.502z" transform="rotate(180 12 12)" />
+                        </svg>
+                    </button>
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50" title="喜愛">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                     </button>
-                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕">
                         <svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
                         <svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>
                     </button>
@@ -184,6 +195,8 @@
             const db = getFirestore(app);
             let userId = null;
             let unsubscribeFavorites = null;
+            // *** FIX: 新增 dislikedArticles 的監聽取消函式 ***
+            let unsubscribeDisliked = null;
 
             // --- 本地快取 & 狀態管理 ---
             const cache = {
@@ -223,6 +236,8 @@
                 currentView: 'list',
                 currentArticle: null,
                 favorites: [], 
+                // *** FIX: 新增 dislikedArticles 狀態 ***
+                dislikedArticles: [],
                 readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
                 pinchZoomInstance: null,
                 inactivityTimer: null,
@@ -268,15 +283,20 @@
             const googleLoginBtn = document.getElementById('google-login-btn');
             const userInfo = document.getElementById('user-info');
             const userAvatar = document.getElementById('user-avatar');
-            const userName = document.getElementById('user-name');
             const logoutBtn = document.getElementById('logout-btn');
             const userControls = document.getElementById('user-controls');
+            const avatarBtn = document.getElementById('avatar-btn');
+            const logoutDropdown = document.getElementById('logout-dropdown');
+            // *** FIX: 取得不喜歡按鈕的 DOM 元素 ***
+            const headerDislikeBtn = document.getElementById('header-dislike-btn');
             
             const TOP_BOARDS = { "Beauty": "表特", "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
             // --- 認證 & 資料同步 ---
             onAuthStateChanged(auth, (user) => {
                 if (unsubscribeFavorites) unsubscribeFavorites();
+                // *** FIX: 取消舊的 disliked 監聽 ***
+                if (unsubscribeDisliked) unsubscribeDisliked();
 
                 if (user && !user.isAnonymous) {
                     userId = user.uid;
@@ -284,8 +304,8 @@
                     userInfo.classList.remove('hidden');
                     userControls.classList.remove('hidden');
                     userAvatar.src = user.photoURL;
-                    userName.textContent = user.displayName;
 
+                    // 監聽喜愛文章
                     const favsCol = collection(db, 'users', userId, 'favorites');
                     unsubscribeFavorites = onSnapshot(favsCol, (snapshot) => {
                         state.favorites = snapshot.docs.map(doc => doc.data());
@@ -294,12 +314,22 @@
                             updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         }
                     });
+
+                    // *** FIX: 新增監聽不喜歡文章 ***
+                    const dislikedCol = collection(db, 'users', userId, 'disliked_articles');
+                    unsubscribeDisliked = onSnapshot(dislikedCol, (snapshot) => {
+                        state.dislikedArticles = snapshot.docs.map(doc => doc.data());
+                        // 重新渲染文章列表以應用過濾
+                        renderAndSortArticles();
+                    });
+
                 } else {
                     userId = user ? user.uid : null;
                     googleLoginBtn.classList.remove('hidden');
                     userInfo.classList.add('hidden');
                     userControls.classList.add('hidden');
                     state.favorites = [];
+                    state.dislikedArticles = [];
                     
                     if (!user) {
                         signInAnonymously(auth).catch((error) => console.error("匿名登入失敗:", error));
@@ -341,6 +371,17 @@
 
             googleLoginBtn.addEventListener('click', handleGoogleSignIn);
             logoutBtn.addEventListener('click', handleSignOut);
+            
+            avatarBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                logoutDropdown.classList.toggle('hidden');
+            });
+
+            window.addEventListener('click', () => {
+                if (!logoutDropdown.classList.contains('hidden')) {
+                    logoutDropdown.classList.add('hidden');
+                }
+            });
 
 
             // --- 輔助函式 ---
@@ -488,6 +529,10 @@
 
             function renderAndSortArticles() {
                 let articlesToRender = state.viewingFavorites ? [...state.favorites] : [...state.allArticles];
+
+                // *** FIX: 新增過濾不喜歡文章的邏輯 ***
+                const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link));
+                articlesToRender = articlesToRender.filter(article => !dislikedLinks.has(article.link));
                 
                 if (state.sortBy === 'hot') {
                     articlesToRender.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count));
@@ -511,6 +556,26 @@
                 } else {
                     await setDoc(docRef, article);
                     showToast('已加入我的最愛');
+                }
+            }
+
+            // *** FIX: 新增處理不喜歡文章的函式 ***
+            async function handleDislikeArticle() {
+                if (!state.currentArticle || !userId || (auth.currentUser && auth.currentUser.isAnonymous)) {
+                    showToast('請先登入 Google 帳號以使用此功能');
+                    return;
+                };
+                const article = state.currentArticle;
+                const docId = article.link.replace(/[^a-zA-Z0-9]/g, '');
+                const docRef = doc(db, 'users', userId, 'disliked_articles', docId);
+
+                try {
+                    await setDoc(docRef, { link: article.link, title: article.title });
+                    showToast('已加入不喜歡列表');
+                    goBack(); // 返回列表頁
+                } catch (error) {
+                    console.error("加入不喜歡列表失敗:", error);
+                    showToast('操作失敗，請稍後再試');
                 }
             }
 
@@ -577,6 +642,8 @@
             });
 
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
+            // *** FIX: 綁定不喜歡按鈕的點擊事件 ***
+            headerDislikeBtn.addEventListener('click', handleDislikeArticle);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
             
@@ -602,14 +669,12 @@
 
             // --- 圖片瀏覽器邏輯 (使用 pinch-zoom-js) ---
             function cleanupImageInstance() {
-                // *** FIX: 確保 instance 存在才嘗試移除監聽器和銷毀 ***
                 if (state.pinchZoomInstance) {
                     if (state.pinchZoomInstance._wheelHandler) {
                         pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler);
                     }
-                    // *** FIX: 直接呼叫函式庫的 destroy 方法 ***
                     if (typeof state.pinchZoomInstance.destroy === 'function') {
-                        state.pinchZoomInstance.destroy();
+                         state.pinchZoomInstance.destroy();
                     }
                 }
                 state.pinchZoomInstance = null;
@@ -655,30 +720,21 @@
                         event.preventDefault();
                         
                         const instance = state.pinchZoomInstance;
-                        if (!instance || !instance._transform) return;
+                        if (!instance || typeof instance.zoomTo !== 'function') return;
 
                         const rect = pinchZoomTarget.getBoundingClientRect();
-                        const currentTransform = instance._transform;
+                        const scale = instance.getScale();
                         
-                        let newScale = event.deltaY < 0 
-                            ? currentTransform.scale * 1.2 
-                            : currentTransform.scale / 1.2;
+                        let newScale = event.deltaY < 0 ? scale * 1.2 : scale / 1.2;
 
                         const { minZoom, maxZoom } = instance.options;
                         newScale = Math.max(minZoom, Math.min(newScale, maxZoom));
 
-                        if (newScale === currentTransform.scale) return;
+                        if (newScale === scale) return;
 
-                        const mouseX = event.clientX - rect.left;
-                        const mouseY = event.clientY - rect.top;
-
-                        const newX = mouseX - (mouseX - currentTransform.x) * (newScale / currentTransform.scale);
-                        const newY = mouseY - (mouseY - currentTransform.y) * (newScale / currentTransform.scale);
-                        
-                        instance._updateTransform({
-                            scale: newScale,
-                            x: newX,
-                            y: newY,
+                        instance.zoomTo(newScale, {
+                            x: event.clientX - rect.left,
+                            y: event.clientY - rect.top,
                         });
                     };
 
