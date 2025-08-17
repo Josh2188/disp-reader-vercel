@@ -4,9 +4,6 @@ from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 import locale
-# *** FIX: 重新引入並行處理所需的函式庫 ***
-from concurrent.futures import ThreadPoolExecutor
-from itertools import repeat
 
 app = Flask(__name__)
 
@@ -35,11 +32,11 @@ def format_ptt_time(time_str):
     except (ValueError, TypeError):
         return time_str
 
-# *** FIX: 加回一個更穩定、有錯誤處理的預覽抓取函式 ***
+# *** FIX: 建立一個獨立的函式來抓取單篇文章的預覽資訊 ***
 def get_article_preview_data(article_url):
     """
-    獲取文章預覽所需的部分資料，包括縮圖、時間和內文摘要。
-    增加了超時和錯誤處理，避免單一請求失敗導致整個服務崩潰。
+    獲取單篇文章的預覽資料，包括縮圖、時間和內文摘要。
+    增加了超時和錯誤處理。
     """
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
@@ -60,12 +57,14 @@ def get_article_preview_data(article_url):
         snippet = ""
         main_content = soup.select_one('#main-content')
         if main_content:
+            # 尋找第一個圖片連結作為縮圖
             for link in main_content.select('a'):
                 href = link.get('href', '')
                 if href and IMAGE_REGEX.search(href):
                     first_image_url = href
                     break
             
+            # 移除中繼資料和推文來產生摘要
             for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
                 tag.decompose()
             snippet = main_content.get_text(strip=True)[:100] + "..."
@@ -77,56 +76,54 @@ def get_article_preview_data(article_url):
         }
     except Exception as e:
         print(f"獲取預覽失敗 {article_url}: {e}")
-        # 如果發生任何錯誤，回傳預設值，確保主程式能繼續運作
-        return {"thumbnail": None, "formatted_timestamp": None, "snippet": ""}
+        # 若出錯，回傳一個包含錯誤訊息的 JSON，讓前端知道
+        return {"error": str(e)}, 500
 
-def process_article_item(item, board):
+def process_article_item_basic(item, board):
     """
-    處理單個文章列表項目，包含抓取預覽資訊。
+    處理單個文章列表項目，僅從列表頁 HTML 中提取最基本的資訊。
+    這樣可以確保列表頁的請求極快且穩定。
     """
-    title_tag = item.select_one('.title a')
-    meta_tag = item.select_one('.meta')
-    push_tag = item.select_one('.nrec span')
+    try:
+        title_tag = item.select_one('.title a')
+        meta_tag = item.select_one('.meta')
+        push_tag = item.select_one('.nrec span')
 
-    if not (title_tag and title_tag.get('href') and meta_tag):
-        return None
+        if not (title_tag and title_tag.get('href') and meta_tag):
+            return None
+            
+        if "本文已被刪除" in title_tag.text:
+            return None
+
+        article_link = "https://www.ptt.cc" + title_tag['href']
         
-    if "本文已被刪除" in title_tag.text:
+        push_count_text = push_tag.get_text(strip=True) if push_tag else ''
+        push_count = 0
+        if push_count_text:
+            if push_count_text == '爆':
+                push_count = '爆'
+            elif push_count_text.startswith('X'):
+                push_count = push_count_text
+            else:
+                try:
+                    push_count = int(push_count_text)
+                except (ValueError, TypeError):
+                    push_count = 0
+        
+        return {
+            "title": title_tag.text.strip(),
+            "link": article_link,
+            "board": board,
+            "author": meta_tag.select_one('.author').get_text(strip=True) or '',
+            "date": meta_tag.select_one('.date').get_text(strip=True) or '',
+            "push_count": push_count
+        }
+    except Exception as e:
+        print(f"處理列表項目時發生未知錯誤: {e}")
         return None
-
-    article_link = "https://www.ptt.cc" + title_tag['href']
-    
-    push_count_text = push_tag.get_text(strip=True) if push_tag else ''
-    push_count = 0
-    if push_count_text:
-        if push_count_text == '爆':
-            push_count = '爆'
-        elif push_count_text.startswith('X'):
-            push_count = push_count_text
-        else:
-            try:
-                push_count = int(push_count_text)
-            except (ValueError, TypeError):
-                push_count = 0
-    
-    # *** FIX: 呼叫函式以獲取縮圖等預覽資訊 ***
-    preview_data = get_article_preview_data(article_link)
-
-    base_data = {
-        "title": title_tag.text.strip(),
-        "link": article_link,
-        "board": board,
-        "author": meta_tag.select_one('.author').get_text(strip=True) or '',
-        "date": meta_tag.select_one('.date').get_text(strip=True) or '',
-        "push_count": push_count,
-    }
-    
-    # 合併基本資料和預覽資料
-    base_data.update(preview_data)
-    return base_data
 
 def fetch_ptt_article_list(board, page_url):
-    """抓取 PTT 文章列表頁面 (使用並行處理來加速預覽資訊的獲取)。"""
+    """抓取 PTT 文章列表頁面 (優化版，不再抓取預覽)。"""
     try:
         response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
         response.raise_for_status()
@@ -139,13 +136,12 @@ def fetch_ptt_article_list(board, page_url):
     soup = BeautifulSoup(response.text, 'html.parser')
     
     articles_tags = soup.select('div.r-ent')
+    article_list = []
     
-    # *** FIX: 使用 ThreadPoolExecutor 和 map 來並行處理文章，並保持順序 ***
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        # executor.map 會依序處理 articles_tags 中的每個項目
-        results = executor.map(process_article_item, articles_tags, repeat(board))
-        # 過濾掉處理失敗的項目 (回傳 None 的)
-        article_list = [r for r in results if r is not None]
+    for item in articles_tags:
+        article_data = process_article_item_basic(item, board)
+        if article_data:
+            article_list.append(article_data)
             
     article_list.reverse()
     
@@ -190,24 +186,26 @@ def fetch_ptt_article_content(article_url):
 
 @app.route('/api/scraper', methods=['GET'])
 def scraper_endpoint():
-    """API 端點，根據參數決定抓取列表、內文或代理圖片。"""
+    """API 端點，根據參數決定抓取列表、內文、預覽或代理圖片。"""
     try:
         proxy_url = request.args.get('proxy_url')
         if proxy_url:
             try:
                 req = requests.get(proxy_url, stream=True, headers=HEADERS, timeout=20)
                 req.raise_for_status()
-                
                 filename = proxy_url.split('/')[-1].split('?')[0] or 'download'
-                
-                return Response(
-                    stream_with_context(req.iter_content(chunk_size=8192)),
-                    content_type=req.headers.get('content-type'),
-                    headers={'Content-Disposition': f'attachment; filename="{filename}"'}
-                )
+                return Response(stream_with_context(req.iter_content(chunk_size=8192)),
+                                content_type=req.headers.get('content-type'),
+                                headers={'Content-Disposition': f'attachment; filename="{filename}"'})
             except requests.exceptions.RequestException as e:
                 print(f"代理圖片失敗 {proxy_url}: {e}")
                 return str(e), 502
+
+        # 新增處理單一文章預覽請求的邏輯
+        preview_url = request.args.get('preview_url')
+        if preview_url:
+            data = get_article_preview_data(preview_url)
+            return jsonify(data)
 
         board = request.args.get('board', 'Beauty')
         list_url = request.args.get('list_url')
