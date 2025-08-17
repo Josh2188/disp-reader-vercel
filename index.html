@@ -111,10 +111,9 @@
                 </div>
                 
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                    <!-- *** FIX: 新增不喜歡按鈕 *** -->
                     <button id="header-dislike-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="不喜歡">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.498 15.002H5.25a2.25 2.25 0 01-2.25-2.25v-5.25a2.25 2.25 0 012.25-2.25h2.248V15.002zm2.25-10.5h-2.25V4.5a2.25 2.25 0 012.25-2.25h2.248c.621 0 1.218.25 1.658.69l3.75 3.75c.44.44.69 1.037.69 1.658V15.002a2.25 2.25 0 01-2.25 2.25h-2.25v-5.25a2.25 2.25 0 00-2.25-2.25h-2.25V4.502z" transform="rotate(180 12 12)" />
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V2.75a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.25a2.25 2.25 0 01-2.25-2.25v-6.75a2.25 2.25 0 012.25-2.25h1.383c.495 0 .986.223 1.32.602.333.379.546.87.546 1.398v4.438z" />
                         </svg>
                     </button>
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50" title="喜愛">
@@ -195,7 +194,6 @@
             const db = getFirestore(app);
             let userId = null;
             let unsubscribeFavorites = null;
-            // *** FIX: 新增 dislikedArticles 的監聽取消函式 ***
             let unsubscribeDisliked = null;
 
             // --- 本地快取 & 狀態管理 ---
@@ -236,7 +234,6 @@
                 currentView: 'list',
                 currentArticle: null,
                 favorites: [], 
-                // *** FIX: 新增 dislikedArticles 狀態 ***
                 dislikedArticles: [],
                 readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
                 pinchZoomInstance: null,
@@ -287,7 +284,6 @@
             const userControls = document.getElementById('user-controls');
             const avatarBtn = document.getElementById('avatar-btn');
             const logoutDropdown = document.getElementById('logout-dropdown');
-            // *** FIX: 取得不喜歡按鈕的 DOM 元素 ***
             const headerDislikeBtn = document.getElementById('header-dislike-btn');
             
             const TOP_BOARDS = { "Beauty": "表特", "Gossiping": "八卦", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
@@ -295,7 +291,6 @@
             // --- 認證 & 資料同步 ---
             onAuthStateChanged(auth, (user) => {
                 if (unsubscribeFavorites) unsubscribeFavorites();
-                // *** FIX: 取消舊的 disliked 監聽 ***
                 if (unsubscribeDisliked) unsubscribeDisliked();
 
                 if (user && !user.isAnonymous) {
@@ -305,7 +300,6 @@
                     userControls.classList.remove('hidden');
                     userAvatar.src = user.photoURL;
 
-                    // 監聽喜愛文章
                     const favsCol = collection(db, 'users', userId, 'favorites');
                     unsubscribeFavorites = onSnapshot(favsCol, (snapshot) => {
                         state.favorites = snapshot.docs.map(doc => doc.data());
@@ -315,11 +309,9 @@
                         }
                     });
 
-                    // *** FIX: 新增監聽不喜歡文章 ***
                     const dislikedCol = collection(db, 'users', userId, 'disliked_articles');
                     unsubscribeDisliked = onSnapshot(dislikedCol, (snapshot) => {
                         state.dislikedArticles = snapshot.docs.map(doc => doc.data());
-                        // 重新渲染文章列表以應用過濾
                         renderAndSortArticles();
                     });
 
@@ -446,17 +438,18 @@
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${isRead ? 'opacity-60' : ''}`;
                 item.dataset.link = article.link;
                 
-                const thumbnailHTML = article.thumbnail ? `<div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"><img src="${article.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy"></div>` : '';
-                
                 const pushCountHTML = article.push_count ? `<span class="ml-2 inline-block ${getPushCountBgClass(article.push_count)} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${article.push_count}</span>` : '';
 
+                // *** FIX: 建立預覽內容的佔位符 ***
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushCountHTML}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.formatted_timestamp || article.date}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${article.snippet || ''}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
+                        <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2"></p>
                     </div>
-                    ${thumbnailHTML}
+                    <div data-thumbnail-for="${article.link}" class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                        <!-- 縮圖將會被插入到這裡 -->
+                    </div>
                 `;
                 item.addEventListener('click', () => {
                     const clickedArticle = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link);
@@ -465,6 +458,38 @@
                 return item;
             }
             
+            // *** FIX: 新增非同步獲取並渲染預覽的函式 ***
+            async function fetchAndRenderPreview(article) {
+                try {
+                    const response = await fetch(`/api/scraper?preview_url=${encodeURIComponent(article.link)}`);
+                    if (!response.ok) return;
+                    const previewData = await response.json();
+
+                    // 更新 state 中的資料
+                    const articleInState = state.allArticles.find(a => a.link === article.link);
+                    if (articleInState) {
+                        Object.assign(articleInState, previewData);
+                    }
+                    
+                    // 更新 DOM
+                    const snippetEl = document.querySelector(`[data-snippet-for="${article.link}"]`);
+                    const thumbnailContainerEl = document.querySelector(`[data-thumbnail-for="${article.link}"]`);
+
+                    if (snippetEl) {
+                        snippetEl.textContent = previewData.snippet || '';
+                    }
+                    if (thumbnailContainerEl) {
+                        if (previewData.thumbnail) {
+                            thumbnailContainerEl.innerHTML = `<img src="${previewData.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy">`;
+                        } else {
+                            thumbnailContainerEl.style.display = 'none'; // 如果沒有縮圖，就隱藏佔位符
+                        }
+                    }
+                } catch (error) {
+                    console.error(`無法載入 ${article.link} 的預覽:`, error);
+                }
+            }
+
             // --- 核心邏輯 ---
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
@@ -480,17 +505,7 @@
                 }
                 
                 const fetchUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                const cachedData = cache.get(fetchUrl);
-
-                if (!append && cachedData) {
-                    state.prevPageUrl = cachedData.prev_page_url;
-                    state.allArticles = cachedData.articles;
-                    renderAndSortArticles();
-                    hideSkeleton();
-                    state.isLoading = false;
-                    return;
-                }
-
+                
                 try {
                     const response = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(fetchUrl)}`);
                     if (!response.ok) throw new Error(`請求失敗: ${response.status}`);
@@ -498,7 +513,6 @@
                     
                     const newArticles = data.articles.filter(a => a.title && !a.title.includes('[公告]'));
                     if (!append) {
-                       cache.set(fetchUrl, { ...data, articles: newArticles });
                        state.allArticles = newArticles;
                     } else {
                        state.allArticles.push(...newArticles);
@@ -506,6 +520,12 @@
                     
                     state.prevPageUrl = data.prev_page_url;
                     renderAndSortArticles();
+
+                    // *** FIX: 列表渲染後，開始非同步獲取預覽 ***
+                    newArticles.forEach(article => {
+                        fetchAndRenderPreview(article);
+                    });
+
                 } catch (error) {
                     listErrorText.textContent = error.message;
                     listError.classList.remove('hidden');
@@ -530,7 +550,6 @@
             function renderAndSortArticles() {
                 let articlesToRender = state.viewingFavorites ? [...state.favorites] : [...state.allArticles];
 
-                // *** FIX: 新增過濾不喜歡文章的邏輯 ***
                 const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link));
                 articlesToRender = articlesToRender.filter(article => !dislikedLinks.has(article.link));
                 
@@ -559,7 +578,6 @@
                 }
             }
 
-            // *** FIX: 新增處理不喜歡文章的函式 ***
             async function handleDislikeArticle() {
                 if (!state.currentArticle || !userId || (auth.currentUser && auth.currentUser.isAnonymous)) {
                     showToast('請先登入 Google 帳號以使用此功能');
@@ -572,7 +590,7 @@
                 try {
                     await setDoc(docRef, { link: article.link, title: article.title });
                     showToast('已加入不喜歡列表');
-                    goBack(); // 返回列表頁
+                    goBack();
                 } catch (error) {
                     console.error("加入不喜歡列表失敗:", error);
                     showToast('操作失敗，請稍後再試');
@@ -642,7 +660,6 @@
             });
 
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
-            // *** FIX: 綁定不喜歡按鈕的點擊事件 ***
             headerDislikeBtn.addEventListener('click', handleDislikeArticle);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
