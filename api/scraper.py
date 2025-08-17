@@ -2,9 +2,11 @@ from flask import Flask, jsonify, request, Response, stream_with_context
 import requests
 from bs4 import BeautifulSoup
 import re
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import locale
+# *** FIX: 重新引入並行處理所需的函式庫 ***
+from concurrent.futures import ThreadPoolExecutor
+from itertools import repeat
 
 app = Flask(__name__)
 
@@ -20,7 +22,7 @@ HEADERS = {
 }
 COOKIES = {'over18': '1'}
 
-# 更新圖片正則表達式以支援 avif
+# 圖片正則表達式
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif)$', re.IGNORECASE)
 
 def format_ptt_time(time_str):
@@ -33,8 +35,12 @@ def format_ptt_time(time_str):
     except (ValueError, TypeError):
         return time_str
 
+# *** FIX: 加回一個更穩定、有錯誤處理的預覽抓取函式 ***
 def get_article_preview_data(article_url):
-    """獲取文章預覽所需的部分資料，包括縮圖、時間和內文摘要。"""
+    """
+    獲取文章預覽所需的部分資料，包括縮圖、時間和內文摘要。
+    增加了超時和錯誤處理，避免單一請求失敗導致整個服務崩潰。
+    """
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
         response.raise_for_status()
@@ -71,63 +77,76 @@ def get_article_preview_data(article_url):
         }
     except Exception as e:
         print(f"獲取預覽失敗 {article_url}: {e}")
+        # 如果發生任何錯誤，回傳預設值，確保主程式能繼續運作
         return {"thumbnail": None, "formatted_timestamp": None, "snippet": ""}
 
 def process_article_item(item, board):
-    """處理單個文章列表項目，提取所需資訊。"""
+    """
+    處理單個文章列表項目，包含抓取預覽資訊。
+    """
     title_tag = item.select_one('.title a')
     meta_tag = item.select_one('.meta')
     push_tag = item.select_one('.nrec span')
 
-    if title_tag and title_tag.get('href') and meta_tag:
-        article_link = "https://www.ptt.cc" + title_tag['href']
+    if not (title_tag and title_tag.get('href') and meta_tag):
+        return None
         
-        push_count_text = push_tag.get_text(strip=True) if push_tag else ''
-        push_count = None
-        if push_count_text:
-            if push_count_text == '爆':
-                push_count = '爆'
-            elif push_count_text.startswith('X'):
-                push_count = push_count_text
-            else:
-                try:
-                    push_count = int(push_count_text)
-                except (ValueError, TypeError):
-                    push_count = 0
-        
-        preview_data = get_article_preview_data(article_link)
+    if "本文已被刪除" in title_tag.text:
+        return None
 
-        return {
-            "title": title_tag.text.strip(),
-            "link": article_link,
-            "board": board,
-            "author": meta_tag.select_one('.author').get_text(strip=True) or '',
-            "date": meta_tag.select_one('.date').get_text(strip=True) or '',
-            "push_count": push_count,
-            "thumbnail": preview_data.get("thumbnail"),
-            "formatted_timestamp": preview_data.get("formatted_timestamp"),
-            "snippet": preview_data.get("snippet")
-        }
-    return None
+    article_link = "https://www.ptt.cc" + title_tag['href']
+    
+    push_count_text = push_tag.get_text(strip=True) if push_tag else ''
+    push_count = 0
+    if push_count_text:
+        if push_count_text == '爆':
+            push_count = '爆'
+        elif push_count_text.startswith('X'):
+            push_count = push_count_text
+        else:
+            try:
+                push_count = int(push_count_text)
+            except (ValueError, TypeError):
+                push_count = 0
+    
+    # *** FIX: 呼叫函式以獲取縮圖等預覽資訊 ***
+    preview_data = get_article_preview_data(article_link)
+
+    base_data = {
+        "title": title_tag.text.strip(),
+        "link": article_link,
+        "board": board,
+        "author": meta_tag.select_one('.author').get_text(strip=True) or '',
+        "date": meta_tag.select_one('.date').get_text(strip=True) or '',
+        "push_count": push_count,
+    }
+    
+    # 合併基本資料和預覽資料
+    base_data.update(preview_data)
+    return base_data
 
 def fetch_ptt_article_list(board, page_url):
-    """抓取 PTT 文章列表頁面。"""
-    response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
-    response.raise_for_status()
+    """抓取 PTT 文章列表頁面 (使用並行處理來加速預覽資訊的獲取)。"""
+    try:
+        response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        if err.response.status_code == 404:
+            print(f"找不到頁面 {page_url}，可能已達看板末頁。")
+            return {"articles": [], "prev_page_url": None}
+        raise
+
     soup = BeautifulSoup(response.text, 'html.parser')
     
-    articles = soup.select('div.r-ent')
-    article_list = []
+    articles_tags = soup.select('div.r-ent')
     
+    # *** FIX: 使用 ThreadPoolExecutor 和 map 來並行處理文章，並保持順序 ***
     with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_article = {executor.submit(process_article_item, item, board): item for item in articles}
-        for future in future_to_article:
-            try:
-                result = future.result()
-                if result: article_list.append(result)
-            except Exception as exc:
-                print(f'文章處理時發生錯誤: {exc}')
-                
+        # executor.map 會依序處理 articles_tags 中的每個項目
+        results = executor.map(process_article_item, articles_tags, repeat(board))
+        # 過濾掉處理失敗的項目 (回傳 None 的)
+        article_list = [r for r in results if r is not None]
+            
     article_list.reverse()
     
     prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
@@ -173,7 +192,6 @@ def fetch_ptt_article_content(article_url):
 def scraper_endpoint():
     """API 端點，根據參數決定抓取列表、內文或代理圖片。"""
     try:
-        # *** FIX: Integrated image proxy logic into the main endpoint ***
         proxy_url = request.args.get('proxy_url')
         if proxy_url:
             try:
@@ -191,7 +209,6 @@ def scraper_endpoint():
                 print(f"代理圖片失敗 {proxy_url}: {e}")
                 return str(e), 502
 
-        # 現有的列表/文章抓取邏輯
         board = request.args.get('board', 'Beauty')
         list_url = request.args.get('list_url')
         article_url = request.args.get('article_url')
