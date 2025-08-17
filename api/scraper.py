@@ -1,12 +1,11 @@
-from flask import Flask, jsonify, request, Response, stream_with_context
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+import json
 import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 import locale
-
-# Vercel 會將這個檔案當作一個獨立的 serverless function
-app = Flask(__name__)
 
 # --- 設定與常數 ---
 try:
@@ -20,7 +19,7 @@ HEADERS = {
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 
-# --- 核心函式 ---
+# --- 核心函式 (與之前相同) ---
 def format_ptt_time(time_str):
     if not time_str: return None
     try:
@@ -59,7 +58,6 @@ def fetch_ptt_article_list(board, page_url):
         if err.response.status_code == 404:
             return {"articles": [], "prev_page_url": None}
         raise
-    # *** FIX: 明確使用 lxml 解析器 ***
     soup = BeautifulSoup(response.text, 'lxml')
     articles_tags = soup.select('div.r-ent')
     article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
@@ -71,7 +69,6 @@ def fetch_ptt_article_list(board, page_url):
 def fetch_ptt_article_content(article_url):
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
-    # *** FIX: 明確使用 lxml 解析器 ***
     soup = BeautifulSoup(response.text, 'lxml')
     main_content = soup.select_one('#main-content')
     if not main_content: raise Exception("找不到主要內容區塊。")
@@ -89,30 +86,34 @@ def fetch_ptt_article_content(article_url):
     content = main_content.get_text().strip()
     return {"author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images))}
 
-def proxy_image_download(proxy_url):
-    try:
-        req = requests.get(proxy_url, stream=True, headers=HEADERS, timeout=20)
-        req.raise_for_status()
-        filename = proxy_url.split('/')[-1].split('?')[0] or 'download'
-        return Response(stream_with_context(req.iter_content(chunk_size=8192)),
-                        content_type=req.headers.get('content-type'),
-                        headers={'Content-Disposition': f'attachment; filename="{filename}"'})
-    except requests.exceptions.RequestException as e:
-        return str(e), 502
+# --- Vercel 的 Serverless Function 入口 ---
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed_path = urlparse(self.path)
+        query_params = parse_qs(parsed_path.query)
+        data = {}
+        error = None
 
-# --- API 路由 ---
-@app.route('/', methods=['GET'])
-def handler():
-    try:
-        if 'proxy_url' in request.args:
-            return proxy_image_download(request.args.get('proxy_url'))
-        board = request.args.get('board', 'Beauty')
-        if 'list_url' in request.args:
-            return jsonify(fetch_ptt_article_list(board, request.args.get('list_url')))
-        if 'article_url' in request.args:
-            return jsonify(fetch_ptt_article_content(request.args.get('article_url')))
-        initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
-        return jsonify(fetch_ptt_article_list(board, initial_url))
-    except Exception as e:
-        print(f"Error in /api/scraper: {e}")
-        return jsonify({"error": str(e)}), 500
+        try:
+            if 'list_url' in query_params:
+                board = query_params.get('board', ['Beauty'])[0]
+                list_url = query_params['list_url'][0]
+                data = fetch_ptt_article_list(board, list_url)
+            elif 'article_url' in query_params:
+                article_url = query_params['article_url'][0]
+                data = fetch_ptt_article_content(article_url)
+            else:
+                board = query_params.get('board', ['Beauty'])[0]
+                initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
+                data = fetch_ptt_article_list(board, initial_url)
+
+        except Exception as e:
+            error = e
+            print(f"Error in /api/scraper: {e}")
+            data = {"error": str(e)}
+
+        self.send_response(500 if error else 200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+        return

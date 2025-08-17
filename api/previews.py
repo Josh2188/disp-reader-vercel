@@ -1,13 +1,11 @@
-from flask import Flask, jsonify, request
+from http.server import BaseHTTPRequestHandler
+import json
 import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 import locale
 import concurrent.futures
-
-# Vercel 會將這個檔案當作一個獨立的 serverless function
-app = Flask(__name__)
 
 # --- 設定與常數 ---
 try:
@@ -37,7 +35,6 @@ def get_article_preview_data(article_url):
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=8)
         response.raise_for_status()
-        # *** FIX: 明確使用 lxml 解析器 ***
         soup = BeautifulSoup(response.text, 'lxml')
         timestamp = None
         for line in soup.select('.article-metaline, .article-metaline-right'):
@@ -63,21 +60,37 @@ def get_article_preview_data(article_url):
     except Exception as e:
         return {"link": article_url, "thumbnail": None, "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
 
-# --- API 路由 ---
-@app.route('/', methods=['POST'])
-def handler():
-    try:
-        data = request.get_json()
-        if not data or 'urls' not in data or not isinstance(data['urls'], list):
-            return jsonify({"error": "無效的請求格式"}), 400
-        urls = data['urls']
-        results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_url = {executor.submit(get_article_preview_data, url): url for url in urls}
-            for future in concurrent.futures.as_completed(future_to_url):
-                results.append(future.result())
-        ordered_results = sorted(results, key=lambda r: urls.index(r['link']))
-        return jsonify(ordered_results)
-    except Exception as e:
-        print(f"Error in /api/previews: {e}")
-        return jsonify({"error": str(e)}), 500
+# --- Vercel 的 Serverless Function 入口 ---
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        data = {}
+        error = None
+        ordered_results = []
+        
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            body = json.loads(post_data)
+
+            if 'urls' not in body or not isinstance(body['urls'], list):
+                raise ValueError("無效的請求格式")
+
+            urls = body['urls']
+            results = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                future_to_url = {executor.submit(get_article_preview_data, url): url for url in urls}
+                for future in concurrent.futures.as_completed(future_to_url):
+                    results.append(future.result())
+            ordered_results = sorted(results, key=lambda r: urls.index(r['link']))
+            data = ordered_results
+
+        except Exception as e:
+            error = e
+            print(f"Error in /api/previews: {e}")
+            data = {"error": str(e)}
+
+        self.send_response(500 if error else 200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+        return
