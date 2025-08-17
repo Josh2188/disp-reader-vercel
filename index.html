@@ -118,16 +118,13 @@
             let userId = null;
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
+            // *** FIX: 完全移除本地快取功能 ***
             const cache = {
-                CACHE_PREFIX: 'ptt-cache-v4-',
                 get(key) {
-                    const itemStr = localStorage.getItem(this.CACHE_PREFIX + key);
-                    if (!itemStr) return null;
-                    try { return JSON.parse(itemStr).data; } catch (e) { return null; }
+                    return null; // 永遠回傳 null，強制重新載入
                 },
                 set(key, data) {
-                    try { localStorage.setItem(this.CACHE_PREFIX + key, JSON.stringify({ data })); } 
-                    catch (e) { console.error("儲存快取失敗", e); }
+                    // 不做任何事，不儲存到 localStorage
                 }
             };
 
@@ -301,8 +298,12 @@
                 else { infiniteLoader.classList.remove('hidden'); }
                 
                 try {
-                    const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                    const listResponse = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`);
+                    // *** FIX: 強制停用伺服器快取 ***
+                    const pttUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+                    const cacheBuster = url ? '' : `&t=${Date.now()}`; // 只在初次載入時加上時間戳
+                    const apiFetchUrl = `/api/scraper?board=${board}&list_url=${encodeURIComponent(pttUrl)}${cacheBuster}`;
+
+                    const listResponse = await fetch(apiFetchUrl);
                     if (!listResponse.ok) throw new Error(`請求列表失敗: ${listResponse.status}`);
                     const listData = await listResponse.json();
                     
@@ -317,7 +318,6 @@
                     state.prevPageUrl = listData.prev_page_url;
                     renderAndSortArticles();
 
-                    // 呼叫新的分塊處理函式
                     await fetchPreviewsInChunks(newArticles);
 
                 } catch (error) {
@@ -363,13 +363,13 @@
                 listView.classList.add('hidden'); detailView.classList.remove('hidden');
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-16 w-16"></div></div>';
                 history.pushState({view: 'detail'}, '', '#detail');
-                const cached = cache.get(article.link);
-                if (cached) { state.currentArticleImages = cached.images || []; return renderDetailContent(cached, article); }
+                
+                // 因為快取已停用，永遠重新抓取
                 try {
                     const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
                     if (!res.ok) throw new Error(`無法載入內文: ${res.status}`);
                     const data = await res.json();
-                    state.currentArticleImages = data.images || []; cache.set(article.link, data);
+                    state.currentArticleImages = data.images || [];
                     renderDetailContent(data, article);
                 } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-4">${e.message}</p>`; }
             }
@@ -442,7 +442,7 @@
                 } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; }
             });
             
-            clearCacheBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } let c = 0; for (const k in localStorage) { if (k.startsWith(cache.CACHE_PREFIX)) { localStorage.removeItem(k); c++; } } localStorage.removeItem('readArticles'); state.readArticles.clear(); showToast(`已清除 ${c} 筆快取與已讀記錄`); });
+            clearCacheBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } let c = 0; for (const k in localStorage) { if (k.startsWith(cache.CACHE_PREFIX)) { localStorage.removeItem(k); c++; } } localStorage.removeItem('readArticles'); state.readArticles.clear(); showToast(`已清除所有本地快取與已讀記錄`); });
 
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
