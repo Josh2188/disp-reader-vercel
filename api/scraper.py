@@ -23,12 +23,14 @@ COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif)$', re.IGNORECASE)
 
 def format_ptt_time(time_str):
-    """將 PTT 的英文時間戳轉換為 'YYYY/MM/DD HH:MM 星期X' 格式。"""
+    """將 PTT 的英文時間戳轉換為 'YYYY MM DD HH:mm 星期X' 格式。"""
     if not time_str:
         return None
     try:
+        # PTT 的時間格式是 'Wed Aug 16 21:13:44 2023'
         dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        return dt_obj.strftime('%Y/%m/%d %H:%M %A')
+        # 轉換為使用者要求的格式
+        return dt_obj.strftime('%Y %m %d %H:%M %A')
     except (ValueError, TypeError):
         return time_str
 
@@ -67,7 +69,13 @@ def get_article_preview_data(article_url):
             # 移除中繼資料和推文來產生摘要
             for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
                 tag.decompose()
-            snippet = main_content.get_text(strip=True)[:100] + "..."
+            
+            # 取得純文字並處理，如果開頭是圖片網址則忽略
+            full_text = main_content.get_text(strip=True)
+            if full_text.strip().startswith('http'):
+                 snippet = ""
+            else:
+                 snippet = full_text[:100] + "..."
 
         return {
             "thumbnail": first_image_url,
@@ -116,7 +124,7 @@ def process_article_item_basic(item, board):
             "board": board,
             "author": meta_tag.select_one('.author').get_text(strip=True) or '',
             "date": meta_tag.select_one('.date').get_text(strip=True) or '',
-            "push_count": push_count
+            "push_count": push_count,
         }
     except Exception as e:
         print(f"處理列表項目時發生未知錯誤: {e}")
