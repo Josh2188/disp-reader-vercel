@@ -6,11 +6,9 @@ from datetime import datetime
 import locale
 
 # Vercel 會將這個檔案當作一個獨立的 serverless function
-# Flask app instance is required by Vercel
 app = Flask(__name__)
 
 # --- 設定與常數 ---
-
 try:
     locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
 except locale.Error:
@@ -23,7 +21,6 @@ COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 
 # --- 核心函式 ---
-
 def format_ptt_time(time_str):
     if not time_str: return None
     try:
@@ -102,8 +99,8 @@ def proxy_image_download(proxy_url):
         return str(e), 502
 
 # --- API 路由 ---
-# Vercel 會將此檔案的 app instance 導向 /api/scraper
-@app.route('/api/scraper', methods=['GET'])
+# Vercel 透過檔案路徑處理 /api/scraper，Flask App 只需要處理根路徑 /
+@app.route('/', methods=['GET'])
 def handler():
     try:
         if 'proxy_url' in request.args:
@@ -116,4 +113,6 @@ def handler():
         initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
         return jsonify(fetch_ptt_article_list(board, initial_url))
     except Exception as e:
+        # 將詳細錯誤印在 Vercel 的日誌中，方便除錯
+        print(f"Error in /api/scraper: {e}")
         return jsonify({"error": str(e)}), 500

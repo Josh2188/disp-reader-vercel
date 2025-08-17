@@ -7,11 +7,9 @@ import locale
 import concurrent.futures
 
 # Vercel 會將這個檔案當作一個獨立的 serverless function
-# Flask app instance is required by Vercel
 app = Flask(__name__)
 
-# --- 設定與常數 (與 scraper.py 相同) ---
-
+# --- 設定與常數 ---
 try:
     locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
 except locale.Error:
@@ -23,8 +21,7 @@ HEADERS = {
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 
-# --- 核心函式 (與 scraper.py 相同) ---
-
+# --- 核心函式 ---
 def format_ptt_time(time_str):
     if not time_str: return None
     try:
@@ -37,7 +34,6 @@ def format_ptt_time(time_str):
         return time_str
 
 def get_article_preview_data(article_url):
-    """(可平行處理的任務) 獲取單篇文章的預覽資料。"""
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=8)
         response.raise_for_status()
@@ -67,10 +63,9 @@ def get_article_preview_data(article_url):
         return {"link": article_url, "thumbnail": None, "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
 
 # --- API 路由 ---
-# Vercel 會將此檔案的 app instance 導向 /api/previews
-@app.route('/api/previews', methods=['POST'])
+# Vercel 透過檔案路徑處理 /api/previews，Flask App 只需要處理根路徑 /
+@app.route('/', methods=['POST'])
 def handler():
-    """接收一個包含多個 URL 的列表，並行抓取它們的預覽資料。"""
     try:
         data = request.get_json()
         if not data or 'urls' not in data or not isinstance(data['urls'], list):
@@ -81,8 +76,9 @@ def handler():
             future_to_url = {executor.submit(get_article_preview_data, url): url for url in urls}
             for future in concurrent.futures.as_completed(future_to_url):
                 results.append(future.result())
-        # 為了確保順序，我們將結果依原始 urls 列表的順序重新排序
         ordered_results = sorted(results, key=lambda r: urls.index(r['link']))
         return jsonify(ordered_results)
     except Exception as e:
+        # 將詳細錯誤印在 Vercel 的日誌中，方便除錯
+        print(f"Error in /api/previews: {e}")
         return jsonify({"error": str(e)}), 500
