@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- === 禁止快取標籤 開始 === -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <!-- === 禁止快取標籤 結束 === -->
+
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
@@ -118,16 +125,17 @@
             let userId = null;
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
+            // 停用客戶端 JavaScript 快取
             const cache = {
                 get(key) {
                     return null;
                 },
                 set(key, data) {
+                    // 不執行任何操作
                 }
             };
 
             let state = {
-                // *** FIX: 預設看板改為八卦版 ***
                 currentBoard: 'Gossiping', 
                 prevPageUrl: null, 
                 isLoading: false, 
@@ -284,7 +292,10 @@
                     try {
                         const previewsResponse = await fetch('/api/previews', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'no-cache' // 確保請求本身不被快取
+                            },
                             body: JSON.stringify({ urls: chunk })
                         });
                         if (!previewsResponse.ok) {
@@ -307,6 +318,7 @@
                 
                 try {
                     const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+                    // 使用時間戳來防止快取
                     const cacheBuster = `&_=${new Date().getTime()}`;
                     const listResponse = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}${cacheBuster}`);
                     
@@ -371,6 +383,7 @@
                 history.pushState({view: 'detail'}, '', '#detail');
                 
                 try {
+                    // 使用時間戳來防止快取
                     const cacheBuster = `&_=${new Date().getTime()}`;
                     const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}${cacheBuster}`);
 
@@ -449,7 +462,14 @@
                 } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; }
             });
             
-            clearCacheBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } let c = 0; for (const k in localStorage) { if (k.startsWith('ptt-cache')) { localStorage.removeItem(k); c++; } } localStorage.removeItem('readArticles'); state.readArticles.clear(); showToast(`已清除 ${c} 筆舊快取與已讀記錄`); });
+            clearCacheBtn.addEventListener('click', () => {
+                // 清除 localStorage 中的已讀記錄
+                localStorage.removeItem('readArticles');
+                state.readArticles.clear();
+                // 重新渲染文章列表以移除已讀樣式
+                renderAndSortArticles();
+                showToast(`已清除已讀記錄`);
+            });
 
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
