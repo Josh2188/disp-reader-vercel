@@ -7,45 +7,61 @@ import locale
 
 app = Flask(__name__)
 
-# 設定時區以正確顯示中文星期
+# --- 設定與常數 ---
+
+# 嘗試設定台灣時區以正確顯示中文星期
 try:
     locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
 except locale.Error:
-    print("無法設定 zh_TW.UTF-8 locale，將使用預設值。")
+    print("警告: 無法設定 'zh_TW.UTF-8' locale，星期可能顯示為英文。")
 
-# 定義請求標頭和 cookies
+# 定義請求標頭和 cookies，模擬已登入使用者
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
 COOKIES = {'over18': '1'}
 
-# 圖片正則表達式
-IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif)$', re.IGNORECASE)
+# 用於匹配圖片連結的正規表示式
+IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
+
+# --- 核心函式 ---
 
 def format_ptt_time(time_str):
-    """將 PTT 的英文時間戳轉換為 'YYYY MM DD HH:mm 星期X' 格式。"""
+    """
+    將 PTT 的英文時間戳轉換為 'YYYY MM DD HH:mm 週X' 格式。
+    """
     if not time_str:
         return None
     try:
-        # PTT 的時間格式是 'Wed Aug 16 21:13:44 2023'
+        # PTT 原始時間格式範例: 'Wed Aug 16 21:13:44 2023'
         dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        # 轉換為使用者要求的格式
-        return dt_obj.strftime('%Y %m %d %H:%M %A')
+        
+        # 建立英文星期與中文星期的對應字典
+        weekday_map = {
+            'Monday': '週一', 'Tuesday': '週二', 'Wednesday': '週三',
+            'Thursday': '週四', 'Friday': '週五', 'Saturday': '週六', 'Sunday': '週日'
+        }
+        weekday_en = dt_obj.strftime('%A')
+        weekday_zh = weekday_map.get(weekday_en, '')
+        
+        # 組合出最終的格式
+        return dt_obj.strftime(f'%Y %m %d %H:%M {weekday_zh}')
     except (ValueError, TypeError):
+        # 如果格式解析失敗，回傳原始字串
         return time_str
 
-# *** FIX: 建立一個獨立的函式來抓取單篇文章的預覽資訊 ***
 def get_article_preview_data(article_url):
     """
-    獲取單篇文章的預覽資料，包括縮圖、時間和內文摘要。
-    增加了超時和錯誤處理。
+    (非同步任務) 獲取單篇文章的預覽資料，包括縮圖、精確時間和內文摘要。
+    增加了超時和錯誤處理，確保此函式不會輕易失敗。
     """
     try:
-        response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=5)
+        response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=8)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
+        # 提取精確時間
         timestamp = None
         meta_lines = soup.select('.article-metaline, .article-metaline-right')
         for line in meta_lines:
@@ -66,16 +82,19 @@ def get_article_preview_data(article_url):
                     first_image_url = href
                     break
             
-            # 移除中繼資料和推文來產生摘要
-            for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
+            # 移除所有不需要的元素以產生乾淨的內文摘要
+            for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style, a'):
+                if tag.name == 'a' and IMAGE_REGEX.search(tag.get('href', '')):
+                    continue # 保留圖片連結文字本身用於判斷
                 tag.decompose()
             
-            # 取得純文字並處理，如果開頭是圖片網址則忽略
+            # 取得純文字並處理
             full_text = main_content.get_text(strip=True)
-            if full_text.strip().startswith('http'):
+            # **修正：如果內文開頭是圖片網址，則不顯示預覽**
+            if full_text.strip().lower().startswith(('http://', 'https://')):
                  snippet = ""
             else:
-                 snippet = full_text[:100] + "..."
+                 snippet = full_text[:120] # 稍微增加預覽長度
 
         return {
             "thumbnail": first_image_url,
@@ -83,14 +102,14 @@ def get_article_preview_data(article_url):
             "snippet": snippet
         }
     except Exception as e:
-        print(f"獲取預覽失敗 {article_url}: {e}")
+        print(f"錯誤: 獲取預覽失敗 {article_url}: {e}")
         # 若出錯，回傳一個包含錯誤訊息的 JSON，讓前端知道
-        return {"error": str(e)}, 500
+        return {"error": str(e), "formatted_timestamp": "無法載入", "snippet": "無法載入預覽..."}, 500
 
 def process_article_item_basic(item, board):
     """
-    處理單個文章列表項目，僅從列表頁 HTML 中提取最基本的資訊。
-    這樣可以確保列表頁的請求極快且穩定。
+    (快速任務) 處理單個文章列表項目，僅提取最基本的資訊。
+    確保列表頁請求極快且穩定。
     """
     try:
         title_tag = item.select_one('.title a')
@@ -127,17 +146,17 @@ def process_article_item_basic(item, board):
             "push_count": push_count,
         }
     except Exception as e:
-        print(f"處理列表項目時發生未知錯誤: {e}")
+        print(f"錯誤: 處理列表項目時發生未知錯誤: {e}")
         return None
 
 def fetch_ptt_article_list(board, page_url):
-    """抓取 PTT 文章列表頁面 (優化版，不再抓取預覽)。"""
+    """(快速任務) 抓取 PTT 文章列表頁面。"""
     try:
         response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
         response.raise_for_status()
     except requests.exceptions.HTTPError as err:
         if err.response.status_code == 404:
-            print(f"找不到頁面 {page_url}，可能已達看板末頁。")
+            print(f"資訊: 找不到頁面 {page_url}，可能已達看板末頁。")
             return {"articles": [], "prev_page_url": None}
         raise
 
@@ -189,49 +208,59 @@ def fetch_ptt_article_content(article_url):
         "author_full": author_full, 
         "formatted_timestamp": format_ptt_time(timestamp),
         "content": content,
-        "images": list(dict.fromkeys(images)),
+        "images": list(dict.fromkeys(images)), # 移除重複圖片
     }
+
+def proxy_image_download(proxy_url):
+    """代理下載圖片，避免客戶端直接請求時遇到 CORS 或 referer 問題。"""
+    try:
+        req = requests.get(proxy_url, stream=True, headers=HEADERS, timeout=20)
+        req.raise_for_status()
+        filename = proxy_url.split('/')[-1].split('?')[0] or 'download'
+        return Response(stream_with_context(req.iter_content(chunk_size=8192)),
+                        content_type=req.headers.get('content-type'),
+                        headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    except requests.exceptions.RequestException as e:
+        print(f"錯誤: 代理圖片失敗 {proxy_url}: {e}")
+        return str(e), 502
+
+# --- API 路由 ---
 
 @app.route('/api/scraper', methods=['GET'])
 def scraper_endpoint():
-    """API 端點，根據參數決定抓取列表、內文、預覽或代理圖片。"""
+    """
+    統一的 API 端點，根據 URL 參數執行不同任務：
+    - ?proxy_url=...  : 代理圖片下載
+    - ?preview_url=... : 獲取單篇文章預覽
+    - ?list_url=...   : 獲取文章列表
+    - ?article_url=... : 獲取文章內文
+    - ?board=...      : 獲取看板首頁列表
+    """
     try:
-        proxy_url = request.args.get('proxy_url')
-        if proxy_url:
-            try:
-                req = requests.get(proxy_url, stream=True, headers=HEADERS, timeout=20)
-                req.raise_for_status()
-                filename = proxy_url.split('/')[-1].split('?')[0] or 'download'
-                return Response(stream_with_context(req.iter_content(chunk_size=8192)),
-                                content_type=req.headers.get('content-type'),
-                                headers={'Content-Disposition': f'attachment; filename="{filename}"'})
-            except requests.exceptions.RequestException as e:
-                print(f"代理圖片失敗 {proxy_url}: {e}")
-                return str(e), 502
+        if 'proxy_url' in request.args:
+            return proxy_image_download(request.args.get('proxy_url'))
 
-        # 新增處理單一文章預覽請求的邏輯
-        preview_url = request.args.get('preview_url')
-        if preview_url:
-            data = get_article_preview_data(preview_url)
+        if 'preview_url' in request.args:
+            data = get_article_preview_data(request.args.get('preview_url'))
             return jsonify(data)
 
         board = request.args.get('board', 'Beauty')
-        list_url = request.args.get('list_url')
-        article_url = request.args.get('article_url')
         
-        if list_url:
-            data = fetch_ptt_article_list(board, list_url)
+        if 'list_url' in request.args:
+            data = fetch_ptt_article_list(board, request.args.get('list_url'))
             return jsonify(data)
-        elif article_url:
-            data = fetch_ptt_article_content(article_url)
+        
+        if 'article_url' in request.args:
+            data = fetch_ptt_article_content(request.args.get('article_url'))
             return jsonify(data)
-        else:
-            initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
-            data = fetch_ptt_article_list(board, initial_url)
-            return jsonify(data)
+        
+        # 預設行為：抓取看板首頁
+        initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
+        data = fetch_ptt_article_list(board, initial_url)
+        return jsonify(data)
             
     except Exception as e:
-        print(f"處理請求時發生錯誤: {e}")
+        print(f"錯誤: 處理請求時發生嚴重錯誤: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
