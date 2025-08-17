@@ -3,13 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- === 禁止快取標籤 開始 === -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <!-- === 禁止快取標籤 結束 === -->
-
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
@@ -36,6 +29,31 @@
         #image-next-btn { right: 16px; }
         #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s ease-in-out; z-index: 100; }
         #toast-notification.show { bottom: 20px; }
+        /* === 新增縮圖樣式 === */
+        .thumbnail-container {
+            width: 96px; /* 24 * 4 */
+            height: 96px;
+            flex-shrink: 0;
+            display: flex;
+            gap: 2px;
+            overflow: hidden;
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        .thumbnail-container.single-img .img-wrapper {
+            width: 100%;
+        }
+        .thumbnail-container.double-img .img-wrapper {
+            width: 50%;
+        }
+        .thumbnail-container .img-wrapper {
+            height: 100%;
+            overflow: hidden;
+        }
+        .thumbnail-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -125,13 +143,31 @@
             let userId = null;
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
-            // 停用客戶端 JavaScript 快取
+            // === 重新啟用 7 天快取機制 ===
             const cache = {
                 get(key) {
-                    return null;
+                    const itemStr = localStorage.getItem(key);
+                    if (!itemStr) return null;
+                    try {
+                        const item = JSON.parse(itemStr);
+                        const now = new Date();
+                        if (now.getTime() > item.expiry) {
+                            localStorage.removeItem(key);
+                            return null;
+                        }
+                        return item.data;
+                    } catch (e) {
+                        localStorage.removeItem(key);
+                        return null;
+                    }
                 },
                 set(key, data) {
-                    // 不執行任何操作
+                    const now = new Date();
+                    const item = {
+                        data: data,
+                        expiry: now.getTime() + 7 * 24 * 60 * 60 * 1000, // 7 days
+                    };
+                    localStorage.setItem(key, JSON.stringify(item));
                 }
             };
 
@@ -227,32 +263,44 @@
             function updateFavoriteIcon(isFav) { if(auth.currentUser && !auth.currentUser.isAnonymous) headerFavoriteBtn.querySelector('svg').classList.toggle('fill-pink-500', isFav); }
 
             function renderArticles(articleData) {
+                const fragment = document.createDocumentFragment();
+                articleData.forEach(article => fragment.appendChild(createListItem(article)));
                 articlesList.innerHTML = '';
-                if (articleData.length === 0) {
-                    articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">${state.viewingFavorites ? '尚未收藏任何文章' : '沒有文章'}</p>`;
-                } else {
-                    const fragment = document.createDocumentFragment();
-                    articleData.forEach(article => fragment.appendChild(createListItem(article)));
-                    articlesList.appendChild(fragment);
-                }
+                articlesList.appendChild(fragment);
             }
             
             function getPushCountBgClass(c) { if (c === '爆') return 'bg-red-500'; if (typeof c === 'number' && c >= 50) return 'bg-yellow-500'; if (typeof c === 'number' && c >= 10) return 'bg-green-500'; if (typeof c === 'string' && c.startsWith('X')) return 'bg-gray-500'; return 'bg-blue-500'; }
 
+            // === 全面修改：智慧縮圖列表項目 ===
             function createListItem(article) {
                 const item = document.createElement('div');
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${state.readArticles.has(article.link) ? 'opacity-60' : ''}`;
                 item.dataset.link = article.link;
+
                 const pushHTML = article.push_count ? `<span class="ml-2 inline-block ${getPushCountBgClass(article.push_count)} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${article.push_count}</span>` : '';
+                const timestampText = article.formatted_timestamp ? `${article.author} - ${article.formatted_timestamp}` : `${article.author} - ${article.date}`;
+                const snippetText = article.snippet || '';
+
+                let thumbnailHTML = '';
+                const hasThumbnails = article.thumbnails && article.thumbnails.length > 0;
+                if (hasThumbnails) {
+                    const containerClass = article.thumbnails.length === 1 ? 'single-img' : 'double-img';
+                    const imagesHTML = article.thumbnails.map(url => `
+                        <div class="img-wrapper">
+                            <img src="${url}" alt="thumbnail" loading="lazy" onerror="this.parentElement.style.display='none';">
+                        </div>
+                    `).join('');
+                    thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-container ${containerClass}">${imagesHTML}</div>`;
+                }
+
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushHTML}</h3>
-                        <p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
-                        <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2"></p>
+                        <p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${timestampText}</p>
+                        <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${snippetText}</p>
                     </div>
-                    <div data-thumbnail-for="${article.link}" class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
-                        <svg class="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 010-2.828L14 8" /></svg>
-                    </div>`;
+                    ${thumbnailHTML}`;
+
                 item.addEventListener('click', () => {
                     const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link);
                     if (a) showDetailView(a);
@@ -263,27 +311,23 @@
             function updatePreviewsUI(previews) {
                 previews.forEach(previewData => {
                     const articleInState = state.allArticles.find(a => a.link === previewData.link);
-                    if (articleInState) Object.assign(articleInState, previewData);
-                    
-                    const timestampEl = document.querySelector(`[data-timestamp-for="${previewData.link}"]`);
-                    const snippetEl = document.querySelector(`[data-snippet-for="${previewData.link}"]`);
-                    const thumbnailContainerEl = document.querySelector(`[data-thumbnail-for="${previewData.link}"]`);
-
-                    if (timestampEl && articleInState) timestampEl.textContent = `${articleInState.author} - ${previewData.formatted_timestamp}`;
-                    if (snippetEl) snippetEl.textContent = previewData.snippet || '';
-                    if (thumbnailContainerEl) {
-                        if (previewData.thumbnail) {
-                            thumbnailContainerEl.innerHTML = `<img src="${previewData.thumbnail}" alt="thumbnail" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none';">`;
-                        } else {
-                            thumbnailContainerEl.style.display = 'none';
+                    if (articleInState) {
+                        Object.assign(articleInState, previewData);
+                        const existingItem = articlesList.querySelector(`[data-link="${previewData.link}"]`);
+                        if (existingItem) {
+                            const newItem = createListItem(articleInState);
+                            existingItem.replaceWith(newItem);
                         }
                     }
                 });
             }
 
             async function fetchPreviewsInChunks(articles) {
+                const articlesToFetch = articles.filter(a => typeof a.snippet === 'undefined');
+                if (articlesToFetch.length === 0) return;
+
                 const CHUNK_SIZE = 5;
-                const articleLinks = articles.map(a => a.link);
+                const articleLinks = articlesToFetch.map(a => a.link);
 
                 for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) {
                     const chunk = articleLinks.slice(i, i + CHUNK_SIZE);
@@ -292,16 +336,10 @@
                     try {
                         const previewsResponse = await fetch('/api/previews', {
                             method: 'POST',
-                            headers: { 
-                                'Content-Type': 'application/json',
-                                'Cache-Control': 'no-cache' // 確保請求本身不被快取
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ urls: chunk })
                         });
-                        if (!previewsResponse.ok) {
-                            console.error(`批次請求預覽失敗 (Chunk ${i / CHUNK_SIZE})`);
-                            continue;
-                        }
+                        if (!previewsResponse.ok) continue;
                         const previewsData = await previewsResponse.json();
                         updatePreviewsUI(previewsData);
                     } catch (error) {
@@ -310,40 +348,63 @@
                 }
             }
 
+            // === 修改：實現 Stale-While-Revalidate 快取策略 ===
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
                 state.isLoading = true;
-                if (!append) { state.allArticles = []; articlesList.innerHTML = ''; listError.classList.add('hidden'); showSkeleton(); } 
-                else { infiniteLoader.classList.remove('hidden'); }
-                
+                listError.classList.add('hidden');
+
+                const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+                const cacheKey = `ptt-cache-${board}`;
+
+                // 1. 處理非附加載入時的快取
+                if (!append) {
+                    articlesList.innerHTML = '';
+                    const cachedData = cache.get(cacheKey);
+                    if (cachedData && cachedData.articles) {
+                        state.allArticles = cachedData.articles;
+                        state.prevPageUrl = cachedData.prevPageUrl;
+                        renderAndSortArticles();
+                        fetchPreviewsInChunks(state.allArticles); // 為快取資料抓取預覽
+                    } else {
+                        showSkeleton();
+                    }
+                } else {
+                    infiniteLoader.classList.remove('hidden');
+                }
+
+                // 2. 永遠從網路抓取最新資料
                 try {
-                    const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                    // 使用時間戳來防止快取
-                    const cacheBuster = `&_=${new Date().getTime()}`;
-                    const listResponse = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}${cacheBuster}`);
-                    
-                    if (!listResponse.ok) throw new Error(`請求列表失敗: ${listResponse.status}`);
-                    const listData = await listResponse.json();
+                    const res = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`);
+                    if (!res.ok) throw new Error(`請求列表失敗: ${res.status}`);
+                    const listData = await res.json();
                     
                     const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
-                    if(newArticles.length === 0) {
-                        if(!append) articlesList.innerHTML = `<p class="p-4 text-center text-gray-500">此看板沒有文章</p>`;
-                        state.prevPageUrl = null;
-                        return;
+
+                    if (append) {
+                        state.allArticles.push(...newArticles);
+                    } else {
+                        state.allArticles = newArticles;
+                    }
+                    
+                    state.prevPageUrl = listData.prev_page_url;
+                    
+                    renderAndSortArticles();
+                    fetchPreviewsInChunks(newArticles);
+
+                    // 3. 更新快取
+                    if (!append) {
+                       cache.set(cacheKey, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
                     }
 
-                    state.allArticles.push(...newArticles);
-                    state.prevPageUrl = listData.prev_page_url;
-                    renderAndSortArticles();
-
-                    await fetchPreviewsInChunks(newArticles);
-
                 } catch (error) {
-                    listErrorText.textContent = error.message;
-                    listError.classList.remove('hidden');
+                    if (!append) { // 只有在首次載入失敗時才顯示錯誤
+                        listErrorText.textContent = error.message;
+                        listError.classList.remove('hidden');
+                    }
                 } finally {
                     state.isLoading = false;
-                    if (!append) hideSkeleton();
+                    hideSkeleton();
                     infiniteLoader.classList.add('hidden');
                 }
             }
@@ -354,7 +415,9 @@
                 let articles = state.viewingFavorites ? [...state.favorites] : [...state.allArticles];
                 const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link));
                 articles = articles.filter(a => !dislikedLinks.has(a.link));
-                if (state.sortBy === 'hot') articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count));
+                if (state.sortBy === 'hot') {
+                    articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count));
+                }
                 renderArticles(articles);
             }
             
@@ -383,10 +446,7 @@
                 history.pushState({view: 'detail'}, '', '#detail');
                 
                 try {
-                    // 使用時間戳來防止快取
-                    const cacheBuster = `&_=${new Date().getTime()}`;
-                    const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}${cacheBuster}`);
-
+                    const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
                     if (!res.ok) throw new Error(`無法載入內文: ${res.status}`);
                     const data = await res.json();
                     state.currentArticleImages = data.images || []; 
@@ -417,7 +477,13 @@
                 }
             });
 
-            articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.viewingFavorites) return; const { scrollTop, scrollHeight, clientHeight } = articlesList; if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); });
+            articlesList.addEventListener('scroll', () => { 
+                if (state.isLoading || !state.prevPageUrl || state.viewingFavorites) return; 
+                const { scrollTop, scrollHeight, clientHeight } = articlesList; 
+                if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    loadArticles(state.currentBoard, state.prevPageUrl, true);
+                }
+            });
 
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
             detailContent.addEventListener('click', e => { if (e.target.classList.contains('article-image')) { const idx = state.currentArticleImages.indexOf(e.target.src); if (idx > -1) openImageModal(idx); } });
@@ -463,12 +529,15 @@
             });
             
             clearCacheBtn.addEventListener('click', () => {
-                // 清除 localStorage 中的已讀記錄
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('ptt-cache-')) {
+                        localStorage.removeItem(key);
+                    }
+                });
                 localStorage.removeItem('readArticles');
                 state.readArticles.clear();
-                // 重新渲染文章列表以移除已讀樣式
                 renderAndSortArticles();
-                showToast(`已清除已讀記錄`);
+                showToast(`已清除所有快取與已讀記錄`);
             });
 
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
