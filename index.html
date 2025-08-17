@@ -175,7 +175,7 @@
                 pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [],
                 currentImageIndex: 0, allArticles: [], sortBy: 'time', 
                 viewingFavorites: false, infiniteScrollRetries: 0,
-                retryTimer: null, // === 新增：管理重試計時器 ===
+                retryTimer: null,
             };
             const MAX_RETRIES = 10;
 
@@ -310,7 +310,7 @@
                     </div>
                     ${thumbnailHTML}`;
                 item.addEventListener('click', () => {
-                    cancelRetry(); // === 新增：點擊文章時取消重試 ===
+                    cancelRetry();
                     const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link);
                     if (a) showDetailView(a);
                 });
@@ -350,7 +350,6 @@
                 }
             }
             
-            // === 新增：取消重試的函式 ===
             function cancelRetry() {
                 if (state.retryTimer) {
                     clearTimeout(state.retryTimer);
@@ -358,7 +357,7 @@
                 }
                 state.infiniteScrollRetries = 0;
                 retryIndicator.classList.remove('show');
-                state.isLoading = false; // 立即解鎖
+                state.isLoading = false;
             }
 
             async function loadArticles(board, url = null, append = false) {
@@ -366,12 +365,10 @@
                 state.isLoading = true;
                 listError.classList.add('hidden');
 
-                const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                const cacheKey = `ptt-cache-${board}`;
-
                 if (!append) {
+                    cancelRetry(); // 新載入時取消任何舊的重試
                     articlesList.innerHTML = '';
-                    const cachedData = cache.get(cacheKey);
+                    const cachedData = cache.get(`ptt-cache-${board}`);
                     if (cachedData && cachedData.articles) {
                         state.allArticles = cachedData.articles;
                         state.prevPageUrl = cachedData.prevPageUrl;
@@ -385,34 +382,32 @@
                 }
 
                 try {
+                    const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
                     const res = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`);
                     if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const listData = await res.json();
                     
                     const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
-                    
-                    if (append && newArticles.length === 0 && !listData.prev_page_url) {
+                    const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set();
+                    const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles;
+
+                    if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) {
                         throw new Error("頁面載入不完整");
                     }
 
-                    if (append) {
-                        state.infiniteScrollRetries = 0;
-                        retryIndicator.classList.remove('show');
-                    }
+                    cancelRetry();
                     
                     if (append) {
-                        const existingLinks = new Set(state.allArticles.map(a => a.link));
-                        const uniqueNewArticles = newArticles.filter(a => !existingLinks.has(a.link));
                         state.allArticles.push(...uniqueNewArticles);
                     } else {
-                        state.allArticles = newArticles;
+                        state.allArticles = uniqueNewArticles;
                     }
                     
                     state.prevPageUrl = listData.prev_page_url;
                     renderAndSortArticles();
-                    fetchPreviewsInChunks(newArticles);
+                    fetchPreviewsInChunks(uniqueNewArticles);
 
-                    if (!append) cache.set(cacheKey, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
+                    if (!append) cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
                     state.isLoading = false;
 
                 } catch (error) {
@@ -426,10 +421,9 @@
                                 loadArticles(board, url, true);
                             }, 5000);
                         } else {
-                            retryMessage.textContent = '自動重試失敗，請稍後再試';
+                            retryMessage.textContent = '自動重試失敗';
                             setTimeout(() => retryIndicator.classList.remove('show'), 3000);
-                            state.infiniteScrollRetries = 0;
-                            state.isLoading = false; 
+                            cancelRetry();
                         }
                     } else {
                         listErrorText.textContent = error.message;
