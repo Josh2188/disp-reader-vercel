@@ -376,6 +376,11 @@
                     if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const listData = await res.json();
                     
+                    // === 修正：加入更可靠的重試觸發條件 ===
+                    if (append && newArticles.length === 0 && !listData.prev_page_url) {
+                        throw new Error("頁面載入不完整，可能是 PTT 暫時性問題。");
+                    }
+
                     if (append) {
                         state.infiniteScrollRetries = 0;
                         retryIndicator.classList.remove('show');
