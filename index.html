@@ -112,7 +112,6 @@
                 
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
                     <button id="header-dislike-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="不喜歡">
-                        <!-- *** FIX: 更換為正確的倒讚圖示 *** -->
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M7.498 15.002H5.25a2.25 2.25 0 01-2.25-2.25v-5.25a2.25 2.25 0 012.25-2.25h2.248V15.002zm2.25-10.5h-2.25V4.5a2.25 2.25 0 012.25-2.25h2.248c.621 0 1.218.25 1.658.69l3.75 3.75c.44.44.69 1.037.69 1.658V15.002a2.25 2.25 0 01-2.25 2.25h-2.25v-5.25a2.25 2.25 0 00-2.25-2.25h-2.25V4.502z" />
                         </svg>
@@ -200,19 +199,13 @@
             // --- 本地快取 & 狀態管理 ---
             const cache = {
                 CACHE_PREFIX: 'ptt-cache-',
-                EXPIRATION_DAYS: 7,
+                // *** FIX: 移除快取天數限制 ***
                 get(key) {
                     const fullKey = this.CACHE_PREFIX + key;
                     const itemStr = localStorage.getItem(fullKey);
                     if (!itemStr) return null;
                     try {
                         const item = JSON.parse(itemStr);
-                        const now = new Date();
-                        const expirationTime = this.EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-                        if (now.getTime() > item.timestamp + expirationTime) {
-                            localStorage.removeItem(fullKey);
-                            return null;
-                        }
                         return item.data;
                     } catch (e) {
                         localStorage.removeItem(fullKey);
@@ -221,7 +214,7 @@
                 },
                 set(key, data) {
                     const fullKey = this.CACHE_PREFIX + key;
-                    const item = { data: data, timestamp: new Date().getTime() };
+                    const item = { data: data }; // 移除 timestamp
                     try {
                         localStorage.setItem(fullKey, JSON.stringify(item));
                     } catch (e) { console.error("儲存快取失败", e); }
@@ -445,7 +438,7 @@
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
                         <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushCountHTML}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
+                        <p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${article.author} - ${article.date}</p>
                         <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2"></p>
                     </div>
                     <div data-thumbnail-for="${article.link}" class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
@@ -473,9 +466,13 @@
                     }
                     
                     // 更新 DOM
+                    const timestampEl = document.querySelector(`[data-timestamp-for="${article.link}"]`);
                     const snippetEl = document.querySelector(`[data-snippet-for="${article.link}"]`);
                     const thumbnailContainerEl = document.querySelector(`[data-thumbnail-for="${article.link}"]`);
 
+                    if (timestampEl && previewData.formatted_timestamp) {
+                        timestampEl.textContent = `${article.author} - ${previewData.formatted_timestamp}`;
+                    }
                     if (snippetEl) {
                         snippetEl.textContent = previewData.snippet || '';
                     }
