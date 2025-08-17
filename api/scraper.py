@@ -19,7 +19,7 @@ HEADERS = {
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 
-# --- 核心函式 (與之前相同) ---
+# --- 核心函式 ---
 def format_ptt_time(time_str):
     if not time_str: return None
     try:
@@ -95,6 +95,25 @@ class handler(BaseHTTPRequestHandler):
         error = None
 
         try:
+            if 'proxy_url' in query_params:
+                # 代理圖片請求，讓瀏覽器自行決定快取策略
+                image_url = query_params['proxy_url'][0]
+                response = requests.get(image_url, timeout=20, stream=True)
+                response.raise_for_status()
+                
+                self.send_response(200)
+                # 轉發原始圖片的 Content-Type
+                if 'Content-Type' in response.headers:
+                    self.send_header('Content-Type', response.headers['Content-Type'])
+                # 讓瀏覽器快取圖片一天
+                self.send_header('Cache-Control', 'public, max-age=86400')
+                self.end_headers()
+                
+                # 流式傳輸圖片內容
+                for chunk in response.iter_content(chunk_size=8192):
+                    self.wfile.write(chunk)
+                return
+
             if 'list_url' in query_params:
                 board = query_params.get('board', ['Beauty'])[0]
                 list_url = query_params['list_url'][0]
@@ -114,6 +133,10 @@ class handler(BaseHTTPRequestHandler):
 
         self.send_response(500 if error else 200)
         self.send_header('Content-type', 'application/json')
+        # === 加入禁止快取標頭 ===
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
         return
