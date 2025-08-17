@@ -395,6 +395,7 @@
                     fetchPreviewsInChunks(newArticles);
 
                     if (!append) cache.set(cacheKey, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
+                    state.isLoading = false;
 
                 } catch (error) {
                     if (append) {
@@ -418,9 +419,6 @@
                         state.isLoading = false;
                     }
                 } finally {
-                    if (!append || state.infiniteScrollRetries === 0 || state.infiniteScrollRetries > MAX_RETRIES) {
-                       state.isLoading = false;
-                    }
                     hideSkeleton();
                     infiniteLoader.classList.add('hidden');
                 }
