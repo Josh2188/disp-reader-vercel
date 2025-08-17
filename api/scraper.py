@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -18,6 +18,7 @@ HEADERS = {
 }
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
+YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
 # --- 核心函式 ---
 def format_ptt_time(time_str):
@@ -66,12 +67,15 @@ def fetch_ptt_article_list(board, page_url):
     prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
     return {"articles": article_list, "prev_page_url": prev_page_url}
 
+# === 修改：抓取推文、簽名檔等完整資訊 ===
 def fetch_ptt_article_content(article_url):
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'lxml')
     main_content = soup.select_one('#main-content')
     if not main_content: raise Exception("找不到主要內容區塊。")
+    
+    # 提取作者、時間等 meta 資訊
     author_full, timestamp = '', ''
     for line in main_content.select('.article-metaline, .article-metaline-right'):
         if line.select_one('.article-meta-tag'):
@@ -80,25 +84,69 @@ def fetch_ptt_article_content(article_url):
             if tag == '作者': author_full = value
             elif tag == '時間': timestamp = value
         line.decompose()
-    for p in main_content.select('.push, span.f2, script, style'): p.decompose()
-    images = [link.get('href') for link in main_content.select('a') if link.get('href') and IMAGE_REGEX.search(link.get('href'))]
-    for br in main_content.find_all("br"): br.replace_with("\n")
-    content = main_content.get_text().strip()
-    return {"author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images))}
+
+    # 提取推文
+    pushes = []
+    for push in main_content.select('.push'):
+        push_tag_span = push.select_one('.push-tag')
+        push_userid_span = push.select_one('.push-userid')
+        push_content_span = push.select_one('.push-content')
+        push_ipdatetime_span = push.select_one('.push-ipdatetime')
+
+        pushes.append({
+            "tag": push_tag_span.get_text(strip=True) if push_tag_span else '',
+            "user": push_userid_span.get_text(strip=True) if push_userid_span else '',
+            "content": push_content_span.get_text(strip=True) if push_content_span else '',
+            "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else ''
+        })
+        push.decompose()
+
+    # 提取圖片和影片連結
+    images = []
+    videos = []
+    for link in main_content.select('a'):
+        href = link.get('href', '')
+        if IMAGE_REGEX.search(href):
+            images.append(href)
+        else:
+            yt_match = YOUTUBE_REGEX.search(href)
+            if yt_match:
+                videos.append({"id": yt_match.group(1), "url": href})
+
+    # 清理剩餘標籤並提取內文
+    for tag in main_content.select('span.f2, script, style'):
+        tag.decompose()
+        
+    for br in main_content.find_all("br"):
+        br.replace_with("\n")
+        
+    full_text = main_content.get_text()
+    
+    # 分離內文和簽名檔
+    content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
+    content = content_parts[0].strip()
+    
+    return {
+        "author_full": author_full, 
+        "formatted_timestamp": format_ptt_time(timestamp), 
+        "content": content, 
+        "images": list(dict.fromkeys(images)),
+        "videos": list({v['id']: v for v in videos}.values()), # 去重
+        "pushes": pushes
+    }
 
 # --- Vercel 的 Serverless Function 入口 ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urlparse(self.path)
-        query_params = parse_qs(parsed_path.query)
+        # 使用 unquote 來解碼 URL 百分比編碼
+        query_params = parse_qs(unquote(parsed_path.query))
         data = {}
         error = None
 
         try:
-            # === 新增：圖片代理功能，解決 Mixed Content 問題 ===
             if 'proxy_url' in query_params:
                 image_url = query_params['proxy_url'][0]
-                # 將可能的 http 換成 https
                 if image_url.startswith('http://'):
                     image_url = image_url.replace('http://', 'https://', 1)
                 
@@ -108,7 +156,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 if 'Content-Type' in response.headers:
                     self.send_header('Content-Type', response.headers['Content-Type'])
-                self.send_header('Cache-Control', 'public, max-age=604800') # 圖片快取 7 天
+                self.send_header('Cache-Control', 'public, max-age=604800')
                 self.end_headers()
                 
                 for chunk in response.iter_content(chunk_size=8192):

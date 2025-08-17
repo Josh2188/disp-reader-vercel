@@ -18,6 +18,8 @@ HEADERS = {
 }
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
+# === 新增：YouTube 連結正則表達式 ===
+YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
 # --- 核心函式 ---
 def format_ptt_time(time_str):
@@ -31,6 +33,7 @@ def format_ptt_time(time_str):
     except (ValueError, TypeError):
         return time_str
 
+# === 修改：優先抓取 YouTube 縮圖 ===
 def get_article_preview_data(article_url):
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=8)
@@ -42,26 +45,36 @@ def get_article_preview_data(article_url):
                 timestamp = line.select_one('.article-meta-value').get_text(strip=True)
                 break
         
-        # === 修改：只抓取第一張圖片 ===
-        first_image_url, snippet = None, ""
+        thumbnail_url, snippet = None, ""
         main_content = soup.select_one('#main-content')
         if main_content:
+            # 優先尋找 YouTube 連結
             for link in main_content.select('a'):
                 href = link.get('href', '')
-                if href and IMAGE_REGEX.search(href):
-                    first_image_url = href
-                    break # 找到第一張就停止
+                yt_match = YOUTUBE_REGEX.search(href)
+                if yt_match:
+                    video_id = yt_match.group(1)
+                    thumbnail_url = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+                    break
+            
+            # 如果沒有 YouTube 連結，再找第一張圖片
+            if not thumbnail_url:
+                for link in main_content.select('a'):
+                    href = link.get('href', '')
+                    if href and IMAGE_REGEX.search(href):
+                        thumbnail_url = href
+                        break
 
+            # 提取文字摘要
             for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style, a'):
-                if tag.name == 'a' and IMAGE_REGEX.search(tag.get('href', '')):
+                if tag.name == 'a' and (IMAGE_REGEX.search(tag.get('href', '')) or YOUTUBE_REGEX.search(tag.get('href', ''))):
                     continue
                 tag.decompose()
             full_text = main_content.get_text(strip=True)
             if not full_text.strip().lower().startswith(('http://', 'https://')):
                  snippet = full_text[:120]
         
-        # === 修改：回傳單一 thumbnail 字串 ===
-        return {"link": article_url, "thumbnail": first_image_url, "formatted_timestamp": format_ptt_time(timestamp), "snippet": snippet, "error": None}
+        return {"link": article_url, "thumbnail": thumbnail_url, "formatted_timestamp": format_ptt_time(timestamp), "snippet": snippet, "error": None}
     except Exception as e:
         return {"link": article_url, "thumbnail": None, "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
 
