@@ -59,7 +59,8 @@ def fetch_ptt_article_list(board, page_url):
         if err.response.status_code == 404:
             return {"articles": [], "prev_page_url": None}
         raise
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # *** FIX: 明確使用 lxml 解析器 ***
+    soup = BeautifulSoup(response.text, 'lxml')
     articles_tags = soup.select('div.r-ent')
     article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
     article_list.reverse()
@@ -70,7 +71,8 @@ def fetch_ptt_article_list(board, page_url):
 def fetch_ptt_article_content(article_url):
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
     response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # *** FIX: 明確使用 lxml 解析器 ***
+    soup = BeautifulSoup(response.text, 'lxml')
     main_content = soup.select_one('#main-content')
     if not main_content: raise Exception("找不到主要內容區塊。")
     author_full, timestamp = '', ''
@@ -99,7 +101,6 @@ def proxy_image_download(proxy_url):
         return str(e), 502
 
 # --- API 路由 ---
-# Vercel 透過檔案路徑處理 /api/scraper，Flask App 只需要處理根路徑 /
 @app.route('/', methods=['GET'])
 def handler():
     try:
@@ -113,6 +114,5 @@ def handler():
         initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
         return jsonify(fetch_ptt_article_list(board, initial_url))
     except Exception as e:
-        # 將詳細錯誤印在 Vercel 的日誌中，方便除錯
         print(f"Error in /api/scraper: {e}")
         return jsonify({"error": str(e)}), 500

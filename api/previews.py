@@ -37,7 +37,8 @@ def get_article_preview_data(article_url):
     try:
         response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=8)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        # *** FIX: 明確使用 lxml 解析器 ***
+        soup = BeautifulSoup(response.text, 'lxml')
         timestamp = None
         for line in soup.select('.article-metaline, .article-metaline-right'):
             if line.select_one('.article-meta-tag') and line.select_one('.article-meta-tag').get_text(strip=True) == '時間':
@@ -63,7 +64,6 @@ def get_article_preview_data(article_url):
         return {"link": article_url, "thumbnail": None, "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
 
 # --- API 路由 ---
-# Vercel 透過檔案路徑處理 /api/previews，Flask App 只需要處理根路徑 /
 @app.route('/', methods=['POST'])
 def handler():
     try:
@@ -79,6 +79,5 @@ def handler():
         ordered_results = sorted(results, key=lambda r: urls.index(r['link']))
         return jsonify(ordered_results)
     except Exception as e:
-        # 將詳細錯誤印在 Vercel 的日誌中，方便除錯
         print(f"Error in /api/previews: {e}")
         return jsonify({"error": str(e)}), 500
