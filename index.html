@@ -43,58 +43,34 @@
             pointer-events: none;
         }
         #retry-indicator.show { opacity: 1; }
-        /* === 新增：推文樣式 === */
-        .push { display: flex; margin-bottom: 0.5rem; font-size: 0.875rem; }
+        /* === 修改後推文樣式 === */
+        .push { display: flex; flex-wrap: wrap; margin-bottom: 0.75rem; font-size: 0.875rem; line-height: 1.5; }
+        .push-main { display: flex; width: 100%; align-items: baseline; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
-        .push-tag-推 { color: #22c55e; } /* green-500 */
-        .push-tag-噓 { color: #ef4444; } /* red-500 */
-        .push-tag-→ { color: #6b7280; } /* gray-500 */
-        .dark .push-tag-→ { color: #9ca3af; } /* dark:gray-400 */
-        .push-userid { font-weight: 600; margin-right: 0.5rem; color: #3b82f6; } /* blue-500 */
-        .dark .push-userid { color: #60a5fa; } /* dark:blue-400 */
+        .push-tag-推 { color: #22c55e; }
+        .push-tag-噓 { color: #ef4444; }
+        .push-tag-→ { color: #6b7280; }
+        .dark .push-tag-→ { color: #9ca3af; }
+        .push-userid { font-weight: 600; margin-right: 0.5rem; color: #3b82f6; }
+        .dark .push-userid { color: #60a5fa; }
         .push-content { flex-grow: 1; word-break: break-all; }
-        .push-time { margin-left: 0.5rem; color: #6b7280; flex-shrink: 0; }
-        .dark .push-time { color: #9ca3af; }
-        /* === 新增：YouTube 影片樣式 === */
+        .push-time { width: 100%; text-align: right; font-size: 0.75rem; color: #9ca3af; margin-top: 0.125rem; }
+        .dark .push-time { color: #6b7280; }
+        /* === 媒體樣式 === */
         .youtube-container {
-            position: relative;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
-            height: 0;
-            overflow: hidden;
-            max-width: 100%;
-            background: #000;
-            margin: 1rem 0;
+            position: relative; padding-bottom: 56.25%; height: 0;
+            overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem;
         }
-        .youtube-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        .youtube-thumbnail {
-            cursor: pointer;
-            position: relative;
-            display: block;
-        }
+        .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .youtube-thumbnail { cursor: pointer; position: relative; display: block; }
         .youtube-thumbnail::after {
-            content: '▶';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 3rem;
-            color: white;
-            background-color: rgba(0,0,0,0.5);
-            width: 60px;
-            height: 42px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            line-height: 42px;
-            padding-left: 5px;
+            content: '▶'; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 3rem; color: white;
+            background-color: rgba(0,0,0,0.5); width: 60px; height: 42px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px; line-height: 42px; padding-left: 5px;
         }
+        .article-image { cursor: pointer; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -112,6 +88,10 @@
                         <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="我的最愛"><svg id="fav-icon-outline" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg><svg id="fav-icon-solid" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
                         <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="清除快取"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
                     </div>
+                    <!-- === 恢復列表頁的全螢幕按鈕 === -->
+                    <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                    </button>
                 </div>
                 <div id="auth-container" class="flex-shrink-0">
                      <button id="google-login-btn" class="flex items-center justify-center gap-2 bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-sm"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 36.49 44 30.856 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>Google 登入</button>
@@ -120,7 +100,7 @@
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-2 hidden">
                     <button id="header-dislike-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">Dislike</button>
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
-                    <button id="fullscreen-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕"><svg id="fullscreen-enter-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg><svg id="fullscreen-exit-icon" class="h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg></button>
+                    <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
             </div>
         </header>
@@ -199,7 +179,7 @@
                 currentImageIndex: 0, allArticles: [], sortBy: 'time', 
                 viewingFavorites: false, infiniteScrollRetries: 0,
             };
-            const MAX_RETRIES = 3;
+            const MAX_RETRIES = 10; // === 修改：增加重試次數 ===
 
             const el = id => document.getElementById(id);
             const docEl = document.documentElement;
@@ -212,11 +192,13 @@
             const closeModalBtn = el('close-modal-btn'), clearCacheBtn = el('clear-cache-btn'), toggleFavoritesBtn = el('toggle-favorites-btn');
             const favIconOutline = el('fav-icon-outline'), favIconSolid = el('fav-icon-solid'), toggleSortBtn = el('toggle-sort-btn');
             const sortTimeIcon = el('sort-time-icon'), sortHotIcon = el('sort-hot-icon'), listViewControls = el('list-view-controls');
-            const detailViewControls = el('detail-view-controls'), headerFavoriteBtn = el('header-favorite-btn'), fullscreenToggle = el('fullscreen-toggle');
+            const detailViewControls = el('detail-view-controls');
             const googleLoginBtn = el('google-login-btn'), userInfo = el('user-info'), userAvatar = el('user-avatar');
             const logoutBtn = el('logout-btn'), userControls = el('user-controls'), avatarBtn = el('avatar-btn');
             const logoutDropdown = el('logout-dropdown'), headerDislikeBtn = el('header-dislike-btn');
             const retryIndicator = el('retry-indicator'), retryMessage = el('retry-message');
+            const fullscreenToggleList = el('fullscreen-toggle-list');
+            const fullscreenToggleDetail = el('fullscreen-toggle-detail');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "Beauty": "表特", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
@@ -254,7 +236,33 @@
 
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = link => state.favorites.some(fav => fav.link === link);
-            const linkify = text => text ? text.replace(/(?<!href="|src=")(https?:\/\/[^\s<>"']+)/g, url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${url}</a>`) : '';
+
+            // === 新增：媒體與連結轉換函式 ===
+            function linkifyAndMediafy(text) {
+                if (!text) return '';
+                const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
+                const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+                const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i;
+
+                const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
+                
+                // 先將純文字中的換行符號轉換為 <br>
+                let processedText = escapeHTML(text).replace(/\n/g, '<br>');
+
+                return processedText.replace(urlRegex, url => {
+                    const cleanUrl = url.split('&amp;')[0]; // 處理被 escape 的 & 符號
+                    const ytMatch = cleanUrl.match(youtubeRegex);
+                    if (ytMatch) {
+                        const videoId = ytMatch[1];
+                        return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a>`;
+                    }
+                    if (imageRegex.test(cleanUrl)) {
+                        const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`;
+                        return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto" data-original-url="${cleanUrl}">`;
+                    }
+                    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${cleanUrl}</a>`;
+                });
+            }
             
             function updateHeader() {
                 const isDetail = state.currentView === 'detail';
@@ -345,9 +353,10 @@
             }
             
             async function loadArticles(board, url = null, append = false) {
-                if (state.isLoading && !append) return;
+                if (state.isLoading) return;
                 state.isLoading = true;
                 listError.classList.add('hidden');
+
                 const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
                 const cacheKey = `ptt-cache-${board}`;
 
@@ -377,8 +386,13 @@
                     }
                     
                     const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
-                    if (append) state.allArticles.push(...newArticles);
-                    else state.allArticles = newArticles;
+                    if (append) {
+                        const existingLinks = new Set(state.allArticles.map(a => a.link));
+                        const uniqueNewArticles = newArticles.filter(a => !existingLinks.has(a.link));
+                        state.allArticles.push(...uniqueNewArticles);
+                    } else {
+                        state.allArticles = newArticles;
+                    }
                     
                     state.prevPageUrl = listData.prev_page_url;
                     renderAndSortArticles();
@@ -392,15 +406,20 @@
                         if (state.infiniteScrollRetries <= MAX_RETRIES) {
                             retryMessage.textContent = `載入失敗，5秒後重試 (${state.infiniteScrollRetries}/${MAX_RETRIES})`;
                             retryIndicator.classList.add('show');
-                            setTimeout(() => loadArticles(board, url, true), 5000);
+                            setTimeout(() => {
+                                state.isLoading = false; 
+                                loadArticles(board, url, true);
+                            }, 5000);
                         } else {
                             retryMessage.textContent = '自動重試失敗，請稍後再試';
                             setTimeout(() => retryIndicator.classList.remove('show'), 3000);
                             state.infiniteScrollRetries = 0;
+                            state.isLoading = false; 
                         }
                     } else {
                         listErrorText.textContent = error.message;
                         listError.classList.remove('hidden');
+                        state.isLoading = false;
                     }
                 } finally {
                     if (!append || state.infiniteScrollRetries === 0 || state.infiniteScrollRetries > MAX_RETRIES) {
@@ -454,40 +473,36 @@
                 } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-4">${e.message}</p>`; }
             }
             
-            // === 修改：渲染完整內文、推文和影片 ===
             function renderDetailContent(data, article) {
-                let contentHTML = linkify(data.content);
-                
-                data.videos.forEach(video => {
-                    const thumbnail = `<a href="${video.url}" class="youtube-thumbnail" data-youtube-id="${video.id}"><img src="https://i.ytimg.com/vi/${video.id}/hqdefault.jpg" class="my-4 rounded-lg max-w-full h-auto" loading="lazy"></a>`;
-                    contentHTML = contentHTML.replace(video.url, thumbnail);
-                });
-
-                data.images.forEach(url => { 
-                    const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
-                    contentHTML = contentHTML.replace(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<img src="${proxiedUrl}" alt="文章圖片" class="article-image my-4 rounded-lg max-w-full h-auto cursor-pointer hover:opacity-80">`); 
-                });
-
+                const contentHTML = linkifyAndMediafy(data.content);
                 const pushesHTML = data.pushes.map(p => {
                     const tagClass = `push-tag-${p.tag}`;
-                    return `<div class="push"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid">${p.user}</span><span class="push-content">: ${p.content}</span><span class="push-time">${p.time}</span></div>`;
+                    const contentWithMedia = linkifyAndMediafy(p.content);
+                    return `<div class="push">
+                                <div class="push-main"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid">${p.user}</span><span class="push-content">: ${contentWithMedia}</span></div>
+                                <div class="push-time">${p.time}</div>
+                            </div>`;
                 }).join('');
 
                 detailContent.innerHTML = `
                     <div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800">
-                        <p><strong>看板:</strong> ${article.board}</p>
-                        <p><strong>作者:</strong> ${data.author_full}</p>
-                        <p><strong>標題:</strong> ${article.title}</p>
-                        <p><strong>時間:</strong> ${data.formatted_timestamp}</p>
+                        <p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p>
+                        <p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p>
                     </div>
                     <div class="text-base leading-relaxed whitespace-pre-wrap break-words">${contentHTML}</div>
                     <hr class="my-4 border-gray-300 dark:border-gray-600">
-                    <div class="pushes-container">${pushesHTML}</div>
-                `;
+                    <div class="pushes-container">${pushesHTML}</div>`;
                 detailContent.scrollTop = 0;
             }
 
             detailContent.addEventListener('click', e => {
+                const image = e.target.closest('.article-image');
+                if (image) {
+                    const originalUrl = image.dataset.originalUrl;
+                    const idx = state.currentArticleImages.indexOf(originalUrl);
+                    if (idx > -1) openImageModal(idx);
+                    return;
+                }
                 const thumbnail = e.target.closest('.youtube-thumbnail');
                 if (thumbnail) {
                     e.preventDefault();
@@ -524,7 +539,6 @@
             });
 
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
-            detailContent.addEventListener('click', e => { if (e.target.classList.contains('article-image')) { const idx = state.currentArticleImages.indexOf(e.target.src.split('proxy_url=')[1] ? decodeURIComponent(e.target.src.split('proxy_url=')[1]) : e.target.src); if (idx > -1) openImageModal(idx); } });
 
             function openImageModal(index) {
                 cleanupImageInstance();
@@ -541,7 +555,13 @@
                 } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); }
             }
             
-            function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); imageModal.classList.add('hidden'); imageModalControls.add('hidden'); };
+            // === 修正：確實隱藏控制按鈕 ===
+            function closeImageModal() { 
+                if (imageModal.classList.contains('hidden')) return; 
+                cleanupImageInstance(); 
+                imageModal.classList.add('hidden'); 
+                imageModalControls.classList.add('hidden'); 
+            };
             function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
             function showNextImage(e) { e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1); }
             function showPrevImage(e) { e.stopPropagation(); if (state.currentImageIndex > 0) openImageModal(state.currentImageIndex - 1); }
@@ -577,17 +597,17 @@
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
             
-            // === 修改：排序後返回頂部 ===
             toggleSortBtn.addEventListener('click', () => { 
                 state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; 
                 sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); 
                 sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); 
                 renderAndSortArticles();
-                articlesList.scrollTop = 0; // 滾動到頂部
+                articlesList.scrollTop = 0;
             });
 
-            fullscreenToggle.addEventListener('click', () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); });
-            document.addEventListener('fullscreenchange', () => { const isFull = !!document.fullscreenElement; el('fullscreen-enter-icon').classList.toggle('hidden', isFull); el('fullscreen-exit-icon').classList.toggle('hidden', !isFull); });
+            const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
+            fullscreenToggleList.addEventListener('click', toggleFullscreen);
+            fullscreenToggleDetail.addEventListener('click', toggleFullscreen);
             
             function showFloatingBackButton() { if (state.currentView !== 'detail') return; floatingBackBtn.classList.remove('opacity-0'); clearTimeout(state.inactivityTimer); state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000); }
             document.addEventListener('mousemove', showFloatingBackButton);
