@@ -175,6 +175,7 @@
                 pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [],
                 currentImageIndex: 0, allArticles: [], sortBy: 'time', 
                 viewingFavorites: false, infiniteScrollRetries: 0,
+                retryTimer: null, // === 新增：管理重試計時器 ===
             };
             const MAX_RETRIES = 10;
 
@@ -309,6 +310,7 @@
                     </div>
                     ${thumbnailHTML}`;
                 item.addEventListener('click', () => {
+                    cancelRetry(); // === 新增：點擊文章時取消重試 ===
                     const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link);
                     if (a) showDetailView(a);
                 });
@@ -348,6 +350,17 @@
                 }
             }
             
+            // === 新增：取消重試的函式 ===
+            function cancelRetry() {
+                if (state.retryTimer) {
+                    clearTimeout(state.retryTimer);
+                    state.retryTimer = null;
+                }
+                state.infiniteScrollRetries = 0;
+                retryIndicator.classList.remove('show');
+                state.isLoading = false; // 立即解鎖
+            }
+
             async function loadArticles(board, url = null, append = false) {
                 if (state.isLoading) return;
                 state.isLoading = true;
@@ -376,9 +389,10 @@
                     if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const listData = await res.json();
                     
-                    // === 修正：加入更可靠的重試觸發條件 ===
+                    const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
+                    
                     if (append && newArticles.length === 0 && !listData.prev_page_url) {
-                        throw new Error("頁面載入不完整，可能是 PTT 暫時性問題。");
+                        throw new Error("頁面載入不完整");
                     }
 
                     if (append) {
@@ -386,7 +400,6 @@
                         retryIndicator.classList.remove('show');
                     }
                     
-                    const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
                     if (append) {
                         const existingLinks = new Set(state.allArticles.map(a => a.link));
                         const uniqueNewArticles = newArticles.filter(a => !existingLinks.has(a.link));
@@ -408,7 +421,7 @@
                         if (state.infiniteScrollRetries <= MAX_RETRIES) {
                             retryMessage.textContent = `載入失敗，5秒後重試 (${state.infiniteScrollRetries}/${MAX_RETRIES})`;
                             retryIndicator.classList.add('show');
-                            setTimeout(() => {
+                            state.retryTimer = setTimeout(() => {
                                 state.isLoading = false; 
                                 loadArticles(board, url, true);
                             }, 5000);
@@ -514,7 +527,13 @@
             });
 
             function goBack() { history.back(); }
-            boardSelector.addEventListener('change', e => { state.currentBoard = e.target.value; state.viewingFavorites = false; updateFavoritesButtonState(); loadArticles(state.currentBoard); });
+            boardSelector.addEventListener('change', e => { 
+                cancelRetry();
+                state.currentBoard = e.target.value; 
+                state.viewingFavorites = false; 
+                updateFavoritesButtonState(); 
+                loadArticles(state.currentBoard); 
+            });
             headerFavoriteBtn.addEventListener('click', toggleFavorite);
             headerDislikeBtn.addEventListener('click', handleDislikeArticle);
             headerBackBtn.addEventListener('click', goBack);
@@ -596,6 +615,7 @@
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
             
             toggleSortBtn.addEventListener('click', () => { 
+                cancelRetry();
                 state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; 
                 sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); 
                 sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); 
