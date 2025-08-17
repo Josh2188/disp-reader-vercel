@@ -118,13 +118,15 @@
             let userId = null;
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
-            // *** FIX: 完全移除本地快取功能 ***
+            // *** FIX: 快取功能已完全停用 ***
             const cache = {
+                // CACHE_PREFIX: 'ptt-cache-v4-', // 註解掉
                 get(key) {
-                    return null; // 永遠回傳 null，強制重新載入
+                    // 直接回傳 null 來跳過快取
+                    return null;
                 },
                 set(key, data) {
-                    // 不做任何事，不儲存到 localStorage
+                    // 不做任何事
                 }
             };
 
@@ -264,9 +266,8 @@
                 });
             }
 
-            // *** FIX: 真正實現分塊處理的核心邏輯 ***
             async function fetchPreviewsInChunks(articles) {
-                const CHUNK_SIZE = 5; // 每次處理 5 篇文章，確保快速完成
+                const CHUNK_SIZE = 5;
                 const articleLinks = articles.map(a => a.link);
 
                 for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) {
@@ -281,7 +282,7 @@
                         });
                         if (!previewsResponse.ok) {
                             console.error(`批次請求預覽失敗 (Chunk ${i / CHUNK_SIZE})`);
-                            continue; // 如果一個批次失敗，繼續處理下一個
+                            continue;
                         }
                         const previewsData = await previewsResponse.json();
                         updatePreviewsUI(previewsData);
@@ -298,12 +299,11 @@
                 else { infiniteLoader.classList.remove('hidden'); }
                 
                 try {
-                    // *** FIX: 強制停用伺服器快取 ***
-                    const pttUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                    const cacheBuster = url ? '' : `&t=${Date.now()}`; // 只在初次載入時加上時間戳
-                    const apiFetchUrl = `/api/scraper?board=${board}&list_url=${encodeURIComponent(pttUrl)}${cacheBuster}`;
-
-                    const listResponse = await fetch(apiFetchUrl);
+                    const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
+                    // *** FIX: 加入 Cache Busting 參數，強制取得最新資料 ***
+                    const cacheBuster = `&_=${new Date().getTime()}`;
+                    const listResponse = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}${cacheBuster}`);
+                    
                     if (!listResponse.ok) throw new Error(`請求列表失敗: ${listResponse.status}`);
                     const listData = await listResponse.json();
                     
@@ -364,12 +364,19 @@
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-16 w-16"></div></div>';
                 history.pushState({view: 'detail'}, '', '#detail');
                 
-                // 因為快取已停用，永遠重新抓取
+                // *** FIX: 快取讀取功能已停用 ***
+                // const cached = cache.get(article.link);
+                // if (cached) { state.currentArticleImages = cached.images || []; return renderDetailContent(cached, article); }
+
                 try {
-                    const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
+                    // *** FIX: 加入 Cache Busting 參數，強制取得最新資料 ***
+                    const cacheBuster = `&_=${new Date().getTime()}`;
+                    const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}${cacheBuster}`);
+
                     if (!res.ok) throw new Error(`無法載入內文: ${res.status}`);
                     const data = await res.json();
-                    state.currentArticleImages = data.images || [];
+                    state.currentArticleImages = data.images || []; 
+                    // cache.set(article.link, data); // 快取儲存功能已停用
                     renderDetailContent(data, article);
                 } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-4">${e.message}</p>`; }
             }
@@ -442,7 +449,7 @@
                 } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; }
             });
             
-            clearCacheBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } let c = 0; for (const k in localStorage) { if (k.startsWith(cache.CACHE_PREFIX)) { localStorage.removeItem(k); c++; } } localStorage.removeItem('readArticles'); state.readArticles.clear(); showToast(`已清除所有本地快取與已讀記錄`); });
+            clearCacheBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } let c = 0; for (const k in localStorage) { if (k.startsWith('ptt-cache')) { localStorage.removeItem(k); c++; } } localStorage.removeItem('readArticles'); state.readArticles.clear(); showToast(`已清除 ${c} 筆舊快取與已讀記錄`); });
 
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
