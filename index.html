@@ -418,7 +418,6 @@
                         state.isLoading = false;
                     }
                 } finally {
-                    // === 修正：確保 isLoading 狀態正確重置 ===
                     if (!append || state.infiniteScrollRetries === 0 || state.infiniteScrollRetries > MAX_RETRIES) {
                        state.isLoading = false;
                     }
