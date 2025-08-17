@@ -42,17 +42,15 @@ def get_article_preview_data(article_url):
                 timestamp = line.select_one('.article-meta-value').get_text(strip=True)
                 break
         
-        # === 修改：抓取最多兩張圖片 ===
-        image_urls, snippet = [], ""
+        # === 修改：只抓取第一張圖片 ===
+        first_image_url, snippet = None, ""
         main_content = soup.select_one('#main-content')
         if main_content:
-            # 使用 dict.fromkeys 來確保 URL 的唯一性，同時保持順序
-            unique_links = dict.fromkeys(link.get('href', '') for link in main_content.select('a'))
-            for href in unique_links:
+            for link in main_content.select('a'):
+                href = link.get('href', '')
                 if href and IMAGE_REGEX.search(href):
-                    image_urls.append(href)
-                    if len(image_urls) == 2:
-                        break # 找到兩張就停止
+                    first_image_url = href
+                    break # 找到第一張就停止
 
             for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style, a'):
                 if tag.name == 'a' and IMAGE_REGEX.search(tag.get('href', '')):
@@ -61,10 +59,11 @@ def get_article_preview_data(article_url):
             full_text = main_content.get_text(strip=True)
             if not full_text.strip().lower().startswith(('http://', 'https://')):
                  snippet = full_text[:120]
-        # === 修改：回傳 thumbnails 陣列 ===
-        return {"link": article_url, "thumbnails": image_urls, "formatted_timestamp": format_ptt_time(timestamp), "snippet": snippet, "error": None}
+        
+        # === 修改：回傳單一 thumbnail 字串 ===
+        return {"link": article_url, "thumbnail": first_image_url, "formatted_timestamp": format_ptt_time(timestamp), "snippet": snippet, "error": None}
     except Exception as e:
-        return {"link": article_url, "thumbnails": [], "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
+        return {"link": article_url, "thumbnail": None, "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
 
 # --- Vercel 的 Serverless Function 入口 ---
 class handler(BaseHTTPRequestHandler):

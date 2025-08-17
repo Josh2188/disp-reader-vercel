@@ -95,21 +95,22 @@ class handler(BaseHTTPRequestHandler):
         error = None
 
         try:
+            # === 新增：圖片代理功能，解決 Mixed Content 問題 ===
             if 'proxy_url' in query_params:
-                # 代理圖片請求，讓瀏覽器自行決定快取策略
                 image_url = query_params['proxy_url'][0]
-                response = requests.get(image_url, timeout=20, stream=True)
+                # 將可能的 http 換成 https
+                if image_url.startswith('http://'):
+                    image_url = image_url.replace('http://', 'https://', 1)
+                
+                response = requests.get(image_url, timeout=20, stream=True, headers=HEADERS)
                 response.raise_for_status()
                 
                 self.send_response(200)
-                # 轉發原始圖片的 Content-Type
                 if 'Content-Type' in response.headers:
                     self.send_header('Content-Type', response.headers['Content-Type'])
-                # 讓瀏覽器快取圖片一天
-                self.send_header('Cache-Control', 'public, max-age=86400')
+                self.send_header('Cache-Control', 'public, max-age=604800') # 圖片快取 7 天
                 self.end_headers()
                 
-                # 流式傳輸圖片內容
                 for chunk in response.iter_content(chunk_size=8192):
                     self.wfile.write(chunk)
                 return
@@ -133,7 +134,6 @@ class handler(BaseHTTPRequestHandler):
 
         self.send_response(500 if error else 200)
         self.send_header('Content-type', 'application/json')
-        # === 加入禁止快取標頭 ===
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')
