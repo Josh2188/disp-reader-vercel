@@ -91,10 +91,20 @@
         }
         .article-image { cursor: pointer; }
 
-        /* 桌面版寬度優化 */
-        @media (min-width: 768px) {
+        /* 平板與桌面版寬度優化 */
+        @media (min-width: 768px) { /* md */
             #app-container {
-                max-width: 42rem; /* md:max-w-2xl */
+                max-width: 48rem; /* max-w-3xl */
+            }
+        }
+        @media (min-width: 1024px) { /* lg */
+            #app-container {
+                max-width: 64rem; /* max-w-5xl */
+            }
+        }
+        @media (min-width: 1280px) { /* xl */
+            #app-container {
+                max-width: none; /* 填滿螢幕 */
             }
         }
     </style>
