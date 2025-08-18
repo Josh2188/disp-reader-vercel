@@ -90,6 +90,13 @@
             border-radius: 10px; line-height: 42px; padding-left: 5px;
         }
         .article-image { cursor: pointer; }
+
+        /* 桌面版寬度優化 */
+        @media (min-width: 768px) {
+            #app-container {
+                max-width: 42rem; /* md:max-w-2xl */
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -707,6 +714,20 @@
             detailContent.addEventListener('touchstart', handleTouchStart, { passive: true });
             detailContent.addEventListener('touchmove', handleTouchMove, { passive: true });
             detailContent.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+            // 鍵盤快速鍵
+            window.addEventListener('keydown', e => {
+                if (e.key === '+' || e.key === '=') {
+                    toggleFontSize();
+                } else if (e.key === '-') {
+                    // 為了循環，我們模擬點擊兩次
+                    toggleFontSize();
+                    toggleFontSize();
+                } else if (e.key === '0') {
+                    applyFontSize('md');
+                    showToast('字體已重設為中');
+                }
+            });
 
             // === PWA Service Worker 註冊 ===
             if ('serviceWorker' in navigator) {
