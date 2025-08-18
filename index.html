@@ -74,17 +74,6 @@
             border-radius: 10px; line-height: 42px; padding-left: 5px;
         }
         .article-image { cursor: pointer; }
-
-        /* 字體大小 */
-        .font-size-sm { font-size: 14px; }
-        .font-size-md { font-size: 16px; }
-        .font-size-lg { font-size: 18px; }
-        .font-size-sm .push { font-size: 12px; }
-        .font-size-md .push { font-size: 14px; }
-        .font-size-lg .push { font-size: 16px; }
-        .font-size-sm h3 { font-size: 1rem; }
-        .font-size-md h3 { font-size: 1.125rem; }
-        .font-size-lg h3 { font-size: 1.25rem; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -103,7 +92,10 @@
                         <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="清除快取"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
                     </div>
                     <button id="font-size-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="切換字型大小">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M4 19V5h7v14m-7-7h7"/>
+                            <path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/>
+                        </svg>
                     </button>
                     <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
@@ -117,7 +109,10 @@
                     <button id="header-dislike-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">Dislike</button>
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
                     <button id="font-size-toggle-detail" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="切換字型大小">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M4 19V5h7v14m-7-7h7"/>
+                            <path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/>
+                        </svg>
                     </button>
                     <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
@@ -335,7 +330,7 @@
                 }
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushHTML}</h3>
+                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushHTML}</h3>
                         <p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${timestampText}</p>
                         <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${snippetText}</p>
                     </div>
@@ -569,18 +564,22 @@
             function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
 
             // === 字體大小切換 ===
-            const fontSizes = ['sm', 'md', 'lg'];
-            function applyFontSize(size) {
-                appContainer.classList.remove('font-size-sm', 'font-size-md', 'font-size-lg');
-                appContainer.classList.add(`font-size-${size}`);
-                localStorage.setItem('fontSize', size);
-                state.fontSize = size;
+            const fontSizes = { sm: '14px', md: '16px', lg: '18px' };
+            const fontSizeKeys = ['sm', 'md', 'lg'];
+            
+            function applyFontSize(sizeKey) {
+                if (!fontSizes[sizeKey]) return;
+                docEl.style.fontSize = fontSizes[sizeKey];
+                localStorage.setItem('fontSize', sizeKey);
+                state.fontSize = sizeKey;
             }
+
             function toggleFontSize() {
-                const currentIndex = fontSizes.indexOf(state.fontSize);
-                const nextIndex = (currentIndex + 1) % fontSizes.length;
-                applyFontSize(fontSizes[nextIndex]);
-                showToast(`字體已切換為 ${fontSizes[nextIndex] === 'sm' ? '小' : fontSizes[nextIndex] === 'md' ? '中' : '大'}`);
+                const currentIndex = fontSizeKeys.indexOf(state.fontSize);
+                const nextIndex = (currentIndex + 1) % fontSizeKeys.length;
+                const nextSizeKey = fontSizeKeys[nextIndex];
+                applyFontSize(nextSizeKey);
+                showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`);
             }
 
             // === 手勢操作 ===
