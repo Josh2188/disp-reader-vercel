@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PTT 行動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
@@ -43,28 +43,38 @@
             pointer-events: none;
         }
         #retry-indicator.show { opacity: 1; }
+        
+        /* --- 美化鄉民回應 --- */
         .push {
-            display: flex; flex-wrap: wrap; justify-content: space-between;
-            align-items: baseline; margin-bottom: 0.5rem;
-            font-size: 0.875rem; line-height: 1.5;
+            display: flex; flex-direction: column;
+            padding: 0.75rem 0.5rem; margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            background-color: #f3f4f6;
+            border-left: 4px solid;
         }
-        .push-body {
-            display: flex; align-items: baseline; flex-basis: 0;
-            flex-grow: 1; min-width: 0;
-        }
-        .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
+        .dark .push { background-color: #1f2937; }
+        .push-tag-推 { border-color: #22c55e; }
+        .push-tag-噓 { border-color: #ef4444; }
+        .push-tag-→ { border-color: #6b7280; }
+        .dark .push-tag-→ { border-color: #9ca3af; }
+
+        .push-header { display: flex; align-items: center; flex-wrap: wrap; gap: 0 0.5rem; }
+        .push-tag { font-weight: 700; font-size: 1.125rem; }
         .push-tag-推 { color: #22c55e; }
         .push-tag-噓 { color: #ef4444; }
         .push-tag-→ { color: #6b7280; }
         .dark .push-tag-→ { color: #9ca3af; }
-        .push-userid { font-weight: 600; margin-right: 0.5rem; flex-shrink: 0; color: #3b82f6; }
+        .push-userid { font-weight: 600; color: #3b82f6; }
         .dark .push-userid { color: #60a5fa; }
-        .push-content { word-break: break-all; }
-        .push-time {
-            flex-shrink: 0; padding-left: 0.75rem; font-size: 0.75rem;
-            color: #9ca3af; white-space: nowrap;
-        }
-        .dark .push-time { color: #6b7280; }
+        .push-time { font-size: 0.75rem; color: #6b7280; margin-left: auto; white-space: nowrap; }
+        .dark .push-time { color: #9ca3af; }
+        .push-content { margin-top: 0.25rem; word-break: break-all; width: 100%; line-height: 1.6; }
+        
+        /* --- 字型大小 --- */
+        #detail-content.font-size-sm { font-size: 16px; }
+        #detail-content.font-size-md { font-size: 18px; }
+        #detail-content.font-size-lg { font-size: 20px; }
+
         .youtube-container {
             position: relative; padding-bottom: 56.25%; height: 0;
             overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem;
@@ -80,22 +90,21 @@
         }
         .article-image { cursor: pointer; }
 
-        /* === 新增：字型大小調整 === */
-        /* 中等字型 */
-        #app-container.font-size-md .text-base, 
-        #app-container.font-size-md #detail-content .text-base { font-size: 1.125rem; line-height: 1.75rem; }
-        #app-container.font-size-md .text-sm, 
-        #app-container.font-size-md .push,
-        #app-container.font-size-md #detail-content .text-sm { font-size: 1rem; line-height: 1.5rem; }
-        #app-container.font-size-md .text-xs { font-size: 0.875rem; line-height: 1.25rem; }
-
-        /* 大字型 */
-        #app-container.font-size-lg .text-base,
-        #app-container.font-size-lg #detail-content .text-base { font-size: 1.25rem; line-height: 1.75rem; }
-        #app-container.font-size-lg .text-sm,
-        #app-container.font-size-lg .push,
-        #app-container.font-size-lg #detail-content .text-sm { font-size: 1.125rem; line-height: 1.75rem; }
-        #app-container.font-size-lg .text-xs { font-size: 1rem; line-height: 1.5rem; }
+        /* --- 電腦版浮動切換按鈕 --- */
+        .desktop-nav-btn {
+            position: fixed; top: 50%; transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.3); color: white;
+            border: none; border-radius: 50%; width: 44px; height: 44px;
+            display: none; align-items: center; justify-content: center;
+            cursor: pointer; opacity: 0.5; transition: opacity 0.3s ease, background-color 0.3s ease;
+            z-index: 40;
+        }
+        .desktop-nav-btn:hover { opacity: 1; background-color: rgba(0, 0, 0, 0.6); }
+        #desktop-prev-btn { left: 16px; }
+        #desktop-next-btn { right: 16px; }
+        @media (min-width: 768px) {
+            #detail-view:hover .desktop-nav-btn { display: flex; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black">
@@ -111,13 +120,6 @@
                     <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center gap-1" title="切換排序"><svg id="sort-time-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><svg id="sort-hot-icon" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg></button>
                     <div id="user-controls" class="hidden items-center gap-1">
                         <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="我的最愛"><svg id="fav-icon-outline" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg><svg id="fav-icon-solid" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
-                        <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="清除快取"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
-                        <!-- === 新增：字型調整按鈕 === -->
-                        <button id="toggle-fontsize-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="調整字型大小">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M4.5 7.5h15M6.75 11.25h10.5m-10.5 3.75h10.5M9 15h6" />
-                            </svg>
-                        </button>
                     </div>
                     <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
@@ -127,9 +129,20 @@
                      <button id="google-login-btn" class="flex items-center justify-center gap-2 bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-sm"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 36.49 44 30.856 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>Google 登入</button>
                     <div id="user-info" class="hidden items-center"><div class="relative ml-auto"><button id="avatar-btn"><img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="User Avatar"></button><div id="logout-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5"><button id="logout-btn" class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700">登出</button></div></div></div>
                 </div>
-                <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-2 hidden">
-                    <button id="header-dislike-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">Dislike</button>
-                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
+                <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
+                    <button id="header-dislike-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="不喜歡這篇文章"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg></button>
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
+                    <!-- Font size button -->
+                    <button id="font-size-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="調整字型大小">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 7V6h16v1"/>
+                            <path d="M12 6V20"/>
+                            <path d="M8 20h8"/>
+                            <path d="M17 11l3.5-3.5"/>
+                            <path d="M20.5 11V7.5H17"/>
+                        </svg>
+                    </button>
+                    <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="清除快取"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
                     <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
             </div>
@@ -140,9 +153,14 @@
                 <div id="skeleton-container" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></div>
                 <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar hidden"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div></div>
-                <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
+                <div id="list-error" class="text-center py-20 px-4 text-red-500 hidden"><p id="list-error-text"></p><button id="manual-retry-btn" class="mt-4 bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">手動重試</button></div>
             </div>
-            <div id="detail-view" class="absolute inset-0 hidden"><main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-4"></main></div>
+            <div id="detail-view" class="absolute inset-0 hidden">
+                <main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-4"></main>
+                <!-- Desktop navigation buttons -->
+                <button id="desktop-prev-btn" class="desktop-nav-btn" title="上一篇"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg></button>
+                <button id="desktop-next-btn" class="desktop-nav-btn" title="下一篇"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
+            </div>
         </div>
     </div>
 
@@ -207,15 +225,15 @@
                 dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []),
                 pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [],
                 currentImageIndex: 0, allArticles: [], sortBy: 'time', 
-                viewingFavorites: false, infiniteScrollRetries: 0,
-                retryTimer: null,
-                currentFontSize: 'sm',
+                viewingFavorites: false, loadRetries: 0, retryTimer: null,
+                fontSizeIndex: 0, // 0: sm, 1: md, 2: lg
+                touchStartX: 0, touchStartY: 0, touchEndX: 0, touchEndY: 0,
             };
-            const MAX_RETRIES = 10;
+            const FONT_SIZES = ['font-size-sm', 'font-size-md', 'font-size-lg'];
+            const MAX_RETRIES = 5;
 
             const el = id => document.getElementById(id);
             const docEl = document.documentElement;
-            const appContainer = el('app-container');
             const listView = el('list-view'), detailView = el('detail-view'), articlesList = el('articles-list');
             const skeletonContainer = el('skeleton-container'), infiniteLoader = el('infinite-loader'), listError = el('list-error');
             const listErrorText = el('list-error-text'), boardSelector = el('board-selector'), headerBackBtn = el('header-back-btn');
@@ -233,7 +251,9 @@
             const fullscreenToggleList = el('fullscreen-toggle-list');
             const fullscreenToggleDetail = el('fullscreen-toggle-detail');
             const headerFavoriteBtn = el('header-favorite-btn');
-            const toggleFontsizeBtn = el('toggle-fontsize-btn');
+            const fontSizeToggle = el('font-size-toggle');
+            const manualRetryBtn = el('manual-retry-btn');
+            const desktopPrevBtn = el('desktop-prev-btn'), desktopNextBtn = el('desktop-next-btn');
             
             const TOP_BOARDS = { "Gossiping": "八卦", "Beauty": "表特", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
@@ -287,7 +307,7 @@
                     const ytMatch = cleanUrl.match(youtubeRegex);
                     if (ytMatch) {
                         const videoId = ytMatch[1];
-                        return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a>`;
+                        return `<div class="youtube-container"><a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a></div>`;
                     }
                     if (imageRegex.test(cleanUrl)) {
                         const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`;
@@ -340,9 +360,9 @@
                 }
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base">${article.title}${pushHTML}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${timestampText}</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${snippetText}</p>
+                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushHTML}</h3>
+                        <p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${timestampText}</p>
+                        <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${snippetText}</p>
                     </div>
                     ${thumbnailHTML}`;
                 item.addEventListener('click', () => {
@@ -391,9 +411,8 @@
                     clearTimeout(state.retryTimer);
                     state.retryTimer = null;
                 }
-                state.infiniteScrollRetries = 0;
+                state.loadRetries = 0;
                 retryIndicator.classList.remove('show');
-                state.isLoading = false;
             }
 
             async function loadArticles(board, url = null, append = false) {
@@ -423,52 +442,51 @@
                     if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const listData = await res.json();
                     
+                    if (listData.error) throw new Error(listData.error);
+
                     const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]'));
-                    
-                    if (append && newArticles.length === 0 && listData.prev_page_url) {
-                        throw new Error("頁面載入不完整");
+                    const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set();
+                    const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles;
+
+                    if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) {
+                         throw new Error("頁面載入不完整，可能是 PTT 暫時性問題");
                     }
 
                     cancelRetry();
                     
                     if (append) {
-                        const existingLinks = new Set(state.allArticles.map(a => a.link));
-                        const uniqueNewArticles = newArticles.filter(a => !existingLinks.has(a.link));
                         state.allArticles.push(...uniqueNewArticles);
                     } else {
-                        state.allArticles = newArticles;
+                        state.allArticles = uniqueNewArticles;
                     }
                     
                     state.prevPageUrl = listData.prev_page_url;
                     renderAndSortArticles();
-                    fetchPreviewsInChunks(newArticles);
+                    fetchPreviewsInChunks(uniqueNewArticles);
 
                     if (!append) cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
-                    state.isLoading = false;
-
+                    
                 } catch (error) {
-                    if (append) {
-                        state.infiniteScrollRetries++;
-                        if (state.infiniteScrollRetries <= MAX_RETRIES) {
-                            retryMessage.textContent = `載入失敗，5秒後重試 (${state.infiniteScrollRetries}/${MAX_RETRIES})`;
-                            retryIndicator.classList.add('show');
-                            state.retryTimer = setTimeout(() => {
-                                state.isLoading = false; 
-                                loadArticles(board, url, true);
-                            }, 5000);
-                        } else {
-                            retryMessage.textContent = '自動重試失敗';
-                            setTimeout(() => retryIndicator.classList.remove('show'), 3000);
-                            cancelRetry();
-                        }
+                    console.error("載入文章時發生錯誤:", error);
+                    state.loadRetries++;
+                    if (state.loadRetries <= MAX_RETRIES) {
+                        const countdown = 5;
+                        retryMessage.textContent = `載入失敗，${countdown}秒後重試 (${state.loadRetries}/${MAX_RETRIES})`;
+                        retryIndicator.classList.add('show');
+                        state.retryTimer = setTimeout(() => {
+                            state.isLoading = false; 
+                            loadArticles(board, url, append);
+                        }, countdown * 1000);
                     } else {
-                        listErrorText.textContent = error.message;
+                        retryIndicator.classList.remove('show');
+                        listErrorText.textContent = `自動重試 ${MAX_RETRIES} 次後仍然失敗，請檢查網路連線或稍後再試。`;
                         listError.classList.remove('hidden');
-                        state.isLoading = false;
+                        hideSkeleton();
                     }
                 } finally {
-                    hideSkeleton();
-                    if (!state.retryTimer) {
+                    if (state.loadRetries === 0 || state.loadRetries > MAX_RETRIES) {
+                        state.isLoading = false;
+                        hideSkeleton();
                         infiniteLoader.classList.add('hidden');
                     }
                 }
@@ -501,12 +519,13 @@
             }
 
             async function showDetailView(article) {
+                if (!article) return;
                 state.currentArticle = article; state.currentView = 'detail';
                 updateHeader(); floatingBackBtn.classList.remove('hidden'); showFloatingBackButton();
                 if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); const li = document.querySelector(`[data-link="${article.link}"]`); if(li) li.classList.add('opacity-60'); }
                 listView.classList.add('hidden'); detailView.classList.remove('hidden');
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-16 w-16"></div></div>';
-                history.pushState({view: 'detail'}, '', '#detail');
+                history.pushState({view: 'detail', link: article.link}, '', `#detail`);
                 
                 try {
                     const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`);
@@ -521,14 +540,14 @@
                 const contentHTML = linkifyAndMediafy(data.content);
                 const pushesHTML = data.pushes.map(p => {
                     const tagClass = `push-tag-${p.tag}`;
-                    const contentWithMedia = linkifyAndMediafy(p.content);
-                    return `<div class="push">
-                                <div class="push-body">
+                    const contentWithMedia = linkifyAndMediafy(p.content.replace(/^: /, ''));
+                    return `<div class="push ${tagClass}">
+                                <div class="push-header">
                                     <span class="push-tag ${tagClass}">${p.tag}</span>
-                                    <span class="push-userid">${p.user}:</span>
-                                    <span class="push-content">${contentWithMedia}</span>
+                                    <span class="push-userid">${p.user}</span>
+                                    <span class="push-time">${p.time}</span>
                                 </div>
-                                <div class="push-time">${p.time}</div>
+                                <div class="push-content">${contentWithMedia}</div>
                             </div>`;
                 }).join('');
 
@@ -551,18 +570,45 @@
                     if (idx > -1) openImageModal(idx);
                     return;
                 }
-                const thumbnail = e.target.closest('.youtube-thumbnail');
-                if (thumbnail) {
-                    e.preventDefault();
-                    const videoId = thumbnail.dataset.youtubeId;
-                    const iframe = document.createElement('div');
-                    iframe.className = 'youtube-container';
-                    iframe.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-                    thumbnail.replaceWith(iframe);
+                const thumbnailContainer = e.target.closest('.youtube-container');
+                if (thumbnailContainer) {
+                    const thumbnail = thumbnailContainer.querySelector('.youtube-thumbnail');
+                    if (thumbnail) {
+                        e.preventDefault();
+                        const videoId = thumbnail.dataset.youtubeId;
+                        const iframeHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                        thumbnailContainer.innerHTML = iframeHTML;
+                    }
                 }
             });
 
-            function goBack() { history.back(); }
+            function goBack() { 
+                if (history.state?.view === 'detail') {
+                    history.back(); 
+                }
+            }
+
+            function handlePopState() {
+                if (!imageModal.classList.contains('hidden')) {
+                    closeImageModal();
+                } else if (state.currentView === 'detail') {
+                    // Stop YouTube videos
+                    const iframes = detailContent.querySelectorAll('iframe');
+                    iframes.forEach(iframe => {
+                        iframe.src = ''; // Setting src to empty stops the video
+                        const container = iframe.parentElement;
+                        if (container && container.classList.contains('youtube-container')) {
+                            container.remove();
+                        }
+                    });
+
+                    state.currentView = 'list';
+                    listView.classList.remove('hidden'); detailView.classList.add('hidden');
+                    floatingBackBtn.classList.add('hidden'); 
+                    updateHeader();
+                }
+            }
+
             boardSelector.addEventListener('change', e => { 
                 cancelRetry();
                 state.currentBoard = e.target.value; 
@@ -574,19 +620,12 @@
             headerDislikeBtn.addEventListener('click', handleDislikeArticle);
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
-            
-            window.addEventListener('popstate', () => {
-                if (!imageModal.classList.contains('hidden')) {
-                    closeImageModal();
-                } else if (state.currentView === 'detail') {
-                    state.currentView = 'list';
-                    detailContent.innerHTML = '';
-                    listView.classList.remove('hidden');
-                    detailView.classList.add('hidden');
-                    floatingBackBtn.classList.add('hidden');
-                    updateHeader();
-                }
+            manualRetryBtn.addEventListener('click', () => {
+                cancelRetry();
+                loadArticles(state.currentBoard);
             });
+            
+            window.addEventListener('popstate', handlePopState);
 
             articlesList.addEventListener('scroll', () => { 
                 if (state.isLoading || !state.prevPageUrl || state.viewingFavorites) return; 
@@ -671,361 +710,89 @@
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
 
-            // === 字型大小調整邏輯 ===
-            const fontSizes = ['sm', 'md', 'lg'];
-            const savedSize = localStorage.getItem('fontSize') || 'sm';
-            state.currentFontSize = savedSize;
-            appContainer.classList.add(`font-size-${savedSize}`);
-
-            toggleFontsizeBtn.addEventListener('click', () => {
-                appContainer.classList.remove(`font-size-${state.currentFontSize}`);
-                let currentIndex = fontSizes.indexOf(state.currentFontSize);
-                let nextIndex = (currentIndex + 1) % fontSizes.length;
-                state.currentFontSize = fontSizes[nextIndex];
-                appContainer.classList.add(`font-size-${state.currentFontSize}`);
-                localStorage.setItem('fontSize', state.currentFontSize);
-                showToast(`字型已調整為 ${state.currentFontSize === 'sm' ? '小' : state.currentFontSize === 'md' ? '中' : '大'}`);
+            // --- Font Size Logic ---
+            function applyFontSize() {
+                detailContent.classList.remove(...FONT_SIZES);
+                detailContent.classList.add(FONT_SIZES[state.fontSizeIndex]);
+                localStorage.setItem('fontSizeIndex', state.fontSizeIndex);
+            }
+            fontSizeToggle.addEventListener('click', () => {
+                state.fontSizeIndex = (state.fontSizeIndex + 1) % FONT_SIZES.length;
+                applyFontSize();
+                const sizeName = ['小', '中', '大'][state.fontSizeIndex];
+                showToast(`字型已切換為：${sizeName}`);
             });
 
-            for (const board in TOP_BOARDS) { const opt = document.createElement('option'); opt.value = board; opt.textContent = TOP_BOARDS[board]; if (board === state.currentBoard) opt.selected = true; boardSelector.appendChild(opt); }
-            history.replaceState({view: 'list'}, '', '#list');
-            loadArticles(state.currentBoard);
-            updateHeader();
+            // --- Swipe and Navigation Logic ---
+            function getArticleList() {
+                return state.viewingFavorites ? state.favorites : state.allArticles.filter(a => !state.dislikedArticles.some(d => d.link === a.link));
+            }
+            
+            function navigateArticle(direction) {
+                const currentList = getArticleList();
+                if (currentList.length < 2) return;
+                const currentIndex = currentList.findIndex(a => a.link === state.currentArticle.link);
+                if (currentIndex === -1) return;
+
+                const newIndex = currentIndex + direction;
+                if (newIndex >= 0 && newIndex < currentList.length) {
+                    showDetailView(currentList[newIndex]);
+                } else {
+                    showToast(direction > 0 ? '已經是最後一篇了' : '已經是第一篇了');
+                }
+            }
+            
+            desktopPrevBtn.addEventListener('click', () => navigateArticle(-1));
+            desktopNextBtn.addEventListener('click', () => navigateArticle(1));
+
+            detailView.addEventListener('touchstart', e => {
+                state.touchStartX = e.changedTouches[0].screenX;
+                state.touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            detailView.addEventListener('touchend', e => {
+                state.touchEndX = e.changedTouches[0].screenX;
+                state.touchEndY = e.changedTouches[0].screenY;
+                handleSwipeGesture();
+            }, { passive: true });
+
+            function handleSwipeGesture() {
+                const deltaX = state.touchEndX - state.touchStartX;
+                const deltaY = state.touchEndY - state.touchStartY;
+                const absDeltaX = Math.abs(deltaX);
+                const absDeltaY = Math.abs(deltaY);
+                const SWIPE_THRESHOLD = 50; // Minimum pixels for a swipe
+
+                if (absDeltaY > SWIPE_THRESHOLD && absDeltaY > absDeltaX) { // Vertical swipe
+                    if (deltaY < 0) { // Swipe Up
+                        navigateArticle(1); // Next
+                    } else { // Swipe Down
+                        navigateArticle(-1); // Previous
+                    }
+                } else if (absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY) { // Horizontal swipe
+                    if (deltaX < 0) { // Swipe Left
+                        goBack();
+                    }
+                }
+            }
+            
+            // --- Initialization ---
+            function initialize() {
+                for (const board in TOP_BOARDS) { const opt = document.createElement('option'); opt.value = board; opt.textContent = TOP_BOARDS[board]; if (board === state.currentBoard) opt.selected = true; boardSelector.appendChild(opt); }
+                
+                const savedFontSize = localStorage.getItem('fontSizeIndex');
+                if (savedFontSize !== null) {
+                    state.fontSizeIndex = parseInt(savedFontSize, 10);
+                }
+                applyFontSize();
+
+                history.replaceState({view: 'list'}, '', '#list');
+                loadArticles(state.currentBoard);
+                updateHeader();
+            }
+
+            initialize();
         });
     </script>
 </body>
 </html>
-```
-
-Most up-to-date Immersive Artifact for "scraper_py_v7" is:
-
-```python
-from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs, unquote
-import json
-import requests
-from bs4 import BeautifulSoup
-import re
-from datetime import datetime
-import locale
-import time
-
-# --- 設定與常數 ---
-try:
-    locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
-except locale.Error:
-    print("警告: 無法設定 'zh_TW.UTF-8' locale。")
-
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-}
-COOKIES = {'over18': '1'}
-IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
-YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
-
-# --- 核心函式 ---
-def format_ptt_time(time_str):
-    if not time_str: return None
-    try:
-        dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        weekday_map = {'Monday': '週一', 'Tuesday': '週二', 'Wednesday': '週三', 'Thursday': '週四', 'Friday': '週五', 'Saturday': '週六', 'Sunday': '週日'}
-        weekday_en = dt_obj.strftime('%A')
-        weekday_zh = weekday_map.get(weekday_en, '')
-        return dt_obj.strftime(f'%Y %m %d %H:%M {weekday_zh}')
-    except (ValueError, TypeError):
-        return time_str
-
-def process_article_item_basic(item, board):
-    try:
-        title_tag = item.select_one('.title a')
-        meta_tag = item.select_one('.meta')
-        push_tag = item.select_one('.nrec span')
-        if not (title_tag and title_tag.get('href') and meta_tag) or "本文已被刪除" in title_tag.text:
-            return None
-        push_count_text = push_tag.get_text(strip=True) if push_tag else ''
-        push_count = 0
-        if push_count_text:
-            if push_count_text == '爆': push_count = '爆'
-            elif push_count_text.startswith('X'): push_count = push_count_text
-            else:
-                try: push_count = int(push_count_text)
-                except (ValueError, TypeError): push_count = 0
-        return {"title": title_tag.text.strip(), "link": "https://www.ptt.cc" + title_tag['href'], "board": board, "author": meta_tag.select_one('.author').get_text(strip=True) or '', "date": meta_tag.select_one('.date').get_text(strip=True) or '', "push_count": push_count}
-    except Exception:
-        return None
-
-# === 修改：增加後端重試次數與間隔 ===
-def fetch_ptt_article_list(board, page_url):
-    max_retries = 5 # 增加重試次數
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
-            
-            prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
-            if not prev_page_link_tag and "index1.html" not in page_url:
-                 raise ValueError("頁面不完整，缺少'上頁'按鈕")
-
-            articles_tags = soup.select('div.r-ent')
-            article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
-            article_list.reverse()
-            
-            prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
-            return {"articles": article_list, "prev_page_url": prev_page_url}
-
-        except requests.exceptions.HTTPError as err:
-            if err.response.status_code == 404:
-                return {"articles": [], "prev_page_url": None}
-            if attempt < max_retries - 1:
-                time.sleep(2) # 增加等待時間
-                continue
-            raise
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(2) # 增加等待時間
-                continue
-            raise e
-
-
-def fetch_ptt_article_content(article_url):
-    response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'lxml')
-    main_content = soup.select_one('#main-content')
-    if not main_content: raise Exception("找不到主要內容區塊。")
-    
-    author_full, timestamp = '', ''
-    for line in main_content.select('.article-metaline, .article-metaline-right'):
-        if line.select_one('.article-meta-tag'):
-            tag = line.select_one('.article-meta-tag').get_text(strip=True)
-            value = line.select_one('.article-meta-value').get_text(strip=True)
-            if tag == '作者': author_full = value
-            elif tag == '時間': timestamp = value
-        line.decompose()
-
-    pushes = []
-    for push in main_content.select('.push'):
-        push_tag_span = push.select_one('.push-tag')
-        push_userid_span = push.select_one('.push-userid')
-        push_content_span = push.select_one('.push-content')
-        push_ipdatetime_span = push.select_one('.push-ipdatetime')
-
-        pushes.append({
-            "tag": push_tag_span.get_text(strip=True) if push_tag_span else '',
-            "user": push_userid_span.get_text(strip=True) if push_userid_span else '',
-            "content": push_content_span.get_text(strip=True) if push_content_span else '',
-            "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else ''
-        })
-        push.decompose()
-
-    images = []
-    videos = []
-    for link in main_content.select('a'):
-        href = link.get('href', '')
-        if IMAGE_REGEX.search(href):
-            images.append(href)
-        else:
-            yt_match = YOUTUBE_REGEX.search(href)
-            if yt_match:
-                videos.append({"id": yt_match.group(1), "url": href})
-
-    for tag in main_content.select('span.f2, script, style'):
-        tag.decompose()
-        
-    for br in main_content.find_all("br"):
-        br.replace_with("\n")
-        
-    full_text = main_content.get_text()
-    
-    content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
-    content = content_parts[0].strip()
-    
-    return {
-        "author_full": author_full, 
-        "formatted_timestamp": format_ptt_time(timestamp), 
-        "content": content, 
-        "images": list(dict.fromkeys(images)),
-        "videos": list({v['id']: v for v in videos}.values()),
-        "pushes": pushes
-    }
-
-# --- Vercel 的 Serverless Function 入口 ---
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        parsed_path = urlparse(self.path)
-        query_params = parse_qs(unquote(parsed_path.query))
-        data = {}
-        error = None
-
-        try:
-            if 'proxy_url' in query_params:
-                image_url = query_params['proxy_url'][0]
-                if image_url.startswith('http://'):
-                    image_url = image_url.replace('http://', 'https://', 1)
-                
-                response = requests.get(image_url, timeout=20, stream=True, headers=HEADERS)
-                response.raise_for_status()
-                
-                self.send_response(200)
-                if 'Content-Type' in response.headers:
-                    self.send_header('Content-Type', response.headers['Content-Type'])
-                self.send_header('Cache-Control', 'public, max-age=604800')
-                self.end_headers()
-                
-                for chunk in response.iter_content(chunk_size=8192):
-                    self.wfile.write(chunk)
-                return
-
-            if 'list_url' in query_params:
-                board = query_params.get('board', ['Beauty'])[0]
-                list_url = query_params['list_url'][0]
-                data = fetch_ptt_article_list(board, list_url)
-            elif 'article_url' in query_params:
-                article_url = query_params['article_url'][0]
-                data = fetch_ptt_article_content(article_url)
-            else:
-                board = query_params.get('board', ['Beauty'])[0]
-                initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
-                data = fetch_ptt_article_list(board, initial_url)
-
-        except Exception as e:
-            error = e
-            print(f\"Error in /api/scraper: {e}\")
-            data = {\"error\": str(e)}
-
-        self.send_response(500 if error else 200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Expires', '0')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
-        return
-```
-
-Most up-to-date Immersive Artifact for "previews_py_v6" is:
-
-```python
-from http.server import BaseHTTPRequestHandler
-import json
-import requests
-from bs4 import BeautifulSoup
-import re
-from datetime import datetime
-import locale
-import concurrent.futures
-import time
-
-# --- 設定與常數 ---
-try:
-    locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
-except locale.Error:
-    print("警告: 無法設定 'zh_TW.UTF-8' locale。")
-
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-}
-COOKIES = {'over18': '1'}
-IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
-YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
-
-# --- 核心函式 ---
-def format_ptt_time(time_str):
-    if not time_str: return None
-    try:
-        dt_obj = datetime.strptime(time_str, '%a %b %d %H:%M:%S %Y')
-        weekday_map = {'Monday': '週一', 'Tuesday': '週二', 'Wednesday': '週三', 'Thursday': '週四', 'Friday': '週五', 'Saturday': '週六', 'Sunday': '週日'}
-        weekday_en = dt_obj.strftime('%A')
-        weekday_zh = weekday_map.get(weekday_en, '')
-        return dt_obj.strftime(f'%Y %m %d %H:%M {weekday_zh}')
-    except (ValueError, TypeError):
-        return time_str
-
-# === 修改：加入重試機制 ===
-def get_article_preview_data(article_url):
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=8)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
-            timestamp = None
-            for line in soup.select('.article-metaline, .article-metaline-right'):
-                if line.select_one('.article-meta-tag') and line.select_one('.article-meta-tag').get_text(strip=True) == '時間':
-                    timestamp = line.select_one('.article-meta-value').get_text(strip=True)
-                    break
-            
-            thumbnail_url, snippet = None, ""
-            main_content = soup.select_one('#main-content')
-            if main_content:
-                for link in main_content.select('a'):
-                    href = link.get('href', '')
-                    yt_match = YOUTUBE_REGEX.search(href)
-                    if yt_match:
-                        video_id = yt_match.group(1)
-                        thumbnail_url = f\"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg\"
-                        break
-                
-                if not thumbnail_url:
-                    for link in main_content.select('a'):
-                        href = link.get('href', '')
-                        if href and IMAGE_REGEX.search(href):
-                            thumbnail_url = href
-                            break
-
-                for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style, a'):
-                    if tag.name == 'a' and (IMAGE_REGEX.search(tag.get('href', '')) or YOUTUBE_REGEX.search(tag.get('href', ''))):
-                        continue
-                    tag.decompose()
-                full_text = main_content.get_text(strip=True)
-                if not full_text.strip().lower().startswith(('http://', 'https://')):
-                     snippet = full_text[:120]
-            
-            # 成功抓取，直接回傳
-            return {\"link\": article_url, \"thumbnail\": thumbnail_url, \"formatted_timestamp\": format_ptt_time(timestamp), \"snippet\": snippet, \"error\": None}
-        
-        except Exception as e:
-            # 如果是最後一次嘗試，則回傳錯誤
-            if attempt >= max_retries - 1:
-                return {\"link\": article_url, \"thumbnail\": None, \"formatted_timestamp\": \"無法載入\", \"snippet\": \"無法載入預覽...\", \"error\": str(e)}
-            # 否則等待後重試
-            time.sleep(1)
-
-# --- Vercel 的 Serverless Function 入口 ---
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        data = {}
-        error = None
-        ordered_results = []
-        
-        try:
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            body = json.loads(post_data)
-
-            if 'urls' not in body or not isinstance(body['urls'], list):
-                raise ValueError(\"無效的請求格式\")
-
-            urls = body['urls']
-            results = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                future_to_url = {executor.submit(get_article_preview_data, url): url for url in urls}
-                for future in concurrent.futures.as_completed(future_to_url):
-                    results.append(future.result())
-            ordered_results = sorted(results, key=lambda r: urls.index(r['link']))
-            data = ordered_results
-
-        except Exception as e:
-            error = e
-            print(f\"Error in /api/previews: {e}\")
-            data = {\"error\": str(e)}
-
-        self.send_response(500 if error else 200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Expires', '0')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
-        return
