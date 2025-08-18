@@ -582,7 +582,7 @@
                 showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`);
             }
 
-            // === 手勢操作 ===
+            // === 手勢操作 (優化後) ===
             function handleTouchStart(e) {
                 state.touchStartX = e.changedTouches[0].screenX;
                 state.touchStartY = e.changedTouches[0].screenY;
@@ -595,34 +595,39 @@
             function handleSwipeGesture() {
                 const deltaX = state.touchEndX - state.touchStartX;
                 const deltaY = state.touchEndY - state.touchStartY;
-                const swipeThreshold = 50; // 最小滑動距離
+                const swipeThreshold = 80; // 增加滑動閾值以降低靈敏度
+                
+                // 判斷是否為明確的水平或垂直滑動
+                const isHorizontalDominant = Math.abs(deltaX) > Math.abs(deltaY) * 2; 
+                const isVerticalDominant = Math.abs(deltaY) > Math.abs(deltaX) * 2;
 
-                if (Math.abs(deltaX) > Math.abs(deltaY)) { // 水平滑動
-                    if (deltaX < -swipeThreshold) { // 向左滑
-                        goBack();
+                if (isHorizontalDominant && Math.abs(deltaX) > swipeThreshold) {
+                    // 明確的水平滑動
+                    if (deltaX < 0) { // 向左滑動
+                        goBack(); // 返回文章列表
                     }
-                } else { // 垂直滑動
-                    if (Math.abs(deltaY) > swipeThreshold) {
-                        const currentArticles = state.viewingFavorites ? state.favorites : state.allArticles.filter(a => !state.dislikedArticles.some(d => d.link === a.link));
-                        const currentIndex = currentArticles.findIndex(a => a.link === state.currentArticle.link);
-                        
-                        if (currentIndex === -1) return;
+                } else if (isVerticalDominant && Math.abs(deltaY) > swipeThreshold) {
+                    // 明確的垂直滑動
+                    const currentArticles = state.viewingFavorites ? state.favorites : state.allArticles.filter(a => !state.dislikedArticles.some(d => d.link === a.link));
+                    const currentIndex = currentArticles.findIndex(a => a.link === state.currentArticle.link);
+                    
+                    if (currentIndex === -1) return;
 
-                        if (deltaY < 0) { // 向上滑，看下一篇
-                            if (currentIndex < currentArticles.length - 1) {
-                                showDetailView(currentArticles[currentIndex + 1]);
-                            } else {
-                                showToast('已經是最後一篇文章');
-                            }
-                        } else { // 向下滑，看上一篇
-                            if (currentIndex > 0) {
-                                showDetailView(currentArticles[currentIndex - 1]);
-                            } else {
-                                showToast('已經是第一篇文章');
-                            }
+                    if (deltaY < 0) { // 向上滑，看下一篇
+                        if (currentIndex < currentArticles.length - 1) {
+                            showDetailView(currentArticles[currentIndex + 1]);
+                        } else {
+                            showToast('已經是最後一篇文章');
+                        }
+                    } else { // 向下滑，看上一篇
+                        if (currentIndex > 0) {
+                            showDetailView(currentArticles[currentIndex - 1]);
+                        } else {
+                            showToast('已經是第一篇文章');
                         }
                     }
                 }
+                // 如果不是明確的滑動手勢（例如，對角線滑動或滑動距離不足），則不執行任何操作，視為一般滾動。
             }
 
             // === 事件監聽器 ===
