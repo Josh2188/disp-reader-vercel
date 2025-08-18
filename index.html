@@ -45,7 +45,7 @@
         .dark .thumbnail-container { background-color: #374151; }
         .thumbnail-container img { width: 100%; height: 100%; object-fit: cover; }
         
-        /* 推文樣式 (優化後) */
+        /* 推文樣式 (再次優化) */
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.75rem; line-height: 1.5; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
         .push-tag-推 { color: #22c55e; }
@@ -55,8 +55,16 @@
         .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; color: #3b82f6; }
         .dark .push-userid { color: #60a5fa; }
         .push-content { flex-grow: 999; flex-basis: 0; min-width: 50%; word-break: break-all; margin-right: 0.5rem; }
-        .push-info { flex-grow: 1; flex-basis: 130px; text-align: right; font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+        .push-info {
+            flex-grow: 1;
+            min-width: 130px;
+            text-align: right;
+            font-size: 0.75rem;
+            color: #9ca3af;
+            white-space: nowrap;
+        }
         .dark .push-info { color: #6b7280; }
+
 
         /* YouTube 嵌入 */
         .youtube-container {
@@ -199,7 +207,7 @@
                 viewingFavorites: false, loadRetries: 0, retryTimer: null,
                 fontSize: localStorage.getItem('fontSize') || 'md',
                 touchStartX: 0, touchStartY: 0, touchEndX: 0, touchEndY: 0,
-                isScrolling: false, // 新增：用於判斷是否為滾動
+                isScrolling: false, // 用於判斷是否為滾動
             };
             const MAX_RETRIES = 5;
 
@@ -541,6 +549,7 @@
 
             // === 圖片燈箱 ===
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
+            
             function openImageModal(index) {
                 cleanupImageInstance();
                 state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return;
@@ -548,13 +557,18 @@
                 imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
                 if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image');
-                try {
-                    state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 });
-                    const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} };
-                    pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false });
-                    state.pinchZoomInstance._wheelHandler = wheelHandler;
-                } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); }
+                
+                // 延遲初始化以確保 DOM 元素已渲染並取得正確尺寸
+                setTimeout(() => {
+                    try {
+                        state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 });
+                        const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} };
+                        pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false });
+                        state.pinchZoomInstance._wheelHandler = wheelHandler;
+                    } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); }
+                }, 50);
             }
+
             function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
             function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
             function showNextImage(e) { e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1); }
@@ -580,7 +594,7 @@
                 showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`);
             }
 
-            // === 手勢操作 (優化後 v2) ===
+            // === 手勢操作 (優化後 v3) ===
             function handleTouchStart(e) {
                 state.touchStartX = e.changedTouches[0].screenX;
                 state.touchStartY = e.changedTouches[0].screenY;
@@ -615,27 +629,7 @@
                         goBack(); // 返回文章列表
                     }
                 } 
-                // 只有在垂直移動明顯大於水平移動時，才觸發上下滑動
-                else if (Math.abs(deltaY) > swipeThreshold && Math.abs(deltaY) > Math.abs(deltaX) * 2) {
-                    const currentArticles = state.viewingFavorites ? state.favorites : state.allArticles.filter(a => !state.dislikedArticles.some(d => d.link === a.link));
-                    const currentIndex = currentArticles.findIndex(a => a.link === state.currentArticle.link);
-                    
-                    if (currentIndex === -1) return;
-
-                    if (deltaY < 0) { // 向上滑，看下一篇
-                        if (currentIndex < currentArticles.length - 1) {
-                            showDetailView(currentArticles[currentIndex + 1]);
-                        } else {
-                            showToast('已經是最後一篇文章');
-                        }
-                    } else { // 向下滑，看上一篇
-                        if (currentIndex > 0) {
-                            showDetailView(currentArticles[currentIndex - 1]);
-                        } else {
-                            showToast('已經是第一篇文章');
-                        }
-                    }
-                }
+                // 垂直滑動功能已移除
             }
 
             // === 事件監聽器 ===
@@ -681,7 +675,7 @@
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
             
-            // 手勢 (優化後 v2)
+            // 手勢 (優化後 v3)
             detailContent.addEventListener('touchstart', handleTouchStart, { passive: true });
             detailContent.addEventListener('touchmove', handleTouchMove, { passive: true });
             detailContent.addEventListener('touchend', handleTouchEnd, { passive: true });
