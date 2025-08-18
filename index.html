@@ -274,6 +274,8 @@
                 const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
                 const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
                 const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i;
+                // 新增：圖床域名列表
+                const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//;
 
                 const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
                 
@@ -286,9 +288,14 @@
                         const videoId = ytMatch[1];
                         return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a>`;
                     }
-                    if (imageRegex.test(cleanUrl)) {
+                    
+                    // 修改：判斷是否為圖片連結
+                    const hasImageExtension = imageRegex.test(cleanUrl);
+                    const isKnownImageHost = imageHostRegex.test(cleanUrl);
+
+                    if (hasImageExtension || isKnownImageHost) {
                         const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`;
-                        return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto" data-original-url="${cleanUrl}">`;
+                        return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto" data-original-url="${cleanUrl}" loading="lazy">`;
                     }
                     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:underline">${cleanUrl}</a>`;
                 });
@@ -498,7 +505,9 @@
                 const contentHTML = linkifyAndMediafy(data.content);
                 const pushesHTML = data.pushes.map(p => {
                     const tagClass = `push-tag-${p.tag}`;
-                    const contentWithMedia = linkifyAndMediafy(p.content);
+                    // 新增：清理推文開頭的冒號和空白
+                    const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim();
+                    const contentWithMedia = linkifyAndMediafy(cleanedContent);
                     return `<div class="push">
                                 <span class="push-tag ${tagClass}">${p.tag}</span>
                                 <span class="push-userid">${p.user}</span>
@@ -553,20 +562,30 @@
             function openImageModal(index) {
                 cleanupImageInstance();
                 state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return;
-                pinchZoomTarget.innerHTML = `<img src="/api/scraper?proxy_url=${encodeURIComponent(url)}">`;
-                imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden');
+                
+                const img = new Image();
+                img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
+                
+                pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>'; // 顯示載入動畫
+                imageModal.classList.remove('hidden'); 
+                imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
                 if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image');
                 
-                // 延遲初始化以確保 DOM 元素已渲染並取得正確尺寸
-                setTimeout(() => {
+                img.onload = () => {
+                    pinchZoomTarget.innerHTML = '';
+                    pinchZoomTarget.appendChild(img);
+                    // 確保圖片載入完成後再初始化
                     try {
                         state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 });
                         const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} };
                         pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false });
                         state.pinchZoomInstance._wheelHandler = wheelHandler;
                     } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); }
-                }, 50);
+                };
+                img.onerror = () => {
+                    pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>';
+                }
             }
 
             function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
