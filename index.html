@@ -133,10 +133,14 @@
                     <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
                     </button>
-                    <!-- 新增：PWA 安裝按鈕 -->
                     <button id="install-pwa-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden" title="安裝應用程式">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                    </button>
+                    <button id="help-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="安裝說明">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
                         </svg>
                     </button>
                 </div>
@@ -180,6 +184,25 @@
         <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
     
+    <!-- 安裝說明 Modal -->
+    <div id="install-guide-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <h3 class="text-lg font-bold mb-4">安裝應用程式</h3>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <h4 class="font-semibold mb-1">Android (Chrome)</h4>
+                    <p class="text-gray-600 dark:text-gray-300">點擊右上角的 <span class="font-bold">選單 ⋮ </span>，然後選擇「<span class="font-bold">安裝應用程式</span>」。</p>
+                </div>
+                <hr class="dark:border-gray-600">
+                <div>
+                    <h4 class="font-semibold mb-1">iOS (Safari)</h4>
+                    <p class="text-gray-600 dark:text-gray-300">點擊下方的 <span class="font-bold">分享按鈕</span> <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>，然後選擇「<span class="font-bold">加入主畫面</span>」。</p>
+                </div>
+            </div>
+            <button id="close-install-guide-btn" class="mt-6 bg-blue-500 text-white py-2 px-4 rounded-lg w-full">我知道了</button>
+        </div>
+    </div>
+
     <!-- 其他 UI 元件 -->
     <button id="floating-back-btn" class="hidden fixed bottom-5 left-1/2 -translate-x-1.2 z-50 p-3 bg-black/40 text-white rounded-full transition-opacity duration-300 opacity-0 hover:bg-black/60"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
     <div id="toast-notification" class="bg-gray-800 text-white text-sm py-2 px-4 rounded-full shadow-lg"><p id="toast-message"></p></div>
@@ -264,6 +287,9 @@
             const headerFavoriteBtn = el('header-favorite-btn');
             const fontSizeToggleList = el('font-size-toggle-list'), fontSizeToggleDetail = el('font-size-toggle-detail');
             const installPwaBtn = el('install-pwa-btn');
+            const helpBtn = el('help-btn');
+            const installGuideModal = el('install-guide-modal');
+            const closeInstallGuideBtn = el('close-install-guide-btn');
             
             // 熱門看板
             const TOP_BOARDS = { "Gossiping": "八卦", "Beauty": "表特", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
@@ -774,9 +800,16 @@
                 }
             });
 
+            helpBtn.addEventListener('click', () => installGuideModal.classList.remove('hidden'));
+            closeInstallGuideBtn.addEventListener('click', () => installGuideModal.classList.add('hidden'));
+            installGuideModal.addEventListener('click', (e) => {
+                if(e.target === installGuideModal) installGuideModal.classList.add('hidden');
+            });
+
+
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('./sw.js').then(registration => { // 修改路徑
+                    navigator.serviceWorker.register('/sw.js').then(registration => { // 修改路徑
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
                     }, err => {
                         console.log('ServiceWorker registration failed: ', err);
