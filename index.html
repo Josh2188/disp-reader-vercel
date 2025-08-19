@@ -258,8 +258,8 @@
             const headerFavoriteBtn = el('header-favorite-btn');
             const fontSizeToggleList = el('font-size-toggle-list'), fontSizeToggleDetail = el('font-size-toggle-detail');
             
-            // 熱門看板
-            const TOP_BOARDS = { "Gossiping": "八卦", "Beauty": "表特", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
+            // 熱門看板 - 新增 "當前最熱" 和 "西斯"
+            const TOP_BOARDS = { "Hot": "當前最熱", "Gossiping": "八卦", "Beauty": "表特", "Sex": "西斯", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
             // === 認證與使用者資料 ===
             onAuthStateChanged(auth, user => {
@@ -361,6 +361,10 @@
                 item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${state.readArticles.has(article.link) ? 'opacity-60' : ''}`;
                 item.dataset.link = article.link;
                 const pushHTML = article.push_count ? `<span class="ml-2 inline-block ${getPushCountBgClass(article.push_count)} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${article.push_count}</span>` : '';
+                
+                // For Hot board, show the board name
+                const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-blue-500 dark:text-blue-400 mr-2">[${article.board}]</span>` : '';
+                
                 const timestampText = article.formatted_timestamp ? `${article.author} - ${article.formatted_timestamp}` : `${article.author} - ${article.date}`;
                 const snippetText = article.snippet || '';
                 let thumbnailHTML = '';
@@ -371,7 +375,7 @@
                 }
                 item.innerHTML = `
                     <div class="flex flex-col overflow-hidden flex-grow">
-                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${article.title}${pushHTML}</h3>
+                        <h3 class="font-bold text-base leading-tight line-clamp-2 text-gray-900 dark:text-blue-300">${boardNameHTML}${article.title}${pushHTML}</h3>
                         <p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${timestampText}</p>
                         <p data-snippet-for="${article.link}" class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${snippetText}</p>
                     </div>
@@ -431,12 +435,14 @@
                 if (state.isLoading) return;
                 state.isLoading = true;
                 listError.classList.add('hidden');
+                const isHotBoard = board === 'Hot';
 
                 if (!append) {
                     cancelRetry();
                     articlesList.innerHTML = '';
-                    const cachedData = cache.get(`ptt-cache-${board}`);
-                    if (cachedData && cachedData.articles) {
+                    // 對於 "當前最熱" 看板，永遠重新抓取，不使用快取
+                    if (!isHotBoard && cache.get(`ptt-cache-${board}`)) {
+                        const cachedData = cache.get(`ptt-cache-${board}`);
                         state.allArticles = cachedData.articles;
                         state.prevPageUrl = cachedData.prevPageUrl;
                         renderAndSortArticles();
@@ -450,7 +456,10 @@
 
                 try {
                     const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`;
-                    const res = await fetch(`/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`);
+                    // 對 "當前最熱" 看板使用專門的 API 路徑
+                    const fetchUrl = isHotBoard ? `/api/scraper?board=Hot` : `/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`;
+                    
+                    const res = await fetch(fetchUrl);
                     if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const listData = await res.json();
                     
@@ -471,17 +480,19 @@
                     renderAndSortArticles();
                     fetchPreviewsInChunks(uniqueNewArticles);
 
-                    if (!append) cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
+                    // 不快取 "當前最熱" 看板
+                    if (!append && !isHotBoard) {
+                        cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl });
+                    }
                     state.isLoading = false;
 
                 } catch (error) {
                     state.loadRetries++;
                     if (state.loadRetries <= MAX_RETRIES) {
-                        // 隱藏式重試
                         state.retryTimer = setTimeout(() => {
                             state.isLoading = false; 
                             loadArticles(board, url, append);
-                        }, 2000 * state.loadRetries); // 逐漸增加延遲
+                        }, 2000 * state.loadRetries);
                     } else {
                         if (!append) {
                             listErrorText.textContent = error.message;
@@ -502,7 +513,10 @@
                 let articles = state.viewingFavorites ? [...state.favorites] : [...state.allArticles];
                 const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link));
                 articles = articles.filter(a => !dislikedLinks.has(a.link));
-                if (state.sortBy === 'hot') articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count));
+                // "當前最熱" 看板由後端排序，前端不需再排序
+                if (state.sortBy === 'hot' && state.currentBoard !== 'Hot') {
+                    articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count));
+                }
                 renderArticles(articles);
             }
             
@@ -531,7 +545,6 @@
                 const contentHTML = linkifyAndMediafy(data.content);
                 const pushesHTML = data.pushes.map(p => {
                     const tagClass = `push-tag-${p.tag}`;
-                    // 新增：清理推文開頭的冒號和空白
                     const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim();
                     const contentWithMedia = linkifyAndMediafy(cleanedContent);
                     return `<div class="push">
@@ -561,7 +574,6 @@
 
             function onBackToList() {
                 state.currentView = 'list';
-                // 停止並移除 YouTube 影片
                 const youtubeIframes = detailContent.querySelectorAll('.youtube-container');
                 youtubeIframes.forEach(iframe => iframe.remove());
                 
@@ -592,7 +604,7 @@
                 const img = new Image();
                 img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
                 
-                pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>'; // 顯示載入動畫
+                pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>';
                 imageModal.classList.remove('hidden'); 
                 imageModalControls.classList.remove('hidden');
                 updateImageNavButtons();
@@ -601,7 +613,6 @@
                 img.onload = () => {
                     pinchZoomTarget.innerHTML = '';
                     pinchZoomTarget.appendChild(img);
-                    // 確保圖片載入完成後再初始化
                     try {
                         state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 });
                         const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} };
@@ -643,73 +654,85 @@
             function handleTouchStart(e) {
                 state.touchStartX = e.changedTouches[0].screenX;
                 state.touchStartY = e.changedTouches[0].screenY;
-                state.isScrolling = false; // 重置滾動狀態
+                state.isScrolling = false;
             }
 
             function handleTouchMove(e) {
-                if (state.isScrolling) return; // 如果已經確定是滾動，就不再做判斷
-
+                if (state.isScrolling) return;
                 const deltaX = e.changedTouches[0].screenX - state.touchStartX;
                 const deltaY = e.changedTouches[0].screenY - state.touchStartY;
-
-                // 如果垂直移動的距離大於水平移動，就判定為滾動
                 if (Math.abs(deltaY) > Math.abs(deltaX) + 10) {
                     state.isScrolling = true;
                 }
             }
 
             function handleTouchEnd(e) {
-                if (state.isScrolling) { // 如果是滾動，則不觸發任何滑動手勢
+                if (state.isScrolling) {
                     state.isScrolling = false;
                     return;
                 }
-
                 const deltaX = e.changedTouches[0].screenX - state.touchStartX;
                 const deltaY = e.changedTouches[0].screenY - state.touchStartY;
                 const swipeThreshold = 80;
-
-                // 只有在水平移動明顯大於垂直移動時，才觸發左右滑動
                 if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-                    if (deltaX < 0) { // 向左滑動
-                        goBack(); // 返回文章列表
+                    if (deltaX < 0) {
+                        goBack();
                     }
                 } 
-                // 垂直滑動功能已移除
             }
 
             // === 事件監聽器 ===
-            // 登入登出
             googleLoginBtn.addEventListener('click', async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); showToast(`登入成功！`); } catch (e) { showToast('Google 登入失敗'); } });
             logoutBtn.addEventListener('click', async () => { try { await signOut(auth); showToast('您已成功登出'); } catch (e) { showToast('登出時發生錯誤'); } });
             avatarBtn.addEventListener('click', e => { e.stopPropagation(); logoutDropdown.classList.toggle('hidden'); });
             window.addEventListener('click', () => { if (!logoutDropdown.classList.contains('hidden')) logoutDropdown.classList.add('hidden'); });
-            // 導覽
-            boardSelector.addEventListener('change', e => { cancelRetry(); state.currentBoard = e.target.value; state.viewingFavorites = false; updateFavoritesButtonState(); loadArticles(state.currentBoard); });
+            
+            boardSelector.addEventListener('change', e => { 
+                cancelRetry(); 
+                state.currentBoard = e.target.value; 
+                state.viewingFavorites = false; 
+                updateFavoritesButtonState(); 
+                
+                // 對於 "當前最熱" 看板，隱藏排序按鈕
+                const isHotBoard = state.currentBoard === 'Hot';
+                toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
+                if (isHotBoard) {
+                    state.sortBy = 'hot'; // 後端已排序
+                }
+                
+                loadArticles(state.currentBoard); 
+            });
+
             headerBackBtn.addEventListener('click', goBack);
             floatingBackBtn.addEventListener('click', goBack);
-            // 文章操作
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
             headerDislikeBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'disliked_articles', docId); try { await setDoc(docRef, { link: a.link, title: a.title }); showToast('已加入不喜歡列表'); goBack(); } catch (e) { showToast('操作失敗'); } });
-            // 列表操作
-            articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.viewingFavorites) return; const { scrollTop, scrollHeight, clientHeight } = articlesList; if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); });
+            
+            articlesList.addEventListener('scroll', () => { 
+                // 對 "當前最熱" 看板禁用無限滾動
+                if (state.isLoading || !state.prevPageUrl || state.viewingFavorites || state.currentBoard === 'Hot') return; 
+                const { scrollTop, scrollHeight, clientHeight } = articlesList; 
+                if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); 
+            });
+            
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
-            // 內文點擊
+            
             detailContent.addEventListener('click', e => {
                 const image = e.target.closest('.article-image');
                 if (image) { const originalUrl = image.dataset.originalUrl; const idx = state.currentArticleImages.indexOf(originalUrl); if (idx > -1) openImageModal(idx); return; }
                 const thumbnail = e.target.closest('.youtube-thumbnail');
                 if (thumbnail) { e.preventDefault(); const videoId = thumbnail.dataset.youtubeId; const iframe = document.createElement('div'); iframe.className = 'youtube-container'; iframe.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`; thumbnail.replaceWith(iframe); }
             });
-            // 圖片燈箱
+            
             imageModal.addEventListener('click', handleCloseRequest);
             closeModalBtn.addEventListener('click', handleCloseRequest);
             pinchZoomTarget.addEventListener('click', e => e.stopPropagation());
             imagePrevBtn.addEventListener('click', showPrevImage);
             imageNextBtn.addEventListener('click', showNextImage);
             downloadBtn.addEventListener('click', async e => { e.stopPropagation(); const url = state.currentArticleImages[state.currentImageIndex]; if (!url) return; showToast('正在準備下載...'); downloadBtn.disabled = true; try { const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`); if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`); const blob = await res.blob(); const objUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = objUrl; a.download = url.split('/').pop().split('?')[0] || 'download'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(objUrl); a.remove(); showToast('下載已開始'); } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; } });
-            // 其他
+            
             clearCacheBtn.addEventListener('click', () => { Object.keys(localStorage).forEach(key => { if (key.startsWith('ptt-cache-')) localStorage.removeItem(key); }); localStorage.removeItem('readArticles'); state.readArticles.clear(); renderAndSortArticles(); showToast(`已清除所有快取與已讀記錄`); });
             const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
             fullscreenToggleList.addEventListener('click', toggleFullscreen);
@@ -720,17 +743,14 @@
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
             
-            // 手勢 (優化後 v3)
             detailContent.addEventListener('touchstart', handleTouchStart, { passive: true });
             detailContent.addEventListener('touchmove', handleTouchMove, { passive: true });
             detailContent.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-            // 鍵盤快速鍵
             window.addEventListener('keydown', e => {
                 if (e.key === '+' || e.key === '=') {
                     toggleFontSize();
                 } else if (e.key === '-') {
-                    // 為了循環，我們模擬點擊兩次
                     toggleFontSize();
                     toggleFontSize();
                 } else if (e.key === '0') {
@@ -752,13 +772,13 @@
 
             // === 初始化 ===
             function initialize() {
-                // 填入看板選項
                 for (const board in TOP_BOARDS) { const opt = document.createElement('option'); opt.value = board; opt.textContent = TOP_BOARDS[board]; if (board === state.currentBoard) opt.selected = true; boardSelector.appendChild(opt); }
-                // 套用字體大小
+                
+                const isHotBoard = state.currentBoard === 'Hot';
+                toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
+
                 applyFontSize(state.fontSize);
-                // 設定初始歷史狀態
                 history.replaceState({view: 'list'}, '', '#list');
-                // 載入文章
                 loadArticles(state.currentBoard);
                 updateHeader();
             }
