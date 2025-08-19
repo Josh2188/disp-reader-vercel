@@ -117,7 +117,7 @@
                 <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 
                 <!-- 修改：客製化看板選單 -->
-                <div class="relative w-full">
+                <div id="board-selector-container" class="relative flex-grow">
                     <button id="board-selector-btn" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 text-left flex justify-between items-center">
                         <span id="board-selector-text" class="truncate"></span>
                         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -374,7 +374,7 @@
             // === 頁面渲染與切換 ===
             function updateHeader() {
                 const isDetail = state.currentView === 'detail';
-                boardSelectorBtn.parentElement.classList.toggle('hidden', isDetail);
+                el('board-selector-container').classList.toggle('hidden', isDetail);
                 listViewControls.classList.toggle('hidden', isDetail);
                 detailViewControls.classList.toggle('hidden', !isDetail);
                 headerBackBtn.classList.toggle('hidden', !isDetail);
