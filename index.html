@@ -115,7 +115,18 @@
         <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
                 <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
+                
+                <!-- 修改：客製化看板選單 -->
+                <div class="relative w-full">
+                    <button id="board-selector-btn" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 text-left flex justify-between items-center">
+                        <span id="board-selector-text" class="truncate"></span>
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="board-dropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-30 ring-1 ring-black ring-opacity-5 max-h-60 overflow-y-auto no-scrollbar">
+                        <!-- 看板選項將由 JS 動態填入 -->
+                    </div>
+                </div>
+
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
                 <div id="list-view-controls" class="flex-shrink-0 flex items-center gap-1">
@@ -272,7 +283,7 @@
             const appContainer = el('app-container');
             const listView = el('list-view'), detailView = el('detail-view'), articlesList = el('articles-list');
             const skeletonContainer = el('skeleton-container'), infiniteLoader = el('infinite-loader'), listError = el('list-error');
-            const listErrorText = el('list-error-text'), boardSelector = el('board-selector'), headerBackBtn = el('header-back-btn');
+            const listErrorText = el('list-error-text'), boardSelectorBtn = el('board-selector-btn'), boardSelectorText = el('board-selector-text'), boardDropdown = el('board-dropdown');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
             const imageModal = el('image-modal'), imageModalControls = el('image-modal-controls'), imagePrevBtn = el('image-prev-btn');
             const imageNextBtn = el('image-next-btn'), pinchZoomTarget = el('pinch-zoom-target'), downloadBtn = el('download-btn');
@@ -363,7 +374,7 @@
             // === 頁面渲染與切換 ===
             function updateHeader() {
                 const isDetail = state.currentView === 'detail';
-                boardSelector.classList.toggle('hidden', isDetail);
+                boardSelectorBtn.parentElement.classList.toggle('hidden', isDetail);
                 listViewControls.classList.toggle('hidden', isDetail);
                 detailViewControls.classList.toggle('hidden', !isDetail);
                 headerBackBtn.classList.toggle('hidden', !isDetail);
@@ -723,10 +734,35 @@
             logoutBtn.addEventListener('click', async () => { try { await signOut(auth); showToast('您已成功登出'); } catch (e) { showToast('登出時發生錯誤'); } });
             avatarBtn.addEventListener('click', e => { e.stopPropagation(); logoutDropdown.classList.toggle('hidden'); });
             window.addEventListener('click', () => { if (!logoutDropdown.classList.contains('hidden')) logoutDropdown.classList.add('hidden'); });
-            // 導覽
-            boardSelector.addEventListener('change', e => { cancelRetry(); state.currentBoard = e.target.value; state.viewingFavorites = false; updateFavoritesButtonState(); loadArticles(state.currentBoard); });
-            headerBackBtn.addEventListener('click', goBack);
-            floatingBackBtn.addEventListener('click', goBack);
+            
+            // 看板選單
+            boardSelectorBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                boardDropdown.classList.toggle('hidden');
+            });
+
+            boardDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = e.target.closest('a');
+                if (target && target.dataset.board) {
+                    const selectedBoard = target.dataset.board;
+                    boardDropdown.classList.add('hidden');
+                    if (state.currentBoard !== selectedBoard) {
+                        state.currentBoard = selectedBoard;
+                        boardSelectorText.textContent = TOP_BOARDS[selectedBoard];
+                        state.viewingFavorites = false;
+                        updateFavoritesButtonState();
+                        loadArticles(state.currentBoard);
+                    }
+                }
+            });
+
+            window.addEventListener('click', () => {
+                if (!boardDropdown.classList.contains('hidden')) {
+                    boardDropdown.classList.add('hidden');
+                }
+            });
+
             // 文章操作
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
             headerDislikeBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'disliked_articles', docId); try { await setDoc(docRef, { link: a.link, title: a.title }); showToast('已加入不喜歡列表'); goBack(); } catch (e) { showToast('操作失敗'); } });
@@ -820,7 +856,17 @@
             // === 初始化 ===
             function initialize() {
                 // 填入看板選項
-                for (const board in TOP_BOARDS) { const opt = document.createElement('option'); opt.value = board; opt.textContent = TOP_BOARDS[board]; if (board === state.currentBoard) opt.selected = true; boardSelector.appendChild(opt); }
+                boardDropdown.innerHTML = '';
+                for (const board in TOP_BOARDS) {
+                    const item = document.createElement('a');
+                    item.href = '#';
+                    item.dataset.board = board;
+                    item.className = 'block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700';
+                    item.textContent = TOP_BOARDS[board];
+                    boardDropdown.appendChild(item);
+                }
+                boardSelectorText.textContent = TOP_BOARDS[state.currentBoard];
+                
                 // 套用字體大小
                 applyFontSize(state.fontSize);
                 // 設定初始歷史狀態
