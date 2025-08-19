@@ -4,9 +4,10 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import locale
 import time
+import concurrent.futures
 
 # --- 設定與常數 ---
 try:
@@ -20,6 +21,13 @@ HEADERS = {
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
+
+# 用於抓取 "當前最熱" 的看板列表
+HOT_SCRAPE_BOARDS = [
+    "Gossiping", "Beauty", "C_Chat", "Stock", "Lifeismoney", 
+    "MobileComm", "NBA", "Baseball", "Boy-Girl", "Tech_Job", 
+    "Car", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex"
+]
 
 # --- 核心函式 ---
 def format_ptt_time(time_str):
@@ -52,9 +60,8 @@ def process_article_item_basic(item, board):
     except Exception:
         return None
 
-# === 修改：增加後端重試次數與間隔 ===
 def fetch_ptt_article_list(board, page_url):
-    max_retries = 5 # 增加重試次數
+    max_retries = 5
     for attempt in range(max_retries):
         try:
             response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
@@ -76,15 +83,14 @@ def fetch_ptt_article_list(board, page_url):
             if err.response.status_code == 404:
                 return {"articles": [], "prev_page_url": None}
             if attempt < max_retries - 1:
-                time.sleep(2) # 增加等待時間
+                time.sleep(2)
                 continue
             raise
         except Exception as e:
             if attempt < max_retries - 1:
-                time.sleep(2) # 增加等待時間
+                time.sleep(2)
                 continue
             raise e
-
 
 def fetch_ptt_article_content(article_url):
     response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
@@ -148,6 +154,60 @@ def fetch_ptt_article_content(article_url):
         "pushes": pushes
     }
 
+# --- "當前最熱" 看板專用函式 ---
+def parse_push_count_for_sort(c):
+    if c == '爆': return 1000
+    if isinstance(c, str):
+        if c.startswith('X'):
+            try: return -10 - int(c[1:])
+            except (ValueError, TypeError): return -100
+        try: return int(c)
+        except (ValueError, TypeError): return 0
+    if isinstance(c, int):
+        return c
+    return 0
+
+def fetch_one_board_page(board):
+    """抓取單一看板的第一頁文章"""
+    try:
+        url = f"https://www.ptt.cc/bbs/{board}/index.html"
+        data = fetch_ptt_article_list(board, url)
+        return data.get("articles", [])
+    except Exception:
+        return []
+
+def fetch_ptt_hot_articles():
+    """抓取多個看板，整合並排序成熱門文章列表"""
+    all_articles = []
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_board = {executor.submit(fetch_one_board_page, board): board for board in HOT_SCRAPE_BOARDS}
+        for future in concurrent.futures.as_completed(future_to_board):
+            try:
+                articles = future.result()
+                all_articles.extend(articles)
+            except Exception as exc:
+                print(f'{future_to_board[future]} 抓取時發生錯誤: {exc}')
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    today_str = today.strftime('%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d')
+    yesterday_str = yesterday.strftime('%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d')
+    
+    recent_articles = [
+        article for article in all_articles 
+        if article.get('date', '').strip() in [today_str, yesterday_str]
+    ]
+    
+    sorted_articles = sorted(
+        recent_articles, 
+        key=lambda x: parse_push_count_for_sort(x.get('push_count', 0)), 
+        reverse=True
+    )
+    
+    # 回傳前 100 篇，並且不提供下一頁的 URL 來禁用無限滾動
+    return {"articles": sorted_articles[:100], "prev_page_url": None}
+
 # --- Vercel 的 Serverless Function 入口 ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -168,24 +228,28 @@ class handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 if 'Content-Type' in response.headers:
                     self.send_header('Content-Type', response.headers['Content-Type'])
-                self.send_header('Cache-Control', 'public, max-age=604800')
+                self.send_header('Cache-control', 'public, max-age=604800')
                 self.end_headers()
                 
                 for chunk in response.iter_content(chunk_size=8192):
                     self.wfile.write(chunk)
                 return
 
-            if 'list_url' in query_params:
-                board = query_params.get('board', ['Beauty'])[0]
+            board = query_params.get('board', [None])[0]
+            if board == 'Hot':
+                data = fetch_ptt_hot_articles()
+            elif 'list_url' in query_params and board:
                 list_url = query_params['list_url'][0]
                 data = fetch_ptt_article_list(board, list_url)
             elif 'article_url' in query_params:
                 article_url = query_params['article_url'][0]
                 data = fetch_ptt_article_content(article_url)
-            else:
-                board = query_params.get('board', ['Beauty'])[0]
+            elif board:
                 initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
                 data = fetch_ptt_article_list(board, initial_url)
+            else:
+                 raise ValueError("缺少看板名稱或文章/列表 URL")
+
 
         except Exception as e:
             error = e
