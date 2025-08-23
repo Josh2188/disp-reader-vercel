@@ -65,31 +65,26 @@
         .article-image { cursor: pointer; }
 
         /* 美圖集錦 - 瀑布流 */
-        #gallery-grid {
-            column-gap: 0.5rem; /* 8px */
-            padding: 0.5rem;
-            column-count: 2;
-        }
-        @media (min-width: 640px) { #gallery-grid { column-count: 3; } }
-        @media (min-width: 1024px) { #gallery-grid { column-count: 4; } }
-        @media (min-width: 1280px) { #gallery-grid { column-count: 5; } }
+        #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
+        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; }
+        .gallery-item img { width: 100%; height: auto; border-radius: 0.5rem; display: block; transition: opacity 0.3s ease; }
+        .gallery-item:hover img { opacity: 0.85; }
 
-        .gallery-item {
-            margin-bottom: 0.5rem; /* 8px */
-            break-inside: avoid;
-            cursor: pointer;
-            display: block;
-        }
-        .gallery-item img {
-            width: 100%;
-            height: auto;
-            border-radius: 0.5rem; /* 8px */
-            display: block;
-            transition: opacity 0.3s ease;
-        }
-        .gallery-item:hover img {
-            opacity: 0.85;
-        }
+        /* 美圖集錦 - 尺寸 */
+        #gallery-grid.size-sm { column-count: 2; }
+        @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } }
+        @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
+        @media (min-width: 1280px) { #gallery-grid.size-sm { column-count: 5; } }
+
+        #gallery-grid.size-md { column-count: 2; }
+        @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } }
+        @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
+        @media (min-width: 1280px) { #gallery-grid.size-md { column-count: 4; } }
+
+        #gallery-grid.size-lg { column-count: 1; }
+        @media (min-width: 640px) { #gallery-grid.size-lg { column-count: 2; } }
+        @media (min-width: 1024px) { #gallery-grid.size-lg { column-count: 2; } }
+        @media (min-width: 1280px) { #gallery-grid.size-lg { column-count: 3; } }
 
         /* 顏色主題 */
         .theme-default .text-main-title { color: #dbeafe; } .theme-default .text-main-link { color: #60a5fa; } .theme-default .text-main-content { color: #d1d5db; } .theme-default .push-userid { color: #60a5fa; }
@@ -126,6 +121,13 @@
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
                     <button id="font-size-toggle-detail" class="p-2 rounded-full hover:bg-gray-700" title="切換字型大小"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
                     <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
+                </div>
+                 <div id="gallery-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
+                    <button id="gallery-size-toggle-btn" class="p-2 rounded-full hover:bg-gray-700" title="切換縮圖尺寸">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                        </svg>
+                    </button>
                 </div>
             </div>
         </header>
@@ -186,7 +188,7 @@
             const cache = { get(key) { const itemStr = localStorage.getItem(key); if (!itemStr) return null; try { const item = JSON.parse(itemStr); if (new Date().getTime() > item.expiry) { localStorage.removeItem(key); return null; } return item.data; } catch (e) { return null; } }, set(key, data) { const item = { data: data, expiry: new Date().getTime() + 7 * 24 * 60 * 60 * 1000 }; localStorage.setItem(key, JSON.stringify(item)); } };
 
             // 應用程式狀態
-            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', touchStartX: 0, touchStartY: 0, touchEndX: 0, touchEndY: 0, isScrolling: false };
+            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', touchStartX: 0, touchStartY: 0, touchEndX: 0, touchEndY: 0, isScrolling: false };
             const MAX_RETRIES = 5;
 
             // DOM 元素快取
@@ -204,7 +206,7 @@
             const clearCacheBtn = el('clear-cache-btn'), toggleFavoritesBtn = el('toggle-favorites-btn');
             const favIconOutline = el('fav-icon-outline'), favIconSolid = el('fav-icon-solid'), toggleSortBtn = el('toggle-sort-btn');
             const sortTimeIcon = el('sort-time-icon'), sortHotIcon = el('sort-hot-icon'), listViewControls = el('list-view-controls');
-            const detailViewControls = el('detail-view-controls');
+            const detailViewControls = el('detail-view-controls'), galleryViewControls = el('gallery-view-controls');
             const googleLoginBtn = el('google-login-btn'), userInfo = el('user-info'), userAvatar = el('user-avatar');
             const logoutBtn = el('logout-btn'), userControls = el('user-controls'), avatarBtn = el('avatar-btn');
             const logoutDropdown = el('logout-dropdown'), headerDislikeBtn = el('header-dislike-btn');
@@ -213,6 +215,7 @@
             const fontSizeToggleList = el('font-size-toggle-list'), fontSizeToggleDetail = el('font-size-toggle-detail');
             const themeToggleBtn = el('theme-toggle-btn');
             const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
+            const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
             
             // 熱門看板 - 新增 "美圖集錦"
             const TOP_BOARDS = { "Hot": "當前最熱", "BeautyGallery": "美圖集錦", "Gossiping": "八卦", "Beauty": "表特", "Sex": "西斯", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
@@ -237,7 +240,7 @@
             function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline">${cleanUrl}</a>`; }); }
             
             // === 頁面渲染與切換 ===
-            function updateHeader() { const isDetail = state.currentView === 'detail'; boardSelector.classList.toggle('hidden', isDetail || state.currentView === 'gallery'); listViewControls.classList.toggle('hidden', isDetail || state.currentView === 'gallery'); detailViewControls.classList.toggle('hidden', !isDetail); headerBackBtn.classList.toggle('hidden', !isDetail && state.currentView !== 'gallery'); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
+            function updateHeader() { const isDetail = state.currentView === 'detail'; const isGallery = state.currentView === 'gallery'; boardSelector.classList.toggle('hidden', isDetail || isGallery); listViewControls.classList.toggle('hidden', isDetail || isGallery); galleryViewControls.classList.toggle('hidden', !isGallery); detailViewControls.classList.toggle('hidden', !isDetail); headerBackBtn.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail || isGallery); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
             function switchToView(viewName) { ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); state.currentView = viewName; updateHeader(); }
             function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
@@ -260,9 +263,9 @@
             // === 文章內頁 ===
             async function showDetailView(article, fromHistory = false) { state.currentArticle = article; switchToView('detail'); floatingBackBtn.classList.remove('hidden'); showFloatingBackButton(); if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); const li = document.querySelector(`[data-link="${article.link}"]`); if(li) li.classList.add('opacity-60'); } detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-16 w-16"></div></div>'; if (!fromHistory) { history.pushState({view: 'detail', articleLink: article.link}, '', '#detail'); } try { const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`); if (!res.ok) throw new Error(`無法載入內文: ${res.status}`); const data = await res.json(); state.currentArticleImages = data.images || []; renderDetailContent(data, article); } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-4">${e.message}</p>`; } }
             function renderDetailContent(data, article) { const contentHTML = linkifyAndMediafy(data.content); const pushesHTML = data.pushes.map(p => { const tagClass = `push-tag-${p.tag}`; const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim(); const contentWithMedia = linkifyAndMediafy(cleanedContent); return `<div class="push"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; }).join(''); detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words text-main-content">${contentHTML}</div><hr class="my-4 border-gray-600"><div class="pushes-container">${pushesHTML}</div>`; detailContent.scrollTop = 0; }
-            function goBack() { if (history.state?.view === 'detail' || history.state?.view === 'gallery') { history.back(); } }
+            function goBack() { if(state.currentView === 'gallery') return; if (history.state?.view === 'detail') { history.back(); } }
             function onBackToList() { state.currentView = 'list'; const youtubeIframes = detailContent.querySelectorAll('.youtube-container'); youtubeIframes.forEach(iframe => iframe.remove()); switchToView('list'); floatingBackBtn.classList.add('hidden'); }
-            window.addEventListener('popstate', (event) => { if (!imageModal.classList.contains('hidden')) { closeImageModal(); } else if ((state.currentView === 'detail' || state.currentView === 'gallery') && (!event.state || event.state.view === 'list')) { onBackToList(); } else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); } });
+            window.addEventListener('popstate', (event) => { if (!imageModal.classList.contains('hidden')) { closeImageModal(); } else if (state.currentView === 'gallery' && (!event.state || event.state.view === 'list')) { history.pushState({view: 'gallery'}, '', '#gallery'); } else if (state.currentView === 'detail' && (!event.state || event.state.view === 'list')) { onBackToList(); } else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); } });
 
             // === 美圖集錦 (支援無限滾動與重試) ===
             async function loadGallery(append = false) {
@@ -356,6 +359,24 @@
             const themes = ['theme-default', 'theme-cyan', 'theme-amber', 'theme-lime']; let currentThemeIndex = themes.indexOf(localStorage.getItem('colorTheme') || 'theme-default'); if(currentThemeIndex === -1) currentThemeIndex = 0;
             function applyTheme(themeName) { themes.forEach(t => bodyEl.classList.remove(t)); bodyEl.classList.add(themeName); localStorage.setItem('colorTheme', themeName); }
             
+            // === 美圖集錦尺寸 ===
+            const gallerySizes = ['sm', 'md', 'lg'];
+            function applyGallerySize(sizeKey) {
+                if (!gallerySizes.includes(sizeKey)) return;
+                gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`));
+                galleryGrid.classList.add(`size-${sizeKey}`);
+                localStorage.setItem('gallerySize', sizeKey);
+                state.gallerySize = sizeKey;
+            }
+            function toggleGallerySize() {
+                const currentIndex = gallerySizes.indexOf(state.gallerySize);
+                const nextIndex = (currentIndex + 1) % gallerySizes.length;
+                const nextSizeKey = gallerySizes[nextIndex];
+                applyGallerySize(nextSizeKey);
+                const sizeMap = { sm: '小', md: '中', lg: '大' };
+                showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`);
+            }
+
             // === 手勢操作 ===
             function handleTouchStart(e) { state.touchStartX = e.changedTouches[0].screenX; state.touchStartY = e.changedTouches[0].screenY; state.isScrolling = false; }
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
@@ -391,6 +412,7 @@
             fontSizeToggleList.addEventListener('click', toggleFontSize);
             fontSizeToggleDetail.addEventListener('click', toggleFontSize);
             themeToggleBtn.addEventListener('click', () => { currentThemeIndex = (currentThemeIndex + 1) % themes.length; applyTheme(themes[currentThemeIndex]); showToast('已切換顏色主題'); });
+            gallerySizeToggleBtn.addEventListener('click', toggleGallerySize);
             function showFloatingBackButton() { if (state.currentView !== 'detail') return; floatingBackBtn.classList.remove('opacity-0'); clearTimeout(state.inactivityTimer); state.inactivityTimer = setTimeout(() => floatingBackBtn.classList.add('opacity-0'), 3000); }
             document.addEventListener('mousemove', showFloatingBackButton);
             document.addEventListener('touchstart', showFloatingBackButton);
@@ -408,6 +430,7 @@
                 toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
                 applyFontSize(state.fontSize);
                 applyTheme(themes[currentThemeIndex]);
+                applyGallerySize(state.gallerySize);
                 history.replaceState({view: 'list'}, '', '#list');
                 loadArticles(state.currentBoard);
                 updateHeader();
