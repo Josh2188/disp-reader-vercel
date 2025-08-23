@@ -66,9 +66,11 @@
 
         /* 美圖集錦 - 瀑布流 */
         #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
-        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; }
+        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; }
         .gallery-item img { width: 100%; height: auto; border-radius: 0.5rem; display: block; transition: opacity 0.3s ease; }
         .gallery-item:hover img { opacity: 0.85; }
+        .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; }
+        .gallery-item.is-favorite .fav-overlay { display: block; }
 
         /* 美圖集錦 - 尺寸 */
         #gallery-grid.size-sm { column-count: 2; }
@@ -91,14 +93,30 @@
         .theme-cyan .text-main-title { color: #a5f3fc; } .theme-cyan .text-main-link { color: #67e8f9; } .theme-cyan .text-main-content { color: #a3a3a3; } .theme-cyan .push-userid { color: #67e8f9; }
         .theme-amber .text-main-title { color: #fde68a; } .theme-amber .text-main-link { color: #fcd34d; } .theme-amber .text-main-content { color: #a8a29e; } .theme-amber .push-userid { color: #fcd34d; }
         .theme-lime .text-main-title { color: #d9f99d; } .theme-lime .text-main-link { color: #bef264; } .theme-lime .text-main-content { color: #a1a1aa; } .theme-lime .push-userid { color: #bef264; }
+
+        /* 平板與桌面版寬度優化 */
+        @media (min-width: 768px) { /* md */
+            #app-container {
+                max-width: 48rem; /* 768px */
+            }
+        }
+        @media (min-width: 1024px) { /* lg */
+            #app-container {
+                max-width: 64rem; /* 1024px */
+            }
+        }
+        @media (min-width: 1280px) { /* xl */
+            #app-container {
+                max-width: none; /* 填滿螢幕 */
+            }
+        }
     </style>
 </head>
 <body class="bg-black text-gray-100 theme-default">
 
-    <div id="app-container" class="max-w-md mx-auto bg-black min-h-screen shadow-lg flex flex-col">
+    <div id="app-container" class="mx-auto bg-black min-h-screen shadow-lg flex flex-col">
         <header id="main-header" class="bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
-                <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 <select id="board-selector" class="bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
@@ -117,17 +135,15 @@
                     <div id="user-info" class="hidden items-center"><div class="relative ml-auto"><button id="avatar-btn"><img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="User Avatar"></button><div id="logout-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5"><button id="logout-btn" class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-700">登出</button></div></div></div>
                 </div>
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
+                    <button id="header-back-btn-detail" class="p-2 rounded-full hover:bg-gray-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                     <button id="header-dislike-btn" class="bg-gray-700 text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">Dislike</button>
                     <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
                     <button id="font-size-toggle-detail" class="p-2 rounded-full hover:bg-gray-700" title="切換字型大小"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
                     <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
                  <div id="gallery-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                    <button id="gallery-size-toggle-btn" class="p-2 rounded-full hover:bg-gray-700" title="切換縮圖尺寸">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                        </svg>
-                    </button>
+                    <button id="gallery-size-toggle-btn" class="p-2 rounded-full hover:bg-gray-700" title="切換縮圖尺寸"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg></button>
+                    <button id="fullscreen-toggle-gallery" class="p-2 rounded-full hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
             </div>
         </header>
@@ -160,6 +176,7 @@
         <div id="image-modal-title" class="absolute bottom-0 left-0 right-0 p-4 bg-black/50 text-white text-center text-sm truncate z-60 hidden"></div>
     </div>
     <div id="image-modal-controls" class="hidden fixed top-0 right-0 m-4 flex gap-2 z-[60]">
+        <button id="favorite-from-modal-btn" class="bg-pink-500 text-white p-2 rounded-full hover:bg-pink-600 focus:outline-none" title="收藏文章"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></button>
         <button id="download-btn" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
         <button id="close-modal-btn" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
@@ -188,17 +205,18 @@
             const cache = { get(key) { const itemStr = localStorage.getItem(key); if (!itemStr) return null; try { const item = JSON.parse(itemStr); if (new Date().getTime() > item.expiry) { localStorage.removeItem(key); return null; } return item.data; } catch (e) { return null; } }, set(key, data) { const item = { data: data, expiry: new Date().getTime() + 7 * 24 * 60 * 60 * 1000 }; localStorage.setItem(key, JSON.stringify(item)); } };
 
             // 應用程式狀態
-            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', touchStartX: 0, touchStartY: 0, touchEndX: 0, touchEndY: 0, isScrolling: false };
+            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', currentModalGalleryItem: null, touchStartX: 0, touchStartY: 0, touchEndX: 0, touchEndY: 0, isScrolling: false };
             const MAX_RETRIES = 5;
 
             // DOM 元素快取
             const el = id => document.getElementById(id);
             const docEl = document.documentElement;
             const bodyEl = document.body;
+            const appContainer = el('app-container');
             const listView = el('list-view'), detailView = el('detail-view'), galleryView = el('gallery-view');
             const articlesList = el('articles-list'), galleryGrid = el('gallery-grid'), galleryLoaderInitial = el('gallery-loader-initial'), galleryLoaderMore = el('gallery-loader-more');
             const skeletonContainer = el('skeleton-container'), infiniteLoader = el('infinite-loader'), listError = el('list-error');
-            const listErrorText = el('list-error-text'), boardSelector = el('board-selector'), headerBackBtn = el('header-back-btn');
+            const listErrorText = el('list-error-text'), boardSelector = el('board-selector'), headerBackBtnDetail = el('header-back-btn-detail');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
             const imageModal = el('image-modal'), imageModalControls = el('image-modal-controls'), imagePrevBtn = el('image-prev-btn');
             const imageNextBtn = el('image-next-btn'), pinchZoomTarget = el('pinch-zoom-target'), downloadBtn = el('download-btn');
@@ -210,14 +228,15 @@
             const googleLoginBtn = el('google-login-btn'), userInfo = el('user-info'), userAvatar = el('user-avatar');
             const logoutBtn = el('logout-btn'), userControls = el('user-controls'), avatarBtn = el('avatar-btn');
             const logoutDropdown = el('logout-dropdown'), headerDislikeBtn = el('header-dislike-btn');
-            const fullscreenToggleList = el('fullscreen-toggle-list'), fullscreenToggleDetail = el('fullscreen-toggle-detail');
+            const fullscreenToggleList = el('fullscreen-toggle-list'), fullscreenToggleDetail = el('fullscreen-toggle-detail'), fullscreenToggleGallery = el('fullscreen-toggle-gallery');
             const headerFavoriteBtn = el('header-favorite-btn');
             const fontSizeToggleList = el('font-size-toggle-list'), fontSizeToggleDetail = el('font-size-toggle-detail');
             const themeToggleBtn = el('theme-toggle-btn');
             const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
             const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
+            const favoriteFromModalBtn = el('favorite-from-modal-btn');
             
-            // 熱門看板 - 新增 "美圖集錦"
+            // 熱門看板
             const TOP_BOARDS = { "Hot": "當前最熱", "BeautyGallery": "美圖集錦", "Gossiping": "八卦", "Beauty": "表特", "Sex": "西斯", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
             // === 認證與使用者資料 ===
@@ -226,7 +245,13 @@
                 if (user && !user.isAnonymous) {
                     userId = user.uid;
                     googleLoginBtn.classList.add('hidden'); userInfo.classList.remove('hidden'); userControls.classList.remove('hidden'); userAvatar.src = user.photoURL;
-                    unsubscribeFavorites = onSnapshot(collection(db, 'users', userId, 'favorites'), snap => { state.favorites = snap.docs.map(d => d.data()); if (state.viewingFavorites) renderAndSortArticles(); if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link)); });
+                    unsubscribeFavorites = onSnapshot(collection(db, 'users', userId, 'favorites'), snap => { 
+                        state.favorites = snap.docs.map(d => d.data()); 
+                        if (state.viewingFavorites) renderAndSortArticles(); 
+                        if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
+                        if(state.currentView === 'gallery') updateGalleryFavoriteIcons();
+                        if(!imageModal.classList.contains('hidden')) updateFavoriteFromModalBtn();
+                    });
                     unsubscribeDisliked = onSnapshot(collection(db, 'users', userId, 'disliked_articles'), snap => { state.dislikedArticles = snap.docs.map(d => d.data()); renderAndSortArticles(); });
                 } else { userId = user ? user.uid : null; googleLoginBtn.classList.remove('hidden'); userInfo.classList.add('hidden'); userControls.classList.add('hidden'); state.favorites = []; state.dislikedArticles = []; if (!user) signInAnonymously(auth).catch(e => console.error("匿名登入失敗:", e)); }
             });
@@ -240,7 +265,7 @@
             function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline">${cleanUrl}</a>`; }); }
             
             // === 頁面渲染與切換 ===
-            function updateHeader() { const isDetail = state.currentView === 'detail'; const isGallery = state.currentView === 'gallery'; boardSelector.classList.toggle('hidden', isDetail || isGallery); listViewControls.classList.toggle('hidden', isDetail || isGallery); galleryViewControls.classList.toggle('hidden', !isGallery); detailViewControls.classList.toggle('hidden', !isDetail); headerBackBtn.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail || isGallery); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
+            function updateHeader() { const isDetail = state.currentView === 'detail'; const isGallery = state.currentView === 'gallery'; boardSelector.classList.toggle('hidden', isDetail); listViewControls.classList.toggle('hidden', isDetail || isGallery); galleryViewControls.classList.toggle('hidden', !isGallery); detailViewControls.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
             function switchToView(viewName) { ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); state.currentView = viewName; updateHeader(); }
             function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
@@ -263,97 +288,27 @@
             // === 文章內頁 ===
             async function showDetailView(article, fromHistory = false) { state.currentArticle = article; switchToView('detail'); floatingBackBtn.classList.remove('hidden'); showFloatingBackButton(); if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); const li = document.querySelector(`[data-link="${article.link}"]`); if(li) li.classList.add('opacity-60'); } detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-16 w-16"></div></div>'; if (!fromHistory) { history.pushState({view: 'detail', articleLink: article.link}, '', '#detail'); } try { const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`); if (!res.ok) throw new Error(`無法載入內文: ${res.status}`); const data = await res.json(); state.currentArticleImages = data.images || []; renderDetailContent(data, article); } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-4">${e.message}</p>`; } }
             function renderDetailContent(data, article) { const contentHTML = linkifyAndMediafy(data.content); const pushesHTML = data.pushes.map(p => { const tagClass = `push-tag-${p.tag}`; const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim(); const contentWithMedia = linkifyAndMediafy(cleanedContent); return `<div class="push"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; }).join(''); detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words text-main-content">${contentHTML}</div><hr class="my-4 border-gray-600"><div class="pushes-container">${pushesHTML}</div>`; detailContent.scrollTop = 0; }
-            function goBack() { if(state.currentView === 'gallery') return; if (history.state?.view === 'detail') { history.back(); } }
+            function goBack(fromDetail = false) { if(state.currentView === 'gallery') return; if (fromDetail || (history.state?.view === 'detail')) { history.back(); } }
             function onBackToList() { state.currentView = 'list'; const youtubeIframes = detailContent.querySelectorAll('.youtube-container'); youtubeIframes.forEach(iframe => iframe.remove()); switchToView('list'); floatingBackBtn.classList.add('hidden'); }
             window.addEventListener('popstate', (event) => { if (!imageModal.classList.contains('hidden')) { closeImageModal(); } else if (state.currentView === 'gallery' && (!event.state || event.state.view === 'list')) { history.pushState({view: 'gallery'}, '', '#gallery'); } else if (state.currentView === 'detail' && (!event.state || event.state.view === 'list')) { onBackToList(); } else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); } });
 
-            // === 美圖集錦 (支援無限滾動與重試) ===
-            async function loadGallery(append = false) {
-                if (state.isLoading) return;
-                state.isLoading = true;
-                galleryError.classList.add('hidden');
-
-                if (!append) {
-                    cancelRetry();
-                    galleryGrid.innerHTML = '';
-                    state.galleryPrevPageUrl = null;
-                    galleryLoaderInitial.classList.remove('hidden');
-                } else {
-                    galleryLoaderMore.classList.remove('hidden');
-                }
-
-                try {
-                    const url = append && state.galleryPrevPageUrl
-                        ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}`
-                        : `/api/scraper?board=BeautyGallery`;
-                    
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
-                    const data = await res.json();
-                    
-                    cancelRetry();
-
-                    state.galleryPrevPageUrl = data.prev_page_url;
-                    const newItems = data.articles || [];
-
-                    if (append) {
-                        state.galleryItems.push(...newItems);
-                    } else {
-                        state.galleryItems = newItems;
-                    }
-                    renderGallery(newItems, append);
-
-                } catch (error) {
-                    state.loadRetries++;
-                    if (state.loadRetries <= MAX_RETRIES) {
-                        state.retryTimer = setTimeout(() => {
-                            state.isLoading = false; 
-                            loadGallery(append);
-                        }, 2000 * state.loadRetries);
-                    } else {
-                        if (!append) {
-                            galleryErrorText.textContent = error.message;
-                            galleryError.classList.remove('hidden');
-                        }
-                        cancelRetry();
-                    }
-                } finally {
-                    state.isLoading = false;
-                    galleryLoaderInitial.classList.add('hidden');
-                    galleryLoaderMore.classList.add('hidden');
-                }
-            }
-
-            function renderGallery(items, append = false) {
-                if (!append) galleryGrid.innerHTML = '';
-                const fragment = document.createDocumentFragment();
-                items.forEach(item => {
-                    const itemDiv = document.createElement('a');
-                    itemDiv.className = 'gallery-item';
-                    const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`;
-                    itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.title}" onerror="this.parentElement.style.display='none'">`;
-                    itemDiv.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        state.currentArticleImages = item.all_images;
-                        const clickedImageIndex = item.all_images.indexOf(item.preview_image);
-                        openImageModal(clickedImageIndex > -1 ? clickedImageIndex : 0, item.title);
-                    });
-                    fragment.appendChild(itemDiv);
-                });
-                galleryGrid.appendChild(fragment);
-            }
+            // === 美圖集錦 ===
+            async function loadGallery(append = false) { if (state.isLoading) return; state.isLoading = true; galleryError.classList.add('hidden'); if (!append) { cancelRetry(); galleryGrid.innerHTML = ''; state.galleryPrevPageUrl = null; galleryLoaderInitial.classList.remove('hidden'); } else { galleryLoaderMore.classList.remove('hidden'); } try { const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; const res = await fetch(url); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const data = await res.json(); cancelRetry(); state.galleryPrevPageUrl = data.prev_page_url; const newItems = data.articles || []; if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } renderGallery(newItems, append); } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); } else { if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } cancelRetry(); } } finally { state.isLoading = false; galleryLoaderInitial.classList.add('hidden'); galleryLoaderMore.classList.add('hidden'); } }
+            function renderGallery(items, append = false) { if (!append) galleryGrid.innerHTML = ''; const fragment = document.createDocumentFragment(); items.forEach(item => { const itemDiv = document.createElement('a'); itemDiv.className = 'gallery-item'; itemDiv.dataset.articleLink = item.article.link; const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; itemDiv.addEventListener('click', (e) => { e.preventDefault(); state.currentArticleImages = item.all_images; state.currentModalGalleryItem = item; openImageModal(item.all_images.indexOf(item.preview_image), item.article.title); }); fragment.appendChild(itemDiv); }); galleryGrid.appendChild(fragment); updateGalleryFavoriteIcons(); }
+            function updateGalleryFavoriteIcons() { document.querySelectorAll('.gallery-item').forEach(item => { const link = item.dataset.articleLink; if (link) { item.classList.toggle('is-favorite', isFavorite(link)); } }); }
 
             // === 圖片燈箱 ===
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
-            function openImageModal(index, title = null) { cleanupImageInstance(); state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return; const img = new Image(); img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>'; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); imageModalTitle.textContent = title; imageModalTitle.classList.toggle('hidden', !title); updateImageNavButtons(); if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); img.onload = () => { pinchZoomTarget.innerHTML = ''; pinchZoomTarget.appendChild(img); try { state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); state.pinchZoomInstance._wheelHandler = wheelHandler; } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } }; img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } }
-            function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
+            function openImageModal(index, title = null) { cleanupImageInstance(); state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return; updateFavoriteFromModalBtn(); const img = new Image(); img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>'; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); imageModalTitle.textContent = title; imageModalTitle.classList.toggle('hidden', !title); updateImageNavButtons(); if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); img.onload = () => { pinchZoomTarget.innerHTML = ''; pinchZoomTarget.appendChild(img); try { state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); state.pinchZoomInstance._wheelHandler = wheelHandler; } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } }; img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } }
+            function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); state.currentModalGalleryItem = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
             function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
             function showNextImage(e) { e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
             function showPrevImage(e) { e.stopPropagation(); if (state.currentImageIndex > 0) openImageModal(state.currentImageIndex - 1, imageModalTitle.textContent); }
             function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
+            function updateFavoriteFromModalBtn() { if (!state.currentModalGalleryItem) return; const isFav = isFavorite(state.currentModalGalleryItem.article.link); favoriteFromModalBtn.querySelector('svg').classList.toggle('fill-current', isFav); }
 
             // === 字體大小與主題 ===
-            const fontSizes = { sm: '14px', md: '16px', lg: '18px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
+            const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
             function toggleFontSize() { const currentIndex = fontSizeKeys.indexOf(state.fontSize); const nextIndex = (currentIndex + 1) % fontSizeKeys.length; const nextSizeKey = fontSizeKeys[nextIndex]; applyFontSize(nextSizeKey); showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`); }
             const themes = ['theme-default', 'theme-cyan', 'theme-amber', 'theme-lime']; let currentThemeIndex = themes.indexOf(localStorage.getItem('colorTheme') || 'theme-default'); if(currentThemeIndex === -1) currentThemeIndex = 0;
@@ -361,26 +316,13 @@
             
             // === 美圖集錦尺寸 ===
             const gallerySizes = ['sm', 'md', 'lg'];
-            function applyGallerySize(sizeKey) {
-                if (!gallerySizes.includes(sizeKey)) return;
-                gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`));
-                galleryGrid.classList.add(`size-${sizeKey}`);
-                localStorage.setItem('gallerySize', sizeKey);
-                state.gallerySize = sizeKey;
-            }
-            function toggleGallerySize() {
-                const currentIndex = gallerySizes.indexOf(state.gallerySize);
-                const nextIndex = (currentIndex + 1) % gallerySizes.length;
-                const nextSizeKey = gallerySizes[nextIndex];
-                applyGallerySize(nextSizeKey);
-                const sizeMap = { sm: '小', md: '中', lg: '大' };
-                showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`);
-            }
+            function applyGallerySize(sizeKey) { if (!gallerySizes.includes(sizeKey)) return; gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`)); galleryGrid.classList.add(`size-${sizeKey}`); localStorage.setItem('gallerySize', sizeKey); state.gallerySize = sizeKey; }
+            function toggleGallerySize() { const currentIndex = gallerySizes.indexOf(state.gallerySize); const nextIndex = (currentIndex + 1) % gallerySizes.length; const nextSizeKey = gallerySizes[nextIndex]; applyGallerySize(nextSizeKey); const sizeMap = { sm: '小', md: '中', lg: '大' }; showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`); }
 
             // === 手勢操作 ===
             function handleTouchStart(e) { state.touchStartX = e.changedTouches[0].screenX; state.touchStartY = e.changedTouches[0].screenY; state.isScrolling = false; }
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
-            function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(); } } }
+            function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(state.currentView === 'detail'); } } }
 
             // === 事件監聽器 ===
             googleLoginBtn.addEventListener('click', async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); showToast(`登入成功！`); } catch (e) { showToast('Google 登入失敗'); } });
@@ -389,10 +331,10 @@
             window.addEventListener('click', () => { if (!logoutDropdown.classList.contains('hidden')) logoutDropdown.classList.add('hidden'); });
             
             boardSelector.addEventListener('change', e => { cancelRetry(); state.currentBoard = e.target.value; state.viewingFavorites = false; updateFavoritesButtonState(); if (state.currentBoard === 'BeautyGallery') { switchToView('gallery'); history.pushState({view: 'gallery'}, '', '#gallery'); loadGallery(false); return; } const isHotBoard = state.currentBoard === 'Hot'; toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex'; if (isHotBoard) state.sortBy = 'hot'; switchToView('list'); loadArticles(state.currentBoard); });
-            headerBackBtn.addEventListener('click', goBack);
-            floatingBackBtn.addEventListener('click', goBack);
+            headerBackBtnDetail.addEventListener('click', () => goBack(true));
+            floatingBackBtn.addEventListener('click', () => goBack(true));
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
-            headerDislikeBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'disliked_articles', docId); try { await setDoc(docRef, { link: a.link, title: a.title }); showToast('已加入不喜歡列表'); goBack(); } catch (e) { showToast('操作失敗'); } });
+            headerDislikeBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'disliked_articles', docId); try { await setDoc(docRef, { link: a.link, title: a.title }); showToast('已加入不喜歡列表'); goBack(true); } catch (e) { showToast('操作失敗'); } });
             articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.viewingFavorites || state.currentBoard === 'Hot') return; const { scrollTop, scrollHeight, clientHeight } = articlesList; if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); });
             galleryGrid.addEventListener('scroll', () => { if (state.isLoading || !state.galleryPrevPageUrl) return; const { scrollTop, scrollHeight, clientHeight } = galleryGrid; if (scrollTop + clientHeight >= scrollHeight - 500) { loadGallery(true); } });
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
@@ -404,11 +346,13 @@
             pinchZoomTarget.addEventListener('click', e => e.stopPropagation());
             imagePrevBtn.addEventListener('click', showPrevImage);
             imageNextBtn.addEventListener('click', showNextImage);
+            favoriteFromModalBtn.addEventListener('click', async () => { if (!state.currentModalGalleryItem || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentModalGalleryItem.article; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
             downloadBtn.addEventListener('click', async e => { e.stopPropagation(); const url = state.currentArticleImages[state.currentImageIndex]; if (!url) return; showToast('正在準備下載...'); downloadBtn.disabled = true; try { const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`); if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`); const blob = await res.blob(); const objUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = objUrl; a.download = url.split('/').pop().split('?')[0] || 'download'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(objUrl); a.remove(); showToast('下載已開始'); } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; } });
             clearCacheBtn.addEventListener('click', () => { Object.keys(localStorage).forEach(key => { if (key.startsWith('ptt-cache-')) localStorage.removeItem(key); }); localStorage.removeItem('readArticles'); state.readArticles.clear(); renderAndSortArticles(); showToast(`已清除所有快取與已讀記錄`); });
             const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
             fullscreenToggleList.addEventListener('click', toggleFullscreen);
             fullscreenToggleDetail.addEventListener('click', toggleFullscreen);
+            fullscreenToggleGallery.addEventListener('click', toggleFullscreen);
             fontSizeToggleList.addEventListener('click', toggleFontSize);
             fontSizeToggleDetail.addEventListener('click', toggleFontSize);
             themeToggleBtn.addEventListener('click', () => { currentThemeIndex = (currentThemeIndex + 1) % themes.length; applyTheme(themes[currentThemeIndex]); showToast('已切換顏色主題'); });
