@@ -18,6 +18,7 @@ except locale.Error:
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Referer': 'https://www.ptt.cc/bbs/Beauty/index.html'
 }
 COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
@@ -166,7 +167,6 @@ def fetch_beauty_gallery_data(list_url=None):
     current_list_url = list_url
     final_prev_page_url = None
 
-    # 如果是初次載入 (list_url is None), 則抓取3頁
     pages_to_fetch = 3 if list_url is None else 1
     
     if current_list_url is None:
@@ -188,7 +188,8 @@ def fetch_beauty_gallery_data(list_url=None):
             content_data = fetch_ptt_article_content(article['link'])
             images = content_data.get('images', [])
             if not images: return None
-            return { "title": article['title'], "article_link": article['link'], "all_images": images, "preview_image": random.choice(images) }
+            # 更新: 將完整的 article 物件傳給前端
+            return { "article": article, "all_images": images, "preview_image": random.choice(images) }
         except Exception: return None
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
@@ -209,7 +210,11 @@ class handler(BaseHTTPRequestHandler):
         try:
             if 'proxy_url' in query_params:
                 image_url = query_params['proxy_url'][0].replace('http://', 'https://', 1)
-                response = requests.get(image_url, timeout=20, stream=True, headers=HEADERS)
+                proxy_headers = {
+                    'User-Agent': HEADERS['User-Agent'],
+                    'Referer': image_url 
+                }
+                response = requests.get(image_url, timeout=20, stream=True, headers=proxy_headers)
                 response.raise_for_status()
                 self.send_response(200)
                 if 'Content-Type' in response.headers: self.send_header('Content-Type', response.headers['Content-Type'])
