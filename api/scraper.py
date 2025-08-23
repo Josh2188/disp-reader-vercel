@@ -8,6 +8,7 @@ from datetime import datetime, date, timedelta
 import locale
 import time
 import concurrent.futures
+import random
 
 # --- 設定與常數 ---
 try:
@@ -22,12 +23,7 @@ COOKIES = {'over18': '1'}
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
-# 用於抓取 "當前最熱" 的看板列表
-HOT_SCRAPE_BOARDS = [
-    "Gossiping", "Beauty", "C_Chat", "Stock", "Lifeismoney", 
-    "MobileComm", "NBA", "Baseball", "Boy-Girl", "Tech_Job", 
-    "Car", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex"
-]
+HOT_SCRAPE_BOARDS = [ "Gossiping", "Beauty", "C_Chat", "Stock", "Lifeismoney", "MobileComm", "NBA", "Baseball", "Boy-Girl", "Tech_Job", "Car", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex" ]
 
 # --- 核心函式 ---
 def format_ptt_time(time_str):
@@ -67,29 +63,20 @@ def fetch_ptt_article_list(board, page_url):
             response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'lxml')
-            
             prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
             if not prev_page_link_tag and "index1.html" not in page_url:
                  raise ValueError("頁面不完整，缺少'上頁'按鈕")
-
             articles_tags = soup.select('div.r-ent')
             article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
             article_list.reverse()
-            
             prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
             return {"articles": article_list, "prev_page_url": prev_page_url}
-
         except requests.exceptions.HTTPError as err:
-            if err.response.status_code == 404:
-                return {"articles": [], "prev_page_url": None}
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
+            if err.response.status_code == 404: return {"articles": [], "prev_page_url": None}
+            if attempt < max_retries - 1: time.sleep(2); continue
             raise
         except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
+            if attempt < max_retries - 1: time.sleep(2); continue
             raise e
 
 def fetch_ptt_article_content(article_url):
@@ -98,7 +85,6 @@ def fetch_ptt_article_content(article_url):
     soup = BeautifulSoup(response.text, 'lxml')
     main_content = soup.select_one('#main-content')
     if not main_content: raise Exception("找不到主要內容區塊。")
-    
     author_full, timestamp = '', ''
     for line in main_content.select('.article-metaline, .article-metaline-right'):
         if line.select_one('.article-meta-tag'):
@@ -107,52 +93,24 @@ def fetch_ptt_article_content(article_url):
             if tag == '作者': author_full = value
             elif tag == '時間': timestamp = value
         line.decompose()
-
     pushes = []
     for push in main_content.select('.push'):
-        push_tag_span = push.select_one('.push-tag')
-        push_userid_span = push.select_one('.push-userid')
-        push_content_span = push.select_one('.push-content')
-        push_ipdatetime_span = push.select_one('.push-ipdatetime')
-
-        pushes.append({
-            "tag": push_tag_span.get_text(strip=True) if push_tag_span else '',
-            "user": push_userid_span.get_text(strip=True) if push_userid_span else '',
-            "content": push_content_span.get_text(strip=True) if push_content_span else '',
-            "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else ''
-        })
+        push_tag_span = push.select_one('.push-tag'); push_userid_span = push.select_one('.push-userid'); push_content_span = push.select_one('.push-content'); push_ipdatetime_span = push.select_one('.push-ipdatetime')
+        pushes.append({ "tag": push_tag_span.get_text(strip=True) if push_tag_span else '', "user": push_userid_span.get_text(strip=True) if push_userid_span else '', "content": push_content_span.get_text(strip=True) if push_content_span else '', "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else '' })
         push.decompose()
-
-    images = []
-    videos = []
+    images, videos = [], []
     for link in main_content.select('a'):
         href = link.get('href', '')
-        if IMAGE_REGEX.search(href):
-            images.append(href)
+        if IMAGE_REGEX.search(href): images.append(href)
         else:
             yt_match = YOUTUBE_REGEX.search(href)
-            if yt_match:
-                videos.append({"id": yt_match.group(1), "url": href})
-
-    for tag in main_content.select('span.f2, script, style'):
-        tag.decompose()
-        
-    for br in main_content.find_all("br"):
-        br.replace_with("\n")
-        
+            if yt_match: videos.append({"id": yt_match.group(1), "url": href})
+    for tag in main_content.select('span.f2, script, style'): tag.decompose()
+    for br in main_content.find_all("br"): br.replace_with("\n")
     full_text = main_content.get_text()
-    
     content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
     content = content_parts[0].strip()
-    
-    return {
-        "author_full": author_full, 
-        "formatted_timestamp": format_ptt_time(timestamp), 
-        "content": content, 
-        "images": list(dict.fromkeys(images)),
-        "videos": list({v['id']: v for v in videos}.values()),
-        "pushes": pushes
-    }
+    return { "author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images)), "videos": list({v['id']: v for v in videos}.values()), "pushes": pushes }
 
 # --- "當前最熱" 看板專用函式 ---
 def parse_push_count_for_sort(c):
@@ -163,99 +121,91 @@ def parse_push_count_for_sort(c):
             except (ValueError, TypeError): return -100
         try: return int(c)
         except (ValueError, TypeError): return 0
-    if isinstance(c, int):
-        return c
-    return 0
+    return c if isinstance(c, int) else 0
 
 def fetch_one_board_page(board):
-    """抓取單一看板的第一頁文章"""
     try:
         url = f"https://www.ptt.cc/bbs/{board}/index.html"
         data = fetch_ptt_article_list(board, url)
         return data.get("articles", [])
-    except Exception:
-        return []
+    except Exception: return []
 
 def fetch_ptt_hot_articles():
-    """抓取多個看板，整合並排序成熱門文章列表"""
     all_articles = []
-    
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_board = {executor.submit(fetch_one_board_page, board): board for board in HOT_SCRAPE_BOARDS}
         for future in concurrent.futures.as_completed(future_to_board):
-            try:
-                articles = future.result()
-                all_articles.extend(articles)
-            except Exception as exc:
-                print(f'{future_to_board[future]} 抓取時發生錯誤: {exc}')
-
-    today = date.today()
-    yesterday = today - timedelta(days=1)
+            try: all_articles.extend(future.result())
+            except Exception as exc: print(f'{future_to_board[future]} 抓取時發生錯誤: {exc}')
+    today, yesterday = date.today(), date.today() - timedelta(days=1)
     today_str = today.strftime('%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d')
     yesterday_str = yesterday.strftime('%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d')
-    
-    recent_articles = [
-        article for article in all_articles 
-        if article.get('date', '').strip() in [today_str, yesterday_str]
-    ]
-    
-    sorted_articles = sorted(
-        recent_articles, 
-        key=lambda x: parse_push_count_for_sort(x.get('push_count', 0)), 
-        reverse=True
-    )
-    
-    # 回傳前 100 篇，並且不提供下一頁的 URL 來禁用無限滾動
+    recent_articles = [ a for a in all_articles if a.get('date', '').strip() in [today_str, yesterday_str] ]
+    sorted_articles = sorted(recent_articles, key=lambda x: parse_push_count_for_sort(x.get('push_count', 0)), reverse=True)
     return {"articles": sorted_articles[:100], "prev_page_url": None}
+
+# --- "美圖集錦" 專用函式 (支援分頁) ---
+def fetch_beauty_gallery_data(list_url=None):
+    if not list_url:
+        list_url = "https://www.ptt.cc/bbs/Beauty/index.html"
+    
+    list_data = fetch_ptt_article_list("Beauty", list_url)
+    articles_info = [a for a in list_data.get("articles", []) if '[公告]' not in a.get('title', '')]
+    gallery_items = []
+
+    def process_article_for_gallery(article):
+        try:
+            content_data = fetch_ptt_article_content(article['link'])
+            images = content_data.get('images', [])
+            if not images: return None
+            return { "title": article['title'], "article_link": article['link'], "all_images": images, "preview_image": random.choice(images) }
+        except Exception: return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        future_to_article = {executor.submit(process_article_for_gallery, article): article for article in articles_info}
+        for future in concurrent.futures.as_completed(future_to_article):
+            result = future.result()
+            if result: gallery_items.append(result)
+            
+    return {"articles": gallery_items, "prev_page_url": list_data.get("prev_page_url")}
+
 
 # --- Vercel 的 Serverless Function 入口 ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urlparse(self.path)
         query_params = parse_qs(unquote(parsed_path.query))
-        data = {}
-        error = None
-
+        data, error = {}, None
         try:
             if 'proxy_url' in query_params:
-                image_url = query_params['proxy_url'][0]
-                if image_url.startswith('http://'):
-                    image_url = image_url.replace('http://', 'https://', 1)
-                
+                image_url = query_params['proxy_url'][0].replace('http://', 'https://', 1)
                 response = requests.get(image_url, timeout=20, stream=True, headers=HEADERS)
                 response.raise_for_status()
-                
                 self.send_response(200)
-                if 'Content-Type' in response.headers:
-                    self.send_header('Content-Type', response.headers['Content-Type'])
+                if 'Content-Type' in response.headers: self.send_header('Content-Type', response.headers['Content-Type'])
                 self.send_header('Cache-control', 'public, max-age=604800')
                 self.end_headers()
-                
-                for chunk in response.iter_content(chunk_size=8192):
-                    self.wfile.write(chunk)
+                for chunk in response.iter_content(chunk_size=8192): self.wfile.write(chunk)
                 return
 
             board = query_params.get('board', [None])[0]
-            if board == 'Hot':
+            if board == 'Hot': 
                 data = fetch_ptt_hot_articles()
-            elif 'list_url' in query_params and board:
-                list_url = query_params['list_url'][0]
-                data = fetch_ptt_article_list(board, list_url)
-            elif 'article_url' in query_params:
-                article_url = query_params['article_url'][0]
-                data = fetch_ptt_article_content(article_url)
-            elif board:
-                initial_url = f"https://www.ptt.cc/bbs/{board}/index.html"
-                data = fetch_ptt_article_list(board, initial_url)
-            else:
-                 raise ValueError("缺少看板名稱或文章/列表 URL")
-
-
+            elif board == 'BeautyGallery':
+                list_url = query_params.get('list_url', [None])[0]
+                data = fetch_beauty_gallery_data(list_url)
+            elif 'list_url' in query_params and board: 
+                data = fetch_ptt_article_list(board, query_params['list_url'][0])
+            elif 'article_url' in query_params: 
+                data = fetch_ptt_article_content(query_params['article_url'][0])
+            elif board: 
+                data = fetch_ptt_article_list(board, f"https://www.ptt.cc/bbs/{board}/index.html")
+            else: 
+                raise ValueError("缺少看板名稱或文章/列表 URL")
         except Exception as e:
             error = e
             print(f"Error in /api/scraper: {e}")
             data = {"error": str(e)}
-
         self.send_response(500 if error else 200)
         self.send_header('Content-type', 'application/json')
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
