@@ -80,37 +80,53 @@ def fetch_ptt_article_list(board, page_url):
             raise e
 
 def fetch_ptt_article_content(article_url):
-    response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'lxml')
-    main_content = soup.select_one('#main-content')
-    if not main_content: raise Exception("找不到主要內容區塊。")
-    author_full, timestamp = '', ''
-    for line in main_content.select('.article-metaline, .article-metaline-right'):
-        if line.select_one('.article-meta-tag'):
-            tag = line.select_one('.article-meta-tag').get_text(strip=True)
-            value = line.select_one('.article-meta-value').get_text(strip=True)
-            if tag == '作者': author_full = value
-            elif tag == '時間': timestamp = value
-        line.decompose()
-    pushes = []
-    for push in main_content.select('.push'):
-        push_tag_span = push.select_one('.push-tag'); push_userid_span = push.select_one('.push-userid'); push_content_span = push.select_one('.push-content'); push_ipdatetime_span = push.select_one('.push-ipdatetime')
-        pushes.append({ "tag": push_tag_span.get_text(strip=True) if push_tag_span else '', "user": push_userid_span.get_text(strip=True) if push_userid_span else '', "content": push_content_span.get_text(strip=True) if push_content_span else '', "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else '' })
-        push.decompose()
-    images, videos = [], []
-    for link in main_content.select('a'):
-        href = link.get('href', '')
-        if IMAGE_REGEX.search(href): images.append(href)
-        else:
-            yt_match = YOUTUBE_REGEX.search(href)
-            if yt_match: videos.append({"id": yt_match.group(1), "url": href})
-    for tag in main_content.select('span.f2, script, style'): tag.decompose()
-    for br in main_content.find_all("br"): br.replace_with("\n")
-    full_text = main_content.get_text()
-    content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
-    content = content_parts[0].strip()
-    return { "author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images)), "videos": list({v['id']: v for v in videos}.values()), "pushes": pushes }
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'lxml')
+            main_content = soup.select_one('#main-content')
+            if not main_content: raise Exception("找不到主要內容區塊。")
+            
+            author_full, timestamp = '', ''
+            for line in main_content.select('.article-metaline, .article-metaline-right'):
+                if line.select_one('.article-meta-tag'):
+                    tag = line.select_one('.article-meta-tag').get_text(strip=True)
+                    value = line.select_one('.article-meta-value').get_text(strip=True)
+                    if tag == '作者': author_full = value
+                    elif tag == '時間': timestamp = value
+                line.decompose()
+            
+            pushes = []
+            for push in main_content.select('.push'):
+                push_tag_span = push.select_one('.push-tag'); push_userid_span = push.select_one('.push-userid'); push_content_span = push.select_one('.push-content'); push_ipdatetime_span = push.select_one('.push-ipdatetime')
+                pushes.append({ "tag": push_tag_span.get_text(strip=True) if push_tag_span else '', "user": push_userid_span.get_text(strip=True) if push_userid_span else '', "content": push_content_span.get_text(strip=True) if push_content_span else '', "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else '' })
+                push.decompose()
+
+            images, videos = [], []
+            for link in main_content.select('a'):
+                href = link.get('href', '')
+                if IMAGE_REGEX.search(href): images.append(href)
+                else:
+                    yt_match = YOUTUBE_REGEX.search(href)
+                    if yt_match: videos.append({"id": yt_match.group(1), "url": href})
+
+            for tag in main_content.select('span.f2, script, style'): tag.decompose()
+            for br in main_content.find_all("br"): br.replace_with("\n")
+            
+            full_text = main_content.get_text()
+            content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
+            content = content_parts[0].strip()
+            
+            return { "author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images)), "videos": list({v['id']: v for v in videos}.values()), "pushes": pushes }
+        
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(1)
+                continue
+            raise e
+
 
 # --- "當前最熱" 看板專用函式 ---
 def parse_push_count_for_sort(c):
@@ -146,13 +162,27 @@ def fetch_ptt_hot_articles():
 
 # --- "美圖集錦" 專用函式 (支援分頁) ---
 def fetch_beauty_gallery_data(list_url=None):
-    if not list_url:
-        list_url = "https://www.ptt.cc/bbs/Beauty/index.html"
-    
-    list_data = fetch_ptt_article_list("Beauty", list_url)
-    articles_info = [a for a in list_data.get("articles", []) if '[公告]' not in a.get('title', '')]
-    gallery_items = []
+    all_articles_info = []
+    current_list_url = list_url
+    final_prev_page_url = None
 
+    # 如果是初次載入 (list_url is None), 則抓取3頁
+    pages_to_fetch = 3 if list_url is None else 1
+    
+    if current_list_url is None:
+        current_list_url = "https://www.ptt.cc/bbs/Beauty/index.html"
+
+    for _ in range(pages_to_fetch):
+        if not current_list_url: break
+        
+        list_data = fetch_ptt_article_list("Beauty", current_list_url)
+        page_articles = [a for a in list_data.get("articles", []) if '[公告]' not in a.get('title', '')]
+        all_articles_info.extend(page_articles)
+        
+        current_list_url = list_data.get("prev_page_url")
+        final_prev_page_url = current_list_url
+
+    gallery_items = []
     def process_article_for_gallery(article):
         try:
             content_data = fetch_ptt_article_content(article['link'])
@@ -162,12 +192,12 @@ def fetch_beauty_gallery_data(list_url=None):
         except Exception: return None
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-        future_to_article = {executor.submit(process_article_for_gallery, article): article for article in articles_info}
+        future_to_article = {executor.submit(process_article_for_gallery, article): article for article in all_articles_info}
         for future in concurrent.futures.as_completed(future_to_article):
             result = future.result()
             if result: gallery_items.append(result)
             
-    return {"articles": gallery_items, "prev_page_url": list_data.get("prev_page_url")}
+    return {"articles": gallery_items, "prev_page_url": final_prev_page_url}
 
 
 # --- Vercel 的 Serverless Function 入口 ---

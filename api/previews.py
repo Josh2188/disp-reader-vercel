@@ -33,7 +33,7 @@ def format_ptt_time(time_str):
     except (ValueError, TypeError):
         return time_str
 
-# === 修改：加入重試機制 ===
+# === 已包含重試機制的核心函式 ===
 def get_article_preview_data(article_url):
     max_retries = 3
     for attempt in range(max_retries):
@@ -79,6 +79,7 @@ def get_article_preview_data(article_url):
         except Exception as e:
             # 如果是最後一次嘗試，則回傳錯誤
             if attempt >= max_retries - 1:
+                print(f"抓取預覽失敗 (url: {article_url}): {e}")
                 return {"link": article_url, "thumbnail": None, "formatted_timestamp": "無法載入", "snippet": "無法載入預覽...", "error": str(e)}
             # 否則等待後重試
             time.sleep(1)
@@ -104,6 +105,8 @@ class handler(BaseHTTPRequestHandler):
                 future_to_url = {executor.submit(get_article_preview_data, url): url for url in urls}
                 for future in concurrent.futures.as_completed(future_to_url):
                     results.append(future.result())
+            
+            # 確保回傳順序與請求順序一致
             ordered_results = sorted(results, key=lambda r: urls.index(r['link']))
             data = ordered_results
 
