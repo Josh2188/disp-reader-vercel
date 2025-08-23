@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,7 @@
     <!-- PWA 相關設定 -->
     <title>PTT 行動版</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#000000">
     <link rel="apple-touch-icon" href="/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -28,8 +28,7 @@
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         
         /* 毛玻璃效果 */
-        .glassmorphism { background-color: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-        .dark .glassmorphism { background-color: rgba(17, 24, 39, 0.7); }
+        .glassmorphism { background-color: rgba(17, 24, 39, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 
         /* 圖片燈箱 */
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
@@ -47,18 +46,16 @@
         #toast-notification.show { bottom: 20px; }
 
         /* 縮圖 */
-        .thumbnail-container { width: 96px; height: 96px; flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #e5e7eb; }
-        .dark .thumbnail-container { background-color: #374151; }
+        .thumbnail-container { width: 96px; height: 96px; flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #374151; }
         .thumbnail-container img { width: 100%; height: 100%; object-fit: cover; }
         
         /* 推文樣式 */
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.75rem; line-height: 1.5; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
-        .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #6b7280; }
-        .dark .push-tag-→ { color: #9ca3af; } .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; }
+        .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #9ca3af; }
+        .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; }
         .push-content { flex-grow: 999; flex-basis: 0; min-width: 50%; word-break: break-all; margin-right: 0.5rem; }
-        .push-info { flex-grow: 1; min-width: 130px; text-align: right; font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
-        .dark .push-info { color: #6b7280; }
+        .push-info { flex-grow: 1; min-width: 130px; text-align: right; font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
 
         /* YouTube 嵌入 */
         .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem; }
@@ -67,46 +64,68 @@
         .youtube-thumbnail::after { content: '▶'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; color: white; background-color: rgba(0,0,0,0.5); width: 60px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; line-height: 42px; padding-left: 5px; }
         .article-image { cursor: pointer; }
 
-        /* 美圖集錦 */
-        .gallery-item { aspect-ratio: 1 / 1; overflow: hidden; background-color: #374151; border-radius: 0.25rem; }
-        .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
-        .gallery-item:hover img { transform: scale(1.05); }
+        /* 美圖集錦 - 瀑布流 */
+        #gallery-grid {
+            column-gap: 0.5rem; /* 8px */
+            padding: 0.5rem;
+            column-count: 2;
+        }
+        @media (min-width: 640px) { #gallery-grid { column-count: 3; } }
+        @media (min-width: 1024px) { #gallery-grid { column-count: 4; } }
+        @media (min-width: 1280px) { #gallery-grid { column-count: 5; } }
+
+        .gallery-item {
+            margin-bottom: 0.5rem; /* 8px */
+            break-inside: avoid;
+            cursor: pointer;
+            display: block;
+        }
+        .gallery-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem; /* 8px */
+            display: block;
+            transition: opacity 0.3s ease;
+        }
+        .gallery-item:hover img {
+            opacity: 0.85;
+        }
 
         /* 顏色主題 */
-        .dark.theme-default .text-main-title { color: #dbeafe; } .dark.theme-default .text-main-link { color: #60a5fa; } .dark.theme-default .text-main-content { color: #d1d5db; }
-        .dark.theme-cyan .text-main-title { color: #a5f3fc; } .dark.theme-cyan .text-main-link { color: #67e8f9; } .dark.theme-cyan .text-main-content { color: #a3a3a3; }
-        .dark.theme-amber .text-main-title { color: #fde68a; } .dark.theme-amber .text-main-link { color: #fcd34d; } .dark.theme-amber .text-main-content { color: #a8a29e; }
-        .dark.theme-lime .text-main-title { color: #d9f99d; } .dark.theme-lime .text-main-link { color: #bef264; } .dark.theme-lime .text-main-content { color: #a1a1aa; }
+        .theme-default .text-main-title { color: #dbeafe; } .theme-default .text-main-link { color: #60a5fa; } .theme-default .text-main-content { color: #d1d5db; } .theme-default .push-userid { color: #60a5fa; }
+        .theme-cyan .text-main-title { color: #a5f3fc; } .theme-cyan .text-main-link { color: #67e8f9; } .theme-cyan .text-main-content { color: #a3a3a3; } .theme-cyan .push-userid { color: #67e8f9; }
+        .theme-amber .text-main-title { color: #fde68a; } .theme-amber .text-main-link { color: #fcd34d; } .theme-amber .text-main-content { color: #a8a29e; } .theme-amber .push-userid { color: #fcd34d; }
+        .theme-lime .text-main-title { color: #d9f99d; } .theme-lime .text-main-link { color: #bef264; } .theme-lime .text-main-content { color: #a1a1aa; } .theme-lime .push-userid { color: #bef264; }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-black theme-default">
+<body class="bg-black text-gray-100 theme-default">
 
-    <div id="app-container" class="max-w-md mx-auto bg-white dark:bg-black text-gray-900 dark:text-gray-100 min-h-screen shadow-lg flex flex-col">
-        <header id="main-header" class="bg-gray-50/80 dark:bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
+    <div id="app-container" class="max-w-md mx-auto bg-black min-h-screen shadow-lg flex flex-col">
+        <header id="main-header" class="bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
-                <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                <select id="board-selector" class="bg-gray-200 dark:bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
+                <button id="header-back-btn" class="p-2 rounded-full hover:bg-gray-700 hidden"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                <select id="board-selector" class="bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
                 <div id="list-view-controls" class="flex-shrink-0 flex items-center gap-1">
-                    <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center gap-1" title="切換排序"><svg id="sort-time-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><svg id="sort-hot-icon" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg></button>
+                    <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-700 flex items-center gap-1" title="切換排序"><svg id="sort-time-icon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><svg id="sort-hot-icon" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg></button>
                     <div id="user-controls" class="hidden items-center gap-1">
-                        <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="我的最愛"><svg id="fav-icon-outline" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg><svg id="fav-icon-solid" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
-                        <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="清除快取"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
+                        <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-700" title="我的最愛"><svg id="fav-icon-outline" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg><svg id="fav-icon-solid" class="h-5 w-5 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+                        <button id="clear-cache-btn" class="p-2 rounded-full hover:bg-gray-700" title="清除快取"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>
                     </div>
-                    <button id="theme-toggle-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="切換顏色主題"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402a3.75 3.75 0 00-.625-6.25a3.75 3.75 0 00-6.25-.625l-6.402 6.401a3.75 3.75 0 000 5.304z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-4.5 4.5" /></svg></button>
-                    <button id="font-size-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="切換字型大小"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
-                    <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
+                    <button id="theme-toggle-btn" class="p-2 rounded-full hover:bg-gray-700" title="切換顏色主題"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402a3.75 3.75 0 00-.625-6.25a3.75 3.75 0 00-6.25-.625l-6.402 6.401a3.75 3.75 0 000 5.304z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-4.5 4.5" /></svg></button>
+                    <button id="font-size-toggle-list" class="p-2 rounded-full hover:bg-gray-700" title="切換字型大小"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
+                    <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
                 <div id="auth-container" class="flex-shrink-0">
                      <button id="google-login-btn" class="flex items-center justify-center gap-2 bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-sm"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 36.49 44 30.856 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>Google 登入</button>
-                    <div id="user-info" class="hidden items-center"><div class="relative ml-auto"><button id="avatar-btn"><img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="User Avatar"></button><div id="logout-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5"><button id="logout-btn" class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700">登出</button></div></div></div>
+                    <div id="user-info" class="hidden items-center"><div class="relative ml-auto"><button id="avatar-btn"><img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="User Avatar"></button><div id="logout-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5"><button id="logout-btn" class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-700">登出</button></div></div></div>
                 </div>
                 <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                    <button id="header-dislike-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">Dislike</button>
-                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
-                    <button id="font-size-toggle-detail" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="切換字型大小"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
-                    <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
+                    <button id="header-dislike-btn" class="bg-gray-700 text-gray-200 font-semibold py-1 px-3 text-sm rounded-md hover:bg-gray-600 transition-colors" title="不喜歡這篇文章">Dislike</button>
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-900/50 transition-colors" title="加入/移除我的最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
+                    <button id="font-size-toggle-detail" class="p-2 rounded-full hover:bg-gray-700" title="切換字型大小"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
+                    <button id="fullscreen-toggle-detail" class="p-2 rounded-full hover:bg-gray-700" title="全螢幕"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                 </div>
             </div>
         </header>
@@ -114,8 +133,8 @@
         <div class="flex-grow relative">
             <!-- 文章列表 -->
             <div id="list-view" class="absolute inset-0 flex flex-col">
-                <div id="skeleton-container" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar"></div>
-                <main id="articles-list" class="flex-grow divide-y divide-gray-200 dark:divide-gray-700 overflow-y-auto no-scrollbar hidden"></main>
+                <div id="skeleton-container" class="flex-grow divide-y divide-gray-700 overflow-y-auto no-scrollbar"></div>
+                <main id="articles-list" class="flex-grow divide-y divide-gray-700 overflow-y-auto no-scrollbar hidden"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div></div>
                 <div id="list-error" class="text-center py-20 text-red-500 hidden"><p id="list-error-text"></p></div>
             </div>
@@ -123,9 +142,10 @@
             <div id="detail-view" class="absolute inset-0 hidden"><main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-4"></main></div>
             <!-- 美圖集錦 -->
             <div id="gallery-view" class="absolute inset-0 hidden flex flex-col">
-                <main id="gallery-grid" class="flex-grow overflow-y-auto no-scrollbar p-1 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1"></main>
+                <main id="gallery-grid" class="flex-grow overflow-y-auto no-scrollbar"></main>
                 <div id="gallery-loader-initial" class="absolute inset-0 flex justify-center items-center"><div class="loader h-16 w-16"></div></div>
                 <div id="gallery-loader-more" class="flex justify-center items-center py-4 hidden"><div class="loader h-8 w-8"></div></div>
+                 <div id="gallery-error" class="text-center py-20 text-red-500 hidden"><p id="gallery-error-text"></p></div>
             </div>
         </div>
     </div>
@@ -192,6 +212,7 @@
             const headerFavoriteBtn = el('header-favorite-btn');
             const fontSizeToggleList = el('font-size-toggle-list'), fontSizeToggleDetail = el('font-size-toggle-detail');
             const themeToggleBtn = el('theme-toggle-btn');
+            const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
             
             // 熱門看板 - 新增 "美圖集錦"
             const TOP_BOARDS = { "Hot": "當前最熱", "BeautyGallery": "美圖集錦", "Gossiping": "八卦", "Beauty": "表特", "Sex": "西斯", "C_Chat": "希洽", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Boy-Girl": "男女", "Tech_Job": "科技業", "Car": "汽車", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
@@ -218,13 +239,13 @@
             // === 頁面渲染與切換 ===
             function updateHeader() { const isDetail = state.currentView === 'detail'; boardSelector.classList.toggle('hidden', isDetail || state.currentView === 'gallery'); listViewControls.classList.toggle('hidden', isDetail || state.currentView === 'gallery'); detailViewControls.classList.toggle('hidden', !isDetail); headerBackBtn.classList.toggle('hidden', !isDetail && state.currentView !== 'gallery'); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
             function switchToView(viewName) { ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); state.currentView = viewName; updateHeader(); }
-            function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
+            function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
             function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
             function updateFavoriteIcon(isFav) { if(auth.currentUser && !auth.currentUser.isAnonymous) headerFavoriteBtn.querySelector('svg').classList.toggle('fill-pink-500', isFav); }
             function renderArticles(articleData) { const fragment = document.createDocumentFragment(); articleData.forEach(article => fragment.appendChild(createListItem(article))); articlesList.innerHTML = ''; articlesList.appendChild(fragment); }
             function getPushCountBgClass(c) { if (c === '爆') return 'bg-red-500'; if (typeof c === 'number' && c >= 50) return 'bg-yellow-500'; if (typeof c === 'number' && c >= 10) return 'bg-green-500'; if (typeof c === 'string' && c.startsWith('X')) return 'bg-gray-500'; return 'bg-blue-500'; }
-            function createListItem(article) { const item = document.createElement('div'); item.className = `flex items-start p-3 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${state.readArticles.has(article.link) ? 'opacity-60' : ''}`; item.dataset.link = article.link; const pushHTML = article.push_count ? `<span class="ml-2 inline-block ${getPushCountBgClass(article.push_count)} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${article.push_count}</span>` : ''; const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-main-link mr-2">[${article.board}]</span>` : ''; const timestampText = article.formatted_timestamp ? `${article.author} - ${article.formatted_timestamp}` : `${article.author} - ${article.date}`; const snippetText = article.snippet || ''; let thumbnailHTML = ''; if (article.thumbnail) { const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`; const imageHTML = `<img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" onerror="this.closest('.thumbnail-container').style.display='none';">`; thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-container">${imageHTML}</div>`; } item.innerHTML = `<div class="flex flex-col overflow-hidden flex-grow"><h3 class="font-bold text-base leading-tight line-clamp-2 text-main-title">${boardNameHTML}${article.title}${pushHTML}</h3><p data-timestamp-for="${article.link}" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">${timestampText}</p><p data-snippet-for="${article.link}" class="text-sm text-main-content mt-1 line-clamp-2">${snippetText}</p></div>${thumbnailHTML}`; item.addEventListener('click', () => { cancelRetry(); const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link); if (a) showDetailView(a); }); return item; }
+            function createListItem(article) { const item = document.createElement('div'); item.className = `flex items-start p-3 gap-3 hover:bg-gray-800 cursor-pointer ${state.readArticles.has(article.link) ? 'opacity-60' : ''}`; item.dataset.link = article.link; const pushHTML = article.push_count ? `<span class="ml-2 inline-block ${getPushCountBgClass(article.push_count)} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${article.push_count}</span>` : ''; const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-main-link mr-2">[${article.board}]</span>` : ''; const timestampText = article.formatted_timestamp ? `${article.author} - ${article.formatted_timestamp}` : `${article.author} - ${article.date}`; const snippetText = article.snippet || ''; let thumbnailHTML = ''; if (article.thumbnail) { const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`; const imageHTML = `<img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" onerror="this.closest('.thumbnail-container').style.display='none';">`; thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-container">${imageHTML}</div>`; } item.innerHTML = `<div class="flex flex-col overflow-hidden flex-grow"><h3 class="font-bold text-base leading-tight line-clamp-2 text-main-title">${boardNameHTML}${article.title}${pushHTML}</h3><p data-timestamp-for="${article.link}" class="text-xs text-gray-400 mt-1 truncate">${timestampText}</p><p data-snippet-for="${article.link}" class="text-sm text-main-content mt-1 line-clamp-2">${snippetText}</p></div>${thumbnailHTML}`; item.addEventListener('click', () => { cancelRetry(); const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link); if (a) showDetailView(a); }); return item; }
             function updatePreviewsUI(previews) { previews.forEach(previewData => { const articleInState = state.allArticles.find(a => a.link === previewData.link); if (articleInState) { Object.assign(articleInState, previewData); const existingItem = articlesList.querySelector(`[data-link="${previewData.link}"]`); if (existingItem) { const newItem = createListItem(articleInState); existingItem.replaceWith(newItem); } } }); }
 
             // === 資料載入 ===
@@ -238,17 +259,19 @@
             
             // === 文章內頁 ===
             async function showDetailView(article, fromHistory = false) { state.currentArticle = article; switchToView('detail'); floatingBackBtn.classList.remove('hidden'); showFloatingBackButton(); if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); const li = document.querySelector(`[data-link="${article.link}"]`); if(li) li.classList.add('opacity-60'); } detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-16 w-16"></div></div>'; if (!fromHistory) { history.pushState({view: 'detail', articleLink: article.link}, '', '#detail'); } try { const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`); if (!res.ok) throw new Error(`無法載入內文: ${res.status}`); const data = await res.json(); state.currentArticleImages = data.images || []; renderDetailContent(data, article); } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-4">${e.message}</p>`; } }
-            function renderDetailContent(data, article) { const contentHTML = linkifyAndMediafy(data.content); const pushesHTML = data.pushes.map(p => { const tagClass = `push-tag-${p.tag}`; const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim(); const contentWithMedia = linkifyAndMediafy(cleanedContent); return `<div class="push"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; }).join(''); detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-100 dark:bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words text-main-content">${contentHTML}</div><hr class="my-4 border-gray-300 dark:border-gray-600"><div class="pushes-container">${pushesHTML}</div>`; detailContent.scrollTop = 0; }
+            function renderDetailContent(data, article) { const contentHTML = linkifyAndMediafy(data.content); const pushesHTML = data.pushes.map(p => { const tagClass = `push-tag-${p.tag}`; const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim(); const contentWithMedia = linkifyAndMediafy(cleanedContent); return `<div class="push"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; }).join(''); detailContent.innerHTML = `<div class="p-3 rounded-lg text-sm mb-4 bg-gray-800"><p><strong>看板:</strong> ${article.board}</p><p><strong>作者:</strong> ${data.author_full}</p><p><strong>標題:</strong> ${article.title}</p><p><strong>時間:</strong> ${data.formatted_timestamp}</p></div><div class="text-base leading-relaxed whitespace-pre-wrap break-words text-main-content">${contentHTML}</div><hr class="my-4 border-gray-600"><div class="pushes-container">${pushesHTML}</div>`; detailContent.scrollTop = 0; }
             function goBack() { if (history.state?.view === 'detail' || history.state?.view === 'gallery') { history.back(); } }
             function onBackToList() { state.currentView = 'list'; const youtubeIframes = detailContent.querySelectorAll('.youtube-container'); youtubeIframes.forEach(iframe => iframe.remove()); switchToView('list'); floatingBackBtn.classList.add('hidden'); }
             window.addEventListener('popstate', (event) => { if (!imageModal.classList.contains('hidden')) { closeImageModal(); } else if ((state.currentView === 'detail' || state.currentView === 'gallery') && (!event.state || event.state.view === 'list')) { onBackToList(); } else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); } });
 
-            // === 美圖集錦 (支援無限滾動) ===
+            // === 美圖集錦 (支援無限滾動與重試) ===
             async function loadGallery(append = false) {
                 if (state.isLoading) return;
                 state.isLoading = true;
+                galleryError.classList.add('hidden');
 
                 if (!append) {
+                    cancelRetry();
                     galleryGrid.innerHTML = '';
                     state.galleryPrevPageUrl = null;
                     galleryLoaderInitial.classList.remove('hidden');
@@ -264,6 +287,8 @@
                     const res = await fetch(url);
                     if (!res.ok) throw new Error(`請求失敗: ${res.status}`);
                     const data = await res.json();
+                    
+                    cancelRetry();
 
                     state.galleryPrevPageUrl = data.prev_page_url;
                     const newItems = data.articles || [];
@@ -275,8 +300,20 @@
                     }
                     renderGallery(newItems, append);
 
-                } catch (e) {
-                    galleryGrid.innerHTML = `<p class="text-red-500 p-4 col-span-full text-center">${e.message}</p>`;
+                } catch (error) {
+                    state.loadRetries++;
+                    if (state.loadRetries <= MAX_RETRIES) {
+                        state.retryTimer = setTimeout(() => {
+                            state.isLoading = false; 
+                            loadGallery(append);
+                        }, 2000 * state.loadRetries);
+                    } else {
+                        if (!append) {
+                            galleryErrorText.textContent = error.message;
+                            galleryError.classList.remove('hidden');
+                        }
+                        cancelRetry();
+                    }
                 } finally {
                     state.isLoading = false;
                     galleryLoaderInitial.classList.add('hidden');
@@ -288,11 +325,12 @@
                 if (!append) galleryGrid.innerHTML = '';
                 const fragment = document.createDocumentFragment();
                 items.forEach(item => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'gallery-item cursor-pointer';
+                    const itemDiv = document.createElement('a');
+                    itemDiv.className = 'gallery-item';
                     const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`;
                     itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.title}" onerror="this.parentElement.style.display='none'">`;
-                    itemDiv.addEventListener('click', () => {
+                    itemDiv.addEventListener('click', (e) => {
+                        e.preventDefault();
                         state.currentArticleImages = item.all_images;
                         const clickedImageIndex = item.all_images.indexOf(item.preview_image);
                         openImageModal(clickedImageIndex > -1 ? clickedImageIndex : 0, item.title);
@@ -338,7 +376,7 @@
             galleryGrid.addEventListener('scroll', () => { if (state.isLoading || !state.galleryPrevPageUrl) return; const { scrollTop, scrollHeight, clientHeight } = galleryGrid; if (scrollTop + clientHeight >= scrollHeight - 500) { loadGallery(true); } });
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
-            function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-100', isV); toggleFavoritesBtn.classList.toggle('dark:bg-red-900/50', isV); }
+            function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('bg-red-900/50', isV); }
             detailContent.addEventListener('click', e => { const image = e.target.closest('.article-image'); if (image) { const originalUrl = image.dataset.originalUrl; const idx = state.currentArticleImages.indexOf(originalUrl); if (idx > -1) openImageModal(idx); return; } const thumbnail = e.target.closest('.youtube-thumbnail'); if (thumbnail) { e.preventDefault(); const videoId = thumbnail.dataset.youtubeId; const iframe = document.createElement('div'); iframe.className = 'youtube-container'; iframe.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`; thumbnail.replaceWith(iframe); } });
             imageModal.addEventListener('click', handleCloseRequest);
             closeModalBtn.addEventListener('click', handleCloseRequest);
