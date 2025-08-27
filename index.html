@@ -28,7 +28,7 @@
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         
         /* 毛玻璃效果 */
-        .glassmorphism { background-color: rgba(17, 24, 39, 0.8); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+        .glassmorphism { background-color: rgba(17, 24, 39, 0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 
         /* 圖片燈箱 */
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
@@ -65,13 +65,28 @@
         .article-image { cursor: pointer; }
 
         /* 美圖集錦 - 瀑布流 */
-        #gallery-grid { display: flex; gap: 0.5rem; padding: 0.5rem; align-items: flex-start; }
-        .gallery-column { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
-        .gallery-item { cursor: pointer; display: block; position: relative; }
+        #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
+        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; }
         .gallery-item img { width: 100%; height: auto; border-radius: 0.5rem; display: block; transition: opacity 0.3s ease; }
         .gallery-item:hover img { opacity: 0.85; }
         .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; }
         .gallery-item.is-favorite .fav-overlay { display: block; }
+
+        /* 美圖集錦 - 尺寸 */
+        #gallery-grid.size-sm { column-count: 2; }
+        @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } }
+        @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
+        @media (min-width: 1280px) { #gallery-grid.size-sm { column-count: 5; } }
+
+        #gallery-grid.size-md { column-count: 2; }
+        @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } }
+        @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
+        @media (min-width: 1280px) { #gallery-grid.size-md { column-count: 4; } }
+
+        #gallery-grid.size-lg { column-count: 1; }
+        @media (min-width: 640px) { #gallery-grid.size-lg { column-count: 2; } }
+        @media (min-width: 1024px) { #gallery-grid.size-lg { column-count: 2; } }
+        @media (min-width: 1280px) { #gallery-grid.size-lg { column-count: 3; } }
 
         /* 顏色主題 */
         .theme-default .text-main-title { color: #dbeafe; } .theme-default .text-main-link { color: #60a5fa; } .theme-default .text-main-content { color: #d1d5db; } .theme-default .push-userid { color: #60a5fa; }
@@ -80,15 +95,29 @@
         .theme-lime .text-main-title { color: #d9f99d; } .theme-lime .text-main-link { color: #bef264; } .theme-lime .text-main-content { color: #a1a1aa; } .theme-lime .push-userid { color: #bef264; }
 
         /* 平板與桌面版寬度優化 */
-        @media (min-width: 1280px) { #app-container { max-width: none; } }
+        @media (min-width: 768px) { /* md */
+            #app-container {
+                max-width: 48rem; /* 768px */
+            }
+        }
+        @media (min-width: 1024px) { /* lg */
+            #app-container {
+                max-width: 64rem; /* 1024px */
+            }
+        }
+        @media (min-width: 1280px) { /* xl */
+            #app-container {
+                max-width: none; /* 填滿螢幕 */
+            }
+        }
     </style>
 </head>
 <body class="bg-black text-gray-100 theme-default">
 
-    <div id="app-container" class="mx-auto bg-black min-h-screen shadow-lg flex flex-col xl:max-w-none lg:max-w-5xl md:max-w-3xl">
+    <div id="app-container" class="mx-auto bg-black min-h-screen shadow-lg flex flex-col">
         <header id="main-header" class="bg-gray-900/80 shadow-sm sticky top-0 z-20 p-3 glassmorphism">
             <div class="flex items-center gap-2">
-                <button id="board-selector-btn" class="bg-gray-700 border-none text-sm rounded-lg block w-full p-2.5 text-left truncate"></button>
+                <select id="board-selector" class="bg-gray-700 border-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></select>
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden"></h2>
                 
                 <div id="list-view-controls" class="flex-shrink-0 flex items-center gap-1">
@@ -187,7 +216,7 @@
             const listView = el('list-view'), detailView = el('detail-view'), galleryView = el('gallery-view');
             const articlesList = el('articles-list'), galleryGrid = el('gallery-grid'), galleryLoaderInitial = el('gallery-loader-initial'), galleryLoaderMore = el('gallery-loader-more');
             const skeletonContainer = el('skeleton-container'), infiniteLoader = el('infinite-loader'), listError = el('list-error');
-            const listErrorText = el('list-error-text'), boardSelectorBtn = el('board-selector-btn'), headerBackBtnDetail = el('header-back-btn-detail');
+            const listErrorText = el('list-error-text'), boardSelector = el('board-selector'), headerBackBtnDetail = el('header-back-btn-detail');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
             const imageModal = el('image-modal'), imageModalControls = el('image-modal-controls'), imagePrevBtn = el('image-prev-btn');
             const imageNextBtn = el('image-next-btn'), pinchZoomTarget = el('pinch-zoom-target'), downloadBtn = el('download-btn');
@@ -236,7 +265,7 @@
             function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline">${cleanUrl}</a>`; }); }
             
             // === 頁面渲染與切換 ===
-            function updateHeader() { const isDetail = state.currentView === 'detail'; const isGallery = state.currentView === 'gallery'; boardSelectorBtn.classList.toggle('hidden', isDetail); listViewControls.classList.toggle('hidden', isDetail || isGallery); galleryViewControls.classList.toggle('hidden', !isGallery); detailViewControls.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
+            function updateHeader() { const isDetail = state.currentView === 'detail'; const isGallery = state.currentView === 'gallery'; boardSelector.classList.toggle('hidden', isDetail); listViewControls.classList.toggle('hidden', isDetail || isGallery); galleryViewControls.classList.toggle('hidden', !isGallery); detailViewControls.classList.toggle('hidden', !isDetail); headerTitle.classList.toggle('hidden', !isDetail); el('auth-container').classList.toggle('hidden', isDetail); if (isDetail && state.currentArticle) { headerTitle.textContent = state.currentArticle.title; updateFavoriteIcon(isFavorite(state.currentArticle.link)); } }
             function switchToView(viewName) { ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); state.currentView = viewName; updateHeader(); }
             function createSkeletonItem() { return `<div class="flex items-start p-3 gap-3 animate-pulse"><div class="flex flex-col overflow-hidden flex-grow"><div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-700 rounded w-1/2 mb-3"></div><div class="h-4 bg-gray-700 rounded w-full"></div><div class="h-4 bg-gray-700 rounded w-5/6 mt-1"></div></div><div class="w-24 h-24 bg-gray-700 rounded-lg flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
@@ -265,12 +294,12 @@
 
             // === 美圖集錦 ===
             async function loadGallery(append = false) { if (state.isLoading) return; state.isLoading = true; galleryError.classList.add('hidden'); if (!append) { cancelRetry(); galleryGrid.innerHTML = ''; state.galleryPrevPageUrl = null; galleryLoaderInitial.classList.remove('hidden'); } else { galleryLoaderMore.classList.remove('hidden'); } try { const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; const res = await fetch(url); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const data = await res.json(); cancelRetry(); state.galleryPrevPageUrl = data.prev_page_url; const newItems = data.articles || []; if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } renderGallery(newItems, append); } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); } else { if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } cancelRetry(); } } finally { state.isLoading = false; galleryLoaderInitial.classList.add('hidden'); galleryLoaderMore.classList.add('hidden'); } }
-            function renderGallery(items, append = false) { if (!append) galleryGrid.innerHTML = ''; const fragment = document.createDocumentFragment(); items.forEach(item => { const itemDiv = document.createElement('a'); itemDiv.className = 'gallery-item'; itemDiv.dataset.articleLink = item.article.link; const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; itemDiv.addEventListener('click', (e) => { e.preventDefault(); state.currentModalGalleryItem = item; const originalImages = item.all_images; const previewImage = item.preview_image; const previewIndex = originalImages.indexOf(previewImage); const reorderedImages = previewIndex !== -1 ? [ ...originalImages.slice(previewIndex), ...originalImages.slice(0, previewIndex) ] : originalImages; state.currentArticleImages = reorderedImages; openImageModal(0, item.article.title); }); fragment.appendChild(itemDiv); }); galleryGrid.appendChild(fragment); updateGalleryFavoriteIcons(); }
+            function renderGallery(items, append = false) { if (!append) galleryGrid.innerHTML = ''; const fragment = document.createDocumentFragment(); items.forEach(item => { const itemDiv = document.createElement('a'); itemDiv.className = 'gallery-item'; itemDiv.dataset.articleLink = item.article.link; const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; itemDiv.addEventListener('click', (e) => { e.preventDefault(); state.currentArticleImages = item.all_images; state.currentModalGalleryItem = item; openImageModal(item.all_images.indexOf(item.preview_image), item.article.title); }); fragment.appendChild(itemDiv); }); galleryGrid.appendChild(fragment); updateGalleryFavoriteIcons(); }
             function updateGalleryFavoriteIcons() { document.querySelectorAll('.gallery-item').forEach(item => { const link = item.dataset.articleLink; if (link) { item.classList.toggle('is-favorite', isFavorite(link)); } }); }
 
             // === 圖片燈箱 ===
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
-            function openImageModal(index, title = null) { cleanupImageInstance(); state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return; updateFavoriteFromModalBtn(); const img = new Image(); img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>'; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); imageModalTitle.textContent = title; imageModalTitle.classList.toggle('hidden', !title); updateImageNavButtons(); if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); img.onload = () => { requestAnimationFrame(() => { pinchZoomTarget.innerHTML = ''; pinchZoomTarget.appendChild(img); try { state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); state.pinchZoomInstance._wheelHandler = wheelHandler; } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } }); }; img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } }
+            function openImageModal(index, title = null) { cleanupImageInstance(); state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return; updateFavoriteFromModalBtn(); const img = new Image(); img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12"></div>'; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); imageModalTitle.textContent = title; imageModalTitle.classList.toggle('hidden', !title); updateImageNavButtons(); if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); img.onload = () => { pinchZoomTarget.innerHTML = ''; pinchZoomTarget.appendChild(img); try { state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); state.pinchZoomInstance._wheelHandler = wheelHandler; } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } }; img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } }
             function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); state.currentModalGalleryItem = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
             function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
             function showNextImage(e) { e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
@@ -301,7 +330,7 @@
             avatarBtn.addEventListener('click', e => { e.stopPropagation(); logoutDropdown.classList.toggle('hidden'); });
             window.addEventListener('click', () => { if (!logoutDropdown.classList.contains('hidden')) logoutDropdown.classList.add('hidden'); });
             
-            boardSelectorBtn.addEventListener('click', () => { /* 新增看板選擇 modal 邏輯 */ });
+            boardSelector.addEventListener('change', e => { cancelRetry(); state.currentBoard = e.target.value; state.viewingFavorites = false; updateFavoritesButtonState(); if (state.currentBoard === 'BeautyGallery') { switchToView('gallery'); history.pushState({view: 'gallery'}, '', '#gallery'); loadGallery(false); return; } const isHotBoard = state.currentBoard === 'Hot'; toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex'; if (isHotBoard) state.sortBy = 'hot'; switchToView('list'); loadArticles(state.currentBoard); });
             headerBackBtnDetail.addEventListener('click', () => goBack(true));
             floatingBackBtn.addEventListener('click', () => goBack(true));
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
@@ -340,7 +369,7 @@
 
             // === 初始化 ===
             function initialize() {
-                boardSelectorBtn.textContent = TOP_BOARDS[state.currentBoard];
+                for (const board in TOP_BOARDS) { const opt = document.createElement('option'); opt.value = board; opt.textContent = TOP_BOARDS[board]; if (board === state.currentBoard) opt.selected = true; boardSelector.appendChild(opt); }
                 const isHotBoard = state.currentBoard === 'Hot';
                 toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
                 applyFontSize(state.fontSize);
