@@ -17,8 +17,10 @@ try:
 except locale.Error:
     pass
 
+# 建立全域 Session 以重用 TCP 連線 (大幅提升速度)
 def create_session():
     s = requests.Session()
+    # 設定重試機制
     retries = Retry(total=3, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
     adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=retries)
     s.mount('https://', adapter)
@@ -58,7 +60,7 @@ def process_article_item_basic(item, board):
         if not (title_tag and title_tag.get('href') and meta_tag) or "本文已被刪除" in title_tag.text:
             return None
             
-        # 嚴格過濾公告，解決八卦版首頁都是公告的問題
+        # 嚴格過濾公告
         title_text = title_tag.text.strip()
         if title_text.startswith('[公告]') or '公告' in title_text[:4]:
             return None
@@ -98,17 +100,13 @@ def fetch_ptt_article_list(board, start_url, min_items=15, max_pages=3):
             soup = BeautifulSoup(response.text, 'lxml')
             prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
             
-            # 解析當前頁面
             articles_tags = soup.select('div.r-ent')
             page_articles = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
             
-            # PTT 列表是舊->新，所以反轉讓最新的在上面
+            # PTT 列表是舊->新，反轉讓最新的在上面
             page_articles.reverse()
-            
-            # 加入總列表
             all_articles.extend(page_articles)
             
-            # 更新上一頁連結
             if prev_page_link_tag:
                 final_prev_url = "https://www.ptt.cc" + prev_page_link_tag['href']
                 current_url = final_prev_url
@@ -116,7 +114,6 @@ def fetch_ptt_article_list(board, start_url, min_items=15, max_pages=3):
                 final_prev_url = None
                 break
                 
-            # 如果數量夠了就停止
             if len(all_articles) >= min_items:
                 break
                 
@@ -191,7 +188,6 @@ def parse_push_count_for_sort(c):
 def fetch_one_board_page(board):
     try:
         url = f"https://www.ptt.cc/bbs/{board}/index.html"
-        # 熱門看板抓取時，只抓一頁即可，避免逾時
         data = fetch_ptt_article_list(board, url, min_items=1, max_pages=1)
         return data.get("articles", [])
     except Exception: return []
@@ -206,17 +202,25 @@ def fetch_ptt_hot_articles():
             
     today = date.today()
     yesterday = today - timedelta(days=1)
-    # 簡化日期判斷，接受 mm/dd
-    valid_dates = [f"{today.month}/{today.day}", f"{yesterday.month}/{yesterday.day}", today.strftime('%m/%d'), yesterday.strftime('%m/%d')]
+    
+    fmt1 = '%m/%d'
+    fmt2 = '%-m/%-d' # Linux
+    fmt3 = '%#m/%#d' # Windows
+    
+    valid_dates = []
+    for d in [today, yesterday]:
+        valid_dates.append(d.strftime(fmt1))
+        try: valid_dates.append(d.strftime(fmt2))
+        except: pass
+        try: valid_dates.append(d.strftime(fmt3))
+        except: pass
     
     recent_articles = [a for a in all_articles if any(d in a.get('date', '') for d in valid_dates)]
     sorted_articles = sorted(recent_articles, key=lambda x: parse_push_count_for_sort(x.get('push_count', 0)), reverse=True)
     return {"articles": sorted_articles[:100], "prev_page_url": None}
 
 def fetch_beauty_gallery_data(list_url=None):
-    # 美圖牆邏輯保持不變，但利用 session 加速
     current_list_url = list_url if list_url else "https://www.ptt.cc/bbs/Beauty/index.html"
-    # 這裡直接呼叫改進版的 fetch_list，確保能拿到足夠的文章進行篩選
     list_data = fetch_ptt_article_list("Beauty", current_list_url, min_items=15, max_pages=2)
     
     page_articles = list_data.get("articles", [])
@@ -246,18 +250,24 @@ class handler(BaseHTTPRequestHandler):
         data, error = {}, None
         
         try:
+            # 圖片代理 (Proxy)
             if 'proxy_url' in query_params:
                 image_url = query_params['proxy_url'][0].replace('http://', 'https://', 1)
                 proxy_headers = {'User-Agent': session.headers['User-Agent'], 'Referer': image_url}
+                # 不使用 Session 以避免長時間佔用，但開啟 stream
                 resp = requests.get(image_url, headers=proxy_headers, timeout=20, stream=True)
                 resp.raise_for_status()
+                
                 self.send_response(200)
                 if 'Content-Type' in resp.headers: self.send_header('Content-Type', resp.headers['Content-Type'])
+                # 強制快取 7 天
                 self.send_header('Cache-Control', 'public, max-age=604800, immutable')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 for chunk in resp.iter_content(chunk_size=32768): self.wfile.write(chunk)
                 return
 
+            # API 請求
             board = query_params.get('board', [None])[0]
             if board == 'Hot': 
                 data = fetch_ptt_hot_articles()

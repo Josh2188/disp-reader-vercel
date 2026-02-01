@@ -9,13 +9,11 @@ from datetime import datetime
 import locale
 import concurrent.futures
 
-# --- 設定 ---
 try:
     locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
 except locale.Error:
     pass
 
-# 全域 Session (效能關鍵)
 def create_session():
     s = requests.Session()
     retries = Retry(total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504])
@@ -31,8 +29,7 @@ session = create_session()
 
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
-
-# 優化：只解析需要的 Tag 以加速 BS4
+# 只解析這些標籤，加速 3-5 倍
 meta_strainer = SoupStrainer(class_=['article-metaline', 'article-metaline-right', 'push', 'f2', 'article-meta-tag', 'article-meta-value'])
 main_strainer = SoupStrainer(id='main-content')
 
@@ -49,14 +46,10 @@ def format_ptt_time(time_str):
 
 def get_article_preview_data(article_url):
     try:
-        # 使用 Session，Timeout 設短一點，失敗就跳過
         response = session.get(article_url, timeout=6)
-        
-        # 404 或其他錯誤直接回傳
         if response.status_code != 200:
              return {"link": article_url, "error": f"Status {response.status_code}"}
 
-        # 只解析 main-content 以加速
         soup = BeautifulSoup(response.text, 'lxml', parse_only=main_strainer)
         main_content = soup.select_one('#main-content')
         
@@ -64,7 +57,6 @@ def get_article_preview_data(article_url):
              return {"link": article_url, "error": "No content"}
 
         timestamp = None
-        # 快速尋找時間
         for line in main_content.select('.article-metaline, .article-metaline-right'):
             tag = line.select_one('.article-meta-tag')
             if tag and tag.get_text(strip=True) == '時間':
@@ -73,7 +65,7 @@ def get_article_preview_data(article_url):
         
         thumbnail_url, snippet = None, ""
         
-        # 尋找圖片與影片
+        # 尋找圖片/影片
         all_links = main_content.find_all('a', href=True)
         for link in all_links:
             href = link['href']
@@ -89,11 +81,9 @@ def get_article_preview_data(article_url):
                     thumbnail_url = href
                     break
 
-        # 清理雜訊以取得摘要
+        # 清理雜訊
         for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
             tag.decompose()
-        
-        # 移除超連結文字避免摘要讀起來很怪
         for a in main_content.find_all('a'):
             a.decompose()
 
@@ -107,7 +97,6 @@ def get_article_preview_data(article_url):
             "snippet": snippet, 
             "error": None
         }
-    
     except Exception as e:
         return {"link": article_url, "error": str(e)}
 
@@ -124,10 +113,8 @@ class handler(BaseHTTPRequestHandler):
                 raise ValueError("無效的請求格式")
 
             urls = body['urls']
-            # Vercel 限制：不要開太多線程，會被節流。使用 Session 後 5-8 個就很快。
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 results = list(executor.map(get_article_preview_data, urls))
-            
             data = results
 
         except Exception as e:
@@ -136,7 +123,7 @@ class handler(BaseHTTPRequestHandler):
 
         self.send_response(500 if error else 200)
         self.send_header('Content-type', 'application/json')
-        self.send_header('Cache-Control', 'public, max-age=60') # 預覽結果可短暫快取
+        self.send_header('Cache-Control', 'public, max-age=60')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
         return
