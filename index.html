@@ -17,38 +17,44 @@
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         .glassmorphism { background-color: rgba(17, 24, 39, 0.95); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
         
-        /* 圖片燈箱 */
+        /* === 圖片燈箱結構修正 === */
         #image-modal.hidden { display: none; }
-        /* 確保燈箱在最上層 */
-        #image-modal { z-index: 9999; }
+        /* 燈箱背景，層級 z-50 */
+        #image-modal { position: fixed; inset: 0; background-color: rgba(0,0,0,0.95); z-index: 50; display: flex; align-items: center; justify-content: center; }
         
-        /* 控制列：確保在圖片上方 */
-        .modal-controls { position: absolute; top: 0; left: 0; right: 0; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 10001; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); pointer-events: auto; }
-
+        /* 縮放容器 */
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        /* 左右切換區：加大感應範圍 (20% 螢幕寬)，且層級要高 */
-        .image-nav-area { position: absolute; top: 0; bottom: 0; width: 20%; display: flex; align-items: center; justify-content: center; z-index: 10000; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-        .image-nav-area:active { background-color: rgba(255, 255, 255, 0.05); }
-        .image-nav-btn { background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; pointer-events: none; /* 讓點擊穿透到 area */ }
-        .image-nav-area:active .image-nav-btn { transform: scale(0.95); background-color: rgba(0, 0, 0, 0.8); }
-        
-        /* 隱藏按鈕但不隱藏感應區 */
-        .image-nav-area.hidden-nav { display: none; } 
-        
-        #image-prev-area { left: 0; justify-content: flex-start; padding-left: 16px; }
-        #image-next-area { right: 0; justify-content: flex-end; padding-right: 16px; }
 
+        /* 右上角控制列 (獨立於 image-modal 之外或之上)，層級 z-60，確保絕對可點 */
+        #image-modal-controls { position: fixed; top: 0; right: 0; padding: 1rem; display: flex; gap: 0.5rem; z-index: 60; }
+        #image-modal-controls.hidden { display: none; }
+        
+        /* 左右切換感應區，層級 z-55 (在背景之上，控制列之下) */
+        .image-nav-area { position: fixed; top: 0; bottom: 0; width: 15%; display: flex; align-items: center; justify-content: center; z-index: 55; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .image-nav-area:active { background-color: rgba(255, 255, 255, 0.05); }
+        .image-nav-btn { background-color: rgba(0, 0, 0, 0.5); color: white; border: none; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: none; /* 讓點擊穿透到 area */ }
+        .image-nav-area:active .image-nav-btn { transform: scale(0.9); background-color: rgba(0, 0, 0, 0.8); }
+        
+        #image-prev-area { left: 0; justify-content: flex-start; padding-left: 10px; }
+        #image-next-area { right: 0; justify-content: flex-end; padding-right: 10px; }
+        .image-nav-area.hidden-nav { display: none; }
+
+        /* 底部標題 */
+        #image-modal-title { position: fixed; bottom: 0; left: 0; right: 0; padding: 1rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); color: white; text-align: center; font-size: 0.9rem; z-index: 55; pointer-events: none; }
+        #image-modal-title.hidden { display: none; }
+
+        /* 其他樣式 */
         .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem; }
         .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 20000; pointer-events: none; }
+        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 100; pointer-events: none; }
         #toast-notification.show { bottom: 30px; }
 
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.5; font-size: 0.95rem; }
@@ -98,7 +104,7 @@
                         <svg id="fav-icon-solid" class="h-6 w-6 hidden text-pink-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                     </button>
                     <button id="gallery-size-toggle-btn" class="hidden p-2 rounded-full hover:bg-gray-700 text-gray-300 transition-colors">
-                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     </button>
                     <div id="auth-container" class="flex-shrink-0 relative ml-1">
                          <button id="google-login-btn" class="bg-blue-600 text-white font-medium py-1 px-3 rounded text-xs hover:bg-blue-500 transition-colors">登入</button>
@@ -144,29 +150,28 @@
         <button id="floating-back-btn" class="hidden fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-500 transition-all active:scale-95"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg></button>
     </div>
 
-    <!-- 圖片燈箱 -->
-    <div id="image-modal" class="hidden fixed inset-0 bg-black z-[9999] flex flex-col animate-fade-in">
-        <!-- 頂部控制列 -->
-        <div class="modal-controls">
-            <button id="close-modal-btn" class="p-2 text-white hover:text-gray-300 z-50">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-            <div class="flex gap-4 z-50">
-                <button id="download-btn" class="p-2 text-white hover:text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
-                <button id="favorite-from-modal-btn" class="p-2 text-white hover:text-pink-500"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></button>
-            </div>
-        </div>
-        
+    <!-- 圖片燈箱：修正結構 -->
+    <div id="image-modal" class="hidden">
         <!-- 圖片縮放容器 -->
-        <div id="pinch-zoom-target" class="flex-grow pinch-zoom-container relative"></div>
+        <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
         
-        <!-- 左右切換區 -->
+        <!-- 左右切換區 (獨立圖層) -->
         <div id="image-prev-area" class="image-nav-area">
             <button id="image-prev-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
         </div>
         <div id="image-next-area" class="image-nav-area">
             <button id="image-next-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
         </div>
+        
+        <!-- 圖片標題 -->
+        <div id="image-modal-title" class="hidden"></div>
+    </div>
+
+    <!-- 燈箱控制列 (獨立於 modal 之外，確保不被覆蓋) -->
+    <div id="image-modal-controls" class="hidden">
+        <button id="favorite-from-modal-btn" class="bg-gray-800/80 text-white p-2.5 rounded-full hover:bg-gray-700 backdrop-blur-sm"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></button>
+        <button id="download-btn" class="bg-gray-800/80 text-white p-2.5 rounded-full hover:bg-gray-700 backdrop-blur-sm"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
+        <button id="close-modal-btn" class="bg-gray-800/80 text-white p-2.5 rounded-full hover:bg-gray-700 backdrop-blur-sm"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
     
     <div id="toast-notification" class="bg-gray-800 text-white text-sm font-medium py-3 px-6 rounded-full shadow-lg border border-gray-600"><p id="toast-message"></p></div>
@@ -181,9 +186,9 @@
         const state = { 
             board: 'Hot', view: 'list', articles: [], nextPage: null, loading: false, 
             favorites: [], read: new Set(JSON.parse(localStorage.getItem('read_v2')||'[]')),
-            imgs: [], // 原始圖片列表 (API 回傳順序)
-            modalImgs: [], // 燈箱播放列表 (依照點擊順序重排)
-            imgIdx: 0, // 燈箱目前索引 (對應 modalImgs)
+            imgs: [], // 當前文章/列表的所有圖片
+            modalImgs: [], // 燈箱專用的播放清單 (已重新排序)
+            imgIdx: 0, // 燈箱目前在 modalImgs 的索引
             zoom: null, galSize: localStorage.getItem('gal_size') || 'sm',
             fontLevel: parseInt(localStorage.getItem('font_level') || '0')
         };
@@ -204,9 +209,7 @@
         const db = getFirestore(app);
         let uid = null;
 
-        // Touch Swipe Variables
-        let touchStartX = 0;
-        let touchStartY = 0;
+        let touchStartX = 0, touchStartY = 0;
 
         (function init() {
             history.replaceState({ view: 'list' }, '', '');
@@ -230,13 +233,13 @@
                 if(els.gal.scrollTop + els.gal.clientHeight > els.gal.scrollHeight - 500) loadMore();
             }, 200));
 
+            // 燈箱控制項事件
             $('close-modal-btn').onclick = closeModal;
-            // 綁定大區域點擊事件
             $('image-prev-area').onclick = e => { e.stopPropagation(); chgImg(-1); };
             $('image-next-area').onclick = e => { e.stopPropagation(); chgImg(1); };
             $('download-btn').onclick = downloadImg;
 
-            // Swipe Gestures
+            // 滑動手勢 (綁定在 modal 上，確保範圍夠大)
             els.modal.addEventListener('touchstart', e => {
                 if(state.zoom && state.zoom.scale > 1) return;
                 touchStartX = e.changedTouches[0].screenX;
@@ -248,8 +251,8 @@
                 const diffX = e.changedTouches[0].screenX - touchStartX;
                 const diffY = e.changedTouches[0].screenY - touchStartY;
                 if(Math.abs(diffX) > 50 && Math.abs(diffY) < 60) {
-                    if(diffX < 0) chgImg(1); // 左滑 -> 下一張
-                    else chgImg(-1); // 右滑 -> 上一張
+                    if(diffX < 0) chgImg(1); 
+                    else chgImg(-1); 
                 }
             }, {passive: true});
 
@@ -260,8 +263,8 @@
             document.onclick = () => els.auth.drop.classList.add('hidden');
 
             window.addEventListener('popstate', (event) => {
-                if (state.view === 'detail') {
-                    switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
+                if (!els.modal.classList.contains('hidden')) {
+                    closeModal(); // 返回鍵優先關閉燈箱
                 } else {
                     switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
                 }
@@ -293,6 +296,80 @@
             applyGalSize();
         })();
 
+        // 核心修正：開啟燈箱並重新排序
+        function openImgModal(startIndex = 0) {
+            if (!state.imgs || state.imgs.length === 0) return;
+
+            // 銷毀舊實例與清空 (解決卡住)
+            if (state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+            els.zoomTgt.innerHTML = '';
+
+            // 重排圖片陣列：[startIndex...end, 0...startIndex-1]
+            // 例如 [A, B, C, D, E], 點擊 C(2) -> [C, D, E, A, B]
+            state.modalImgs = state.imgs.slice(startIndex).concat(state.imgs.slice(0, startIndex));
+            state.imgIdx = 0; // 燈箱總是從第 0 張 (即點擊的那張) 開始
+
+            els.modal.classList.remove('hidden');
+            $('image-modal-controls').classList.remove('hidden'); // 顯示控制列
+            
+            history.pushState({ view: 'modal' }, '', '#view'); // 加入 history 讓返回鍵能關閉
+            renderModalImg();
+        }
+
+        function closeModal() {
+            els.modal.classList.add('hidden');
+            $('image-modal-controls').classList.add('hidden');
+            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+            els.zoomTgt.innerHTML = ''; 
+            if (history.state?.view === 'modal') history.back();
+        }
+
+        function chgImg(dir) {
+            const newIdx = state.imgIdx + dir;
+            
+            // 檢查範圍：因為已經重排過，所以只能在 0 ~ length-1 之間移動
+            if (newIdx >= 0 && newIdx < state.modalImgs.length) {
+                state.imgIdx = newIdx;
+                renderModalImg();
+            } else {
+                toast(dir > 0 ? '沒有下一張' : '沒有上一張');
+            }
+        }
+
+        function renderModalImg() {
+            // 每次渲染前強制清除，防止 PinchZoom 殘留
+            if (state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+            els.zoomTgt.innerHTML = ''; 
+            
+            // 顯示 Loading
+            els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>`;
+            
+            const url = state.modalImgs[state.imgIdx];
+            const img = new Image();
+            img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.objectFit = 'contain';
+            
+            img.onload = () => {
+                els.zoomTgt.innerHTML = ''; 
+                els.zoomTgt.appendChild(img);
+                
+                state.zoom = new PinchZoom.default(els.zoomTgt, {
+                    minZoom: 1, maxZoom: 5, tapZoomFactor: 2, animationDuration: 200
+                });
+            };
+            
+            // 控制左右按鈕顯示 (到底隱藏)
+            const isFirst = state.imgIdx === 0;
+            const isLast = state.imgIdx === state.modalImgs.length - 1;
+            $('image-prev-area').classList.toggle('hidden-nav', isFirst);
+            $('image-next-area').classList.toggle('hidden-nav', isLast);
+            
+            updateFavIcons();
+        }
+
+        // 其他功能維持不變
         function toggleFontLevel() {
             state.fontLevel = (state.fontLevel + 1) % 3;
             localStorage.setItem('font_level', state.fontLevel);
@@ -327,25 +404,16 @@
                     ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-900/40' 
                     : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700 hover:text-gray-200'
                 }`;
-                
-                btn.onclick = () => {
-                    if (state.board === k) return;
-                    updateActiveTab(k);
-                    loadBoard(k);
-                };
+                btn.onclick = () => { if (state.board === k) return; updateActiveTab(k); loadBoard(k); };
                 els.tabsContainer.appendChild(btn);
             });
         }
 
         function updateActiveTab(boardKey) {
-            const buttons = els.tabsContainer.querySelectorAll('button');
-            buttons.forEach(btn => {
-                if (btn.dataset.board === boardKey) {
-                    btn.className = 'whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border border-blue-500 bg-blue-600 text-white shadow-md shadow-blue-900/40 snap-start';
-                    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                } else {
-                    btn.className = 'whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 snap-start';
-                }
+            els.tabsContainer.querySelectorAll('button').forEach(btn => {
+                const isActive = btn.dataset.board === boardKey;
+                btn.className = `whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border snap-start ${isActive ? 'bg-blue-600 text-white border-blue-500 shadow-md' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`;
+                if (isActive) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             });
         }
 
@@ -356,9 +424,7 @@
             state.nextPage = null;
             els.list.innerHTML = '';
             els.gal.innerHTML = '';
-            
-            history.replaceState({ view: 'list' }, '', '');
-
+            history.replaceState({ view: 'list' }, '', '#list');
             if (board === 'BeautyGallery') {
                 switchView('gallery');
                 $('list-view-controls').classList.add('hidden');
@@ -369,7 +435,6 @@
                 $('gallery-size-toggle-btn').classList.add('hidden');
                 renderSkeleton();
             }
-            
             await fetchArticles();
         }
 
@@ -378,16 +443,12 @@
             state.loading = true;
             els.loader.classList.remove('hidden');
             $('gallery-loading').classList.remove('hidden');
-
             try {
                 let url = `/api/scraper?board=${state.board}`;
                 if(state.nextPage) url += `&list_url=${encodeURIComponent(state.nextPage)}`;
-                
                 const res = await fetch(url);
                 const data = await res.json();
-                
                 state.nextPage = data.prev_page_url;
-                
                 if(state.board === 'BeautyGallery') {
                     renderGallery(data.articles);
                 } else {
@@ -395,7 +456,6 @@
                     fetchPreviews(data.articles);
                 }
             } catch(e) {
-                console.error(e);
                 toast('載入失敗');
             } finally {
                 state.loading = false;
@@ -415,7 +475,6 @@
                 div.className = `p-3 border-b border-gray-800 hover:bg-gray-900 transition-colors cursor-pointer flex gap-3 ${state.read.has(item.link)?'opacity-50':''}`;
                 div.id = `art-${btoa(item.link).slice(0,10)}`;
                 div.onclick = () => loadDetail(item);
-                
                 div.innerHTML = `
                     <div class="flex-grow min-w-0">
                         <h3 class="art-title font-bold text-gray-200 line-clamp-2 mb-1">
@@ -423,11 +482,7 @@
                             ${item.title}
                             ${item.push_count?`<span class="ml-1 text-xs px-1.5 rounded-full ${getPushColor(item.push_count)} text-black font-bold">${item.push_count}</span>`:''}
                         </h3>
-                        <div class="flex items-center text-xs text-gray-500 gap-2">
-                            <span>${item.author}</span>
-                            <span>•</span>
-                            <span>${item.date}</span>
-                        </div>
+                        <div class="flex items-center text-xs text-gray-500 gap-2"><span>${item.author}</span><span>•</span><span>${item.date}</span></div>
                         <p class="preview-text text-sm text-gray-400 mt-1 line-clamp-2 h-0 opacity-0 transition-all duration-300"></p>
                     </div>
                     <div class="thumb-box hidden w-20 h-20 rounded bg-gray-800 flex-shrink-0 bg-cover bg-center transition-opacity duration-500 opacity-0"></div>
@@ -469,49 +524,33 @@
             state.read.add(item.link);
             localStorage.setItem('read_v2', JSON.stringify([...state.read]));
             document.getElementById(`art-${btoa(item.link).slice(0,10)}`)?.classList.add('opacity-50');
-
             history.pushState({ view: 'detail' }, '', '#detail');
-
             switchView('detail');
             els.detail.innerHTML = '<div class="flex justify-center py-20"><div class="loader w-8 h-8 rounded-full border-2 border-t-transparent border-blue-500"></div></div>';
             els.title.textContent = item.title;
             state.currArt = item;
             updateFavIcons();
-
             try {
                 const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(item.link)}`);
                 const data = await res.json();
-                state.imgs = data.images; // 保存 API 回傳的原始順序
-                
+                state.imgs = data.images;
                 const contentHTML = processContent(data.content);
                 const pushesHTML = data.pushes.map(p => `
                     <div class="push">
                         <span class="push-tag ${p.tag==='推'?'push-tag-推':p.tag==='噓'?'push-tag-噓':'push-tag-→'}">${p.tag}</span>
                         <span class="push-userid text-blue-400">${p.user}</span>
                         <span class="push-content">${linkify(p.content.replace(/^:/,''))}</span>
-                    </div>
-                `).join('');
-
+                    </div>`).join('');
                 els.detail.innerHTML = `
                     <div class="text-gray-400 text-sm mb-4 pb-2 border-b border-gray-800">
-                        <div class="flex justify-between">
-                            <span class="text-blue-400 font-bold">${data.author_full}</span>
-                            <span>${data.formatted_timestamp}</span>
-                        </div>
+                        <div class="flex justify-between"><span class="text-blue-400 font-bold">${data.author_full}</span><span>${data.formatted_timestamp}</span></div>
                         <h1 class="text-xl font-bold text-gray-100 mt-2 leading-relaxed">${item.title}</h1>
                     </div>
-                    <div class="art-content leading-relaxed text-gray-300 break-words space-y-4" id="main-text">
-                        ${contentHTML}
-                    </div>
-                    <div class="mt-8 pt-4 border-t border-gray-800 space-y-1">
-                        ${pushesHTML}
-                    </div>
-                `;
-
+                    <div class="art-content leading-relaxed text-gray-300 break-words space-y-4" id="main-text">${contentHTML}</div>
+                    <div class="mt-8 pt-4 border-t border-gray-800 space-y-1">${pushesHTML}</div>`;
                 els.detail.querySelectorAll('img.art-img').forEach((img, idx) => {
-                    img.onclick = () => openModal(idx);
+                    img.onclick = () => openImgModal(idx);
                 });
-
             } catch(e) {
                 els.detail.innerHTML = '<p class="text-center text-red-500 mt-10">載入失敗</p>';
             }
@@ -524,7 +563,6 @@
                 a.className = 'gallery-item';
                 a.dataset.link = item.article.link;
                 const imgUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`;
-                
                 a.innerHTML = `<img src="${imgUrl}" loading="lazy" />
                                <div class="fav-overlay absolute top-2 right-2 bg-black/60 rounded-full p-1 hidden"><svg class="w-5 h-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`;
                 a.onclick = () => {
@@ -532,7 +570,7 @@
                     state.imgs = item.all_images;
                     let idx = item.all_images.indexOf(item.preview_image);
                     if (idx === -1) idx = 0;
-                    openModal(idx);
+                    openImgModal(idx);
                 };
                 frag.appendChild(a);
             });
@@ -549,9 +587,7 @@
                 }
                 if(clean.match(/youtube\.com|youtu\.be/)) {
                     const vid = clean.match(/v=([a-zA-Z0-9_-]+)/)?.[1] || clean.match(/youtu\.be\/([a-zA-Z0-9_-]+)/)?.[1] || clean.match(/embed\/([a-zA-Z0-9_-]+)/)?.[1];
-                    if(vid) {
-                        return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${vid}" frameborder="0" allowfullscreen></iframe></div>`;
-                    }
+                    if(vid) return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${vid}" frameborder="0" allowfullscreen></iframe></div>`;
                 }
                 return `<a href="${url}" target="_blank" class="text-blue-400 break-all hover:underline">${url}</a>`;
             }).replace(/\n/g, '<br>');
@@ -579,104 +615,24 @@
                 $('floating-back-btn').classList.add('hidden');
                 $('auth-container').classList.remove('hidden');
                 els.logo.classList.remove('text-gray-300');
-                
-                if (v === 'list') {
-                     $('list-view-controls').classList.remove('hidden');
-                } else if (v === 'gallery') {
-                     $('list-view-controls').classList.add('hidden');
-                }
+                if (v === 'list') $('list-view-controls').classList.remove('hidden');
+                else if (v === 'gallery') $('list-view-controls').classList.add('hidden');
             }
         }
 
         function goBack() {
-            if(state.view === 'detail') {
-                history.back(); 
-            }
-        }
-        
-        // 核心邏輯：開啟燈箱並重排順序
-        function openModal(startIndex = 0) {
-            if (!state.imgs || state.imgs.length === 0) return;
-
-            // 銷毀舊實例
-            if (state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
-            els.zoomTgt.innerHTML = '';
-
-            // 重排圖片陣列：[startIndex...end, 0...startIndex-1]
-            state.modalImgs = state.imgs.slice(startIndex).concat(state.imgs.slice(0, startIndex));
-            state.imgIdx = 0; // 燈箱總是從新陣列的第 0 張開始
-
-            els.modal.classList.remove('hidden');
-            renderModalImg();
-        }
-
-        function closeModal() {
-            els.modal.classList.add('hidden');
-            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
-            els.zoomTgt.innerHTML = ''; 
-        }
-
-        function chgImg(dir) {
-            const newIdx = state.imgIdx + dir;
-            
-            // 檢查是否超出範圍 (0 ~ length-1)
-            if (newIdx >= 0 && newIdx < state.modalImgs.length) {
-                state.imgIdx = newIdx;
-                renderModalImg();
-            } else {
-                toast(dir > 0 ? '沒有下一張' : '沒有上一張');
-            }
-        }
-
-        function renderModalImg() {
-            // 清除容器與銷毀 Zoom (關鍵步驟，防止圖片卡住)
-            if (state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
-            els.zoomTgt.innerHTML = ''; 
-            
-            // Loading
-            els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>`;
-            
-            const url = state.modalImgs[state.imgIdx];
-            const img = new Image();
-            img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
-            img.style.maxWidth = '100%';
-            img.style.maxHeight = '100%';
-            img.style.objectFit = 'contain';
-            
-            img.onload = () => {
-                els.zoomTgt.innerHTML = ''; // 清除 Loading
-                els.zoomTgt.appendChild(img);
-                
-                // 初始化 PinchZoom
-                state.zoom = new PinchZoom.default(els.zoomTgt, {
-                    minZoom: 1, 
-                    maxZoom: 5,
-                    tapZoomFactor: 2,
-                    animationDuration: 200
-                });
-            };
-            
-            // 控制按鈕顯示
-            const isFirst = state.imgIdx === 0;
-            const isLast = state.imgIdx === state.modalImgs.length - 1;
-            
-            $('image-prev-area').classList.toggle('hidden-nav', isFirst);
-            $('image-next-area').classList.toggle('hidden-nav', isLast);
-            
-            updateFavIcons();
+            if(state.view === 'detail') history.back(); 
         }
         
         async function downloadImg() {
-            const url = state.modalImgs[state.imgIdx]; // 使用 modalImgs
+            const url = state.modalImgs[state.imgIdx];
             try {
                 toast('下載中...');
                 const response = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`);
                 if (!response.ok) throw new Error('Download failed');
-                
                 const blob = await response.blob();
                 const filename = url.split('/').pop().split('?')[0] || 'ptt-image.jpg';
                 const objectUrl = URL.createObjectURL(blob);
-                
                 const a = document.createElement('a');
                 a.href = objectUrl;
                 a.download = filename;
@@ -685,7 +641,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(objectUrl);
             } catch (e) {
-                toast('下載失敗: ' + e.message);
+                toast('下載失敗');
             }
         }
 
@@ -694,14 +650,7 @@
             if(!state.currArt) return;
             const ref = doc(db, 'users', uid, 'favorites', btoa(state.currArt.link));
             const isFav = state.favorites.some(f => f.link === state.currArt.link);
-            
-            if(isFav) {
-                await deleteDoc(ref);
-                toast('已取消收藏');
-            } else {
-                await setDoc(ref, state.currArt);
-                toast('已加入收藏');
-            }
+            if(isFav) { await deleteDoc(ref); toast('已取消收藏'); } else { await setDoc(ref, state.currArt); toast('已加入收藏'); }
         }
         function toggleFavModal() { toggleFav(); }
         
@@ -710,10 +659,8 @@
             const icon = $('header-favorite-btn').querySelector('svg');
             icon.setAttribute('fill', isFav ? '#ec4899' : 'none');
             icon.classList.toggle('text-pink-500', isFav);
-            
             const modalIcon = $('favorite-from-modal-btn').querySelector('svg');
             modalIcon.setAttribute('fill', isFav ? 'currentColor' : 'none');
-            
             document.querySelectorAll('.gallery-item').forEach(el => {
                 const link = el.dataset.link;
                 const overlay = el.querySelector('.fav-overlay');
@@ -726,7 +673,6 @@
              if(!uid) return toast('請先登入');
              const btn = $('toggle-favorites-btn');
              const isShowing = btn.classList.contains('text-pink-500');
-             
              if(!isShowing) {
                  btn.classList.add('text-pink-500');
                  $('fav-icon-outline').classList.add('hidden');
@@ -752,16 +698,7 @@
         
         function renderSkeleton() {
             els.skel.classList.remove('hidden');
-            els.skel.innerHTML = Array(6).fill(0).map(() => 
-                `<div class="flex gap-3 p-3 animate-pulse border-b border-gray-800">
-                    <div class="flex-grow space-y-2">
-                        <div class="h-5 bg-gray-800 rounded w-3/4"></div>
-                        <div class="h-3 bg-gray-800 rounded w-1/4"></div>
-                        <div class="h-10 bg-gray-800 rounded w-full mt-2"></div>
-                    </div>
-                    <div class="w-20 h-20 bg-gray-800 rounded"></div>
-                </div>`
-            ).join('');
+            els.skel.innerHTML = Array(6).fill(0).map(() => `<div class="flex gap-3 p-3 animate-pulse border-b border-gray-800"><div class="flex-grow space-y-2"><div class="h-5 bg-gray-800 rounded w-3/4"></div><div class="h-3 bg-gray-800 rounded w-1/4"></div><div class="h-10 bg-gray-800 rounded w-full mt-2"></div></div><div class="w-20 h-20 bg-gray-800 rounded"></div></div>`).join('');
         }
         function getPushColor(c) {
             if(c === '爆') return 'bg-red-500';
