@@ -175,8 +175,6 @@
                                 <!-- 還原的愛心 Solid -->
                                 <svg id="fav-icon-solid" class="h-6 w-6 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                             </button>
-                            <!-- 還原的清除快取按鈕 (原位於下拉選單，現在移出來或放個人選單) -->
-                            <!-- 注意：使用者要求復原所有工具列圖示，這裡我們保持 clear-cache 在 user-dropdown 內，但圖示還原 -->
                         </div>
 
                         <button id="theme-toggle-btn" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="切換主題">
@@ -207,7 +205,6 @@
                             <!-- 還原的全螢幕圖示 -->
                             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
                         </button>
-                        <!-- 移除了 Dislike 按鈕，因為原始版本沒有特別強調，若需要可加回 -->
                     </div>
 
                      <!-- 美圖牆工具 -->
@@ -338,7 +335,7 @@
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = link => state.favorites.some(fav => fav.link === link);
 
-            function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto shadow-md" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-3 rounded-lg max-w-full h-auto shadow-md" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline break-all">${cleanUrl}</a>`; }); }
+            function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto shadow-md" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-3 rounded-lg max-w-full h-auto shadow-md cursor-pointer" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline break-all">${cleanUrl}</a>`; }); }
             
             function updateHeader() { 
                 const isDetail = state.currentView === 'detail'; 
@@ -349,7 +346,6 @@
                 galleryViewControls.classList.toggle('hidden', !isGallery); 
                 detailViewControls.classList.toggle('hidden', !isDetail); 
                 headerTitle.classList.toggle('hidden', !isDetail);
-                // LOGO 不再隱藏，始終顯示
                 
                 if (isDetail && state.currentArticle) { 
                     headerTitle.textContent = state.currentArticle.title; 
@@ -507,11 +503,86 @@
             });
 
             async function loadGallery(append = false) { if (state.isLoading) return; state.isLoading = true; galleryError.classList.add('hidden'); if (!append) { cancelRetry(); galleryGrid.innerHTML = ''; state.galleryPrevPageUrl = null; galleryLoaderInitial.classList.remove('hidden'); } else { galleryLoaderMore.classList.remove('hidden'); } try { const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; const res = await fetch(url); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const data = await res.json(); cancelRetry(); state.galleryPrevPageUrl = data.prev_page_url; const newItems = data.articles || []; if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } renderGallery(newItems, append); } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); } else { if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } cancelRetry(); } } finally { state.isLoading = false; galleryLoaderInitial.classList.add('hidden'); galleryLoaderMore.classList.add('hidden'); } }
-            function renderGallery(items, append = false) { if (!append) galleryGrid.innerHTML = ''; const fragment = document.createDocumentFragment(); items.forEach(item => { const itemDiv = document.createElement('a'); itemDiv.className = 'gallery-item'; itemDiv.dataset.articleLink = item.article.link; const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; itemDiv.addEventListener('click', (e) => { e.preventDefault(); state.currentArticleImages = item.all_images; state.currentModalGalleryItem = item; openImageModal(item.all_images.indexOf(item.preview_image), item.article.title); }); fragment.appendChild(itemDiv); }); galleryGrid.appendChild(fragment); updateGalleryFavoriteIcons(); }
+            
+            function renderGallery(items, append = false) { 
+                if (!append) galleryGrid.innerHTML = ''; 
+                const fragment = document.createDocumentFragment(); 
+                items.forEach(item => { 
+                    const itemDiv = document.createElement('a'); 
+                    itemDiv.className = 'gallery-item'; 
+                    itemDiv.dataset.articleLink = item.article.link; 
+                    const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; 
+                    itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; 
+                    itemDiv.addEventListener('click', (e) => { 
+                        e.preventDefault(); 
+                        if (item.all_images && item.all_images.length > 0) {
+                            state.currentArticleImages = item.all_images;
+                            state.currentModalGalleryItem = item;
+                            const idx = Math.max(0, item.all_images.indexOf(item.preview_image));
+                            openImageModal(idx, item.article.title); 
+                        } else {
+                            // Fallback if no images list
+                            state.currentArticleImages = [item.preview_image];
+                            openImageModal(0, item.article.title);
+                        }
+                    }); 
+                    fragment.appendChild(itemDiv); 
+                }); 
+                galleryGrid.appendChild(fragment); 
+                updateGalleryFavoriteIcons(); 
+            }
+            
             function updateGalleryFavoriteIcons() { document.querySelectorAll('.gallery-item').forEach(item => { const link = item.dataset.articleLink; if (link) { item.classList.toggle('is-favorite', isFavorite(link)); } }); }
 
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
-            function openImageModal(index, title = null) { cleanupImageInstance(); state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return; updateFavoriteFromModalBtn(); const img = new Image(); img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12 border-white"></div>'; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); imageModalTitle.textContent = title; imageModalTitle.classList.toggle('hidden', !title); updateImageNavButtons(); if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); img.onload = () => { pinchZoomTarget.innerHTML = ''; pinchZoomTarget.appendChild(img); try { state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); state.pinchZoomInstance._wheelHandler = wheelHandler; } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } }; img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } }
+            
+            function openImageModal(index, title = null) { 
+                cleanupImageInstance(); 
+                state.currentImageIndex = index; 
+                const url = state.currentArticleImages[index]; 
+                if (!url) return; 
+                updateFavoriteFromModalBtn(); 
+                const img = new Image(); 
+                img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; 
+                pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12 border-white"></div>'; 
+                imageModal.classList.remove('hidden'); 
+                imageModalControls.classList.remove('hidden'); 
+                imageModalTitle.textContent = title; 
+                imageModalTitle.classList.toggle('hidden', !title); 
+                updateImageNavButtons(); 
+                if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); 
+                
+                img.onload = () => { 
+                    pinchZoomTarget.innerHTML = ''; 
+                    pinchZoomTarget.appendChild(img); 
+                    try { 
+                        // Fix: Robustly find the PinchZoom constructor
+                        const PinchZoomClass = window.PinchZoom?.default || window.PinchZoom;
+                        if (PinchZoomClass) {
+                            state.pinchZoomInstance = new PinchZoomClass(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); 
+                            
+                            const wheelHandler = e => { 
+                                e.preventDefault(); 
+                                const inst = state.pinchZoomInstance; 
+                                if (!inst) return; 
+                                try { 
+                                    const rect = pinchZoomTarget.getBoundingClientRect(); 
+                                    const scale = inst.getScale(); 
+                                    let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; 
+                                    newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); 
+                                    if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); 
+                                } catch(err) {} 
+                            }; 
+                            pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); 
+                            state.pinchZoomInstance._wheelHandler = wheelHandler; 
+                        } else {
+                            console.warn("PinchZoom library not loaded correctly.");
+                        }
+                    } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } 
+                }; 
+                img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } 
+            }
+            
             function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); state.currentModalGalleryItem = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
             function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
             function showNextImage(e) { e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
@@ -579,7 +650,31 @@
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('text-gray-400', !isV); toggleFavoritesBtn.classList.toggle('text-red-500', isV); }
-            detailContent.addEventListener('click', e => { const image = e.target.closest('.article-image'); if (image) { const originalUrl = image.dataset.originalUrl; const idx = state.currentArticleImages.indexOf(originalUrl); if (idx > -1) openImageModal(idx); return; } const thumbnail = e.target.closest('.youtube-thumbnail'); if (thumbnail) { e.preventDefault(); const videoId = thumbnail.dataset.youtubeId; const iframe = document.createElement('div'); iframe.className = 'youtube-container'; iframe.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`; thumbnail.replaceWith(iframe); } });
+            
+            detailContent.addEventListener('click', e => { 
+                const image = e.target.closest('.article-image'); 
+                if (image) { 
+                    const originalUrl = image.dataset.originalUrl; 
+                    // Robust check: if URL not in list (scraper missed it), add it dynamically
+                    let idx = state.currentArticleImages.indexOf(originalUrl); 
+                    if (idx === -1) {
+                         state.currentArticleImages.push(originalUrl);
+                         idx = state.currentArticleImages.length - 1;
+                    }
+                    openImageModal(idx); 
+                    return; 
+                } 
+                const thumbnail = e.target.closest('.youtube-thumbnail'); 
+                if (thumbnail) { 
+                    e.preventDefault(); 
+                    const videoId = thumbnail.dataset.youtubeId; 
+                    const iframe = document.createElement('div'); 
+                    iframe.className = 'youtube-container'; 
+                    iframe.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`; 
+                    thumbnail.replaceWith(iframe); 
+                } 
+            });
+            
             imageModal.addEventListener('click', handleCloseRequest);
             closeModalBtn.addEventListener('click', handleCloseRequest);
             pinchZoomTarget.addEventListener('click', e => e.stopPropagation());
