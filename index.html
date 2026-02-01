@@ -17,6 +17,7 @@
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* 隱藏滾動條但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -27,12 +28,14 @@
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 圖片切換按鈕 - 加大觸控區與提升 Z-index */
-        .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 150; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .image-nav-btn:active { background-color: rgba(255, 255, 255, 0.2); }
-        .image-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        #image-prev-btn { left: 16px; }
-        #image-next-btn { right: 16px; }
+        /* 圖片切換按鈕 - 優化：全高、半透明、防誤觸 */
+        .image-nav-area { position: absolute; top: 0; bottom: 0; width: 20%; display: flex; align-items: center; justify-content: center; z-index: 150; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .image-nav-area:active { background-color: rgba(255, 255, 255, 0.05); }
+        .image-nav-btn { background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
+        .image-nav-btn:active { transform: scale(0.95); background-color: rgba(0, 0, 0, 0.8); }
+        .image-nav-btn:disabled { opacity: 0; pointer-events: none; } /* 到底時隱藏 */
+        #image-prev-area { left: 0; justify-content: flex-start; padding-left: 16px; }
+        #image-next-area { right: 0; justify-content: flex-end; padding-right: 16px; }
 
         /* 影片容器 - 16:9 響應式 */
         .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem; }
@@ -48,8 +51,8 @@
         .push-content { flex-grow: 1; color: #e5e7eb; }
 
         #gallery-grid { column-gap: 8px; padding: 4px; }
-        .gallery-item { margin-bottom: 8px; break-inside: avoid; display: block; overflow: hidden; border-radius: 8px; background: #1f2937; position: relative; cursor: pointer; }
-        .gallery-item img { width: 100%; height: auto; display: block; transition: opacity 0.3s; }
+        .gallery-item { margin-bottom: 8px; break-inside: avoid; display: block; overflow: hidden; border-radius: 8px; background: #1f2937; position: relative; cursor: pointer; transform: translateZ(0); }
+        .gallery-item img { width: 100%; height: auto; display: block; transition: opacity 0.3s; pointer-events: none; /* 讓點擊事件穿透到父層 */ }
         .gallery-item:active img { opacity: 0.8; }
         
         #gallery-grid.size-sm { column-count: 2; }
@@ -134,7 +137,7 @@
         <button id="floating-back-btn" class="hidden fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-500 transition-all active:scale-95"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg></button>
     </div>
 
-    <div id="image-modal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in">
+    <div id="image-modal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in touch-none">
         <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
             <button id="close-modal-btn" class="p-2 text-white hover:text-gray-300"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             <div class="flex gap-4">
@@ -143,10 +146,14 @@
             </div>
         </div>
         
-        <div id="pinch-zoom-target" class="flex-grow pinch-zoom-container"></div>
+        <div id="pinch-zoom-target" class="flex-grow pinch-zoom-container relative"></div>
         
-        <button id="image-prev-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-        <button id="image-next-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+        <div id="image-prev-area" class="image-nav-area">
+            <button id="image-prev-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+        </div>
+        <div id="image-next-area" class="image-nav-area">
+            <button id="image-next-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+        </div>
     </div>
     
     <div id="toast-notification" class="bg-gray-800 text-white text-sm font-medium py-3 px-6 rounded-full shadow-lg border border-gray-600"><p id="toast-message"></p></div>
@@ -183,7 +190,7 @@
 
         // Touch Swipe Variables
         let touchStartX = 0;
-        let touchEndX = 0;
+        let touchStartY = 0;
 
         (function init() {
             history.replaceState({ view: 'list' }, '', '');
@@ -208,18 +215,27 @@
             }, 200));
 
             $('close-modal-btn').onclick = closeModal;
-            $('image-prev-btn').onclick = e => { e.stopPropagation(); chgImg(-1); };
-            $('image-next-btn').onclick = e => { e.stopPropagation(); chgImg(1); };
+            // 綁定到大區域
+            $('image-prev-area').onclick = e => { e.stopPropagation(); chgImg(-1); };
+            $('image-next-area').onclick = e => { e.stopPropagation(); chgImg(1); };
             $('download-btn').onclick = downloadImg;
 
-            // Touch Swipe Listener for Modal
-            els.modal.addEventListener('touchstart', e => {
+            // Touch Swipe Listeners (綁定在 zoomTgt 上，並確保不阻止預設行為以允許縮放)
+            els.zoomTgt.addEventListener('touchstart', e => {
+                if(state.zoom && state.zoom.scale > 1) return; // 放大時不滑動
                 touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
             }, {passive: true});
 
-            els.modal.addEventListener('touchend', e => {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
+            els.zoomTgt.addEventListener('touchend', e => {
+                if(state.zoom && state.zoom.scale > 1) return;
+                const diffX = e.changedTouches[0].screenX - touchStartX;
+                const diffY = e.changedTouches[0].screenY - touchStartY;
+                // 水平滑動且垂直位移不大
+                if(Math.abs(diffX) > 50 && Math.abs(diffY) < 40) {
+                    if(diffX < 0) chgImg(1); // 左滑 -> 下一張
+                    else chgImg(-1); // 右滑 -> 上一張
+                }
             }, {passive: true});
 
             els.auth.btn.onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
@@ -261,11 +277,6 @@
             loadBoard('Hot');
             applyGalSize();
         })();
-
-        function handleSwipe() {
-            if (touchEndX < touchStartX - 50) chgImg(1); // Left Swipe -> Next
-            if (touchEndX > touchStartX + 50) chgImg(-1); // Right Swipe -> Prev
-        }
 
         function toggleFontLevel() {
             state.fontLevel = (state.fontLevel + 1) % 3;
@@ -504,7 +515,6 @@
                 a.onclick = () => {
                     state.currArt = item.article;
                     state.imgs = item.all_images;
-                    // Fix index logic
                     const idx = item.all_images.indexOf(item.preview_image);
                     openModal(idx >= 0 ? idx : 0);
                 };
@@ -522,7 +532,6 @@
                     return `<img src="/api/scraper?proxy_url=${encodeURIComponent(clean)}" class="art-img rounded-lg my-3 w-full max-w-full cursor-pointer bg-gray-800 min-h-[150px]" loading="lazy" />`;
                 }
                 if(clean.match(/youtube\.com|youtu\.be/)) {
-                    // 修正 YouTube 嵌入邏輯
                     const vid = clean.match(/v=([a-zA-Z0-9_-]+)/)?.[1] || clean.match(/youtu\.be\/([a-zA-Z0-9_-]+)/)?.[1] || clean.match(/embed\/([a-zA-Z0-9_-]+)/)?.[1];
                     if(vid) {
                         return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${vid}" frameborder="0" allowfullscreen></iframe></div>`;
@@ -570,6 +579,10 @@
         }
         
         function openModal(idx) {
+            // 清除可能殘留的狀態
+            if(state.zoom) { state.zoom.destroy(); state.zoom = null; }
+            els.zoomTgt.innerHTML = '';
+            
             state.imgIdx = idx;
             els.modal.classList.remove('hidden');
             renderModalImg();
@@ -577,6 +590,7 @@
         function closeModal() {
             els.modal.classList.add('hidden');
             if(state.zoom) { state.zoom.destroy(); state.zoom = null; }
+            els.zoomTgt.innerHTML = ''; // 徹底清除 DOM 避免汙染
         }
         function chgImg(dir) {
             const newIdx = state.imgIdx + dir;
@@ -586,20 +600,40 @@
             }
         }
         function renderModalImg() {
+            // 重置
             if(state.zoom) { state.zoom.destroy(); state.zoom = null; }
-            const url = state.imgs[state.imgIdx];
-            els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full"></div>`;
+            els.zoomTgt.innerHTML = ''; // 確保容器乾淨
             
+            // 加入 loading
+            els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>`;
+            
+            const url = state.imgs[state.imgIdx];
             const img = new Image();
             img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.objectFit = 'contain';
+            
             img.onload = () => {
-                els.zoomTgt.innerHTML = '';
+                els.zoomTgt.innerHTML = ''; // 清除 loading
                 els.zoomTgt.appendChild(img);
-                state.zoom = new PinchZoom.default(els.zoomTgt, {minZoom: 1, maxZoom: 5});
+                
+                // 重新初始化 PinchZoom
+                state.zoom = new PinchZoom.default(els.zoomTgt, {
+                    minZoom: 1, 
+                    maxZoom: 5,
+                    tapZoomFactor: 2,
+                    animationDuration: 200
+                });
             };
             
+            // 更新按鈕狀態
             $('image-prev-btn').disabled = state.imgIdx === 0;
             $('image-next-btn').disabled = state.imgIdx === state.imgs.length - 1;
+            // 控制透明按鈕層的可見性
+            $('image-prev-area').style.display = state.imgIdx === 0 ? 'none' : 'flex';
+            $('image-next-area').style.display = state.imgIdx === state.imgs.length - 1 ? 'none' : 'flex';
+            
             updateFavIcons();
         }
         async function downloadImg() {
