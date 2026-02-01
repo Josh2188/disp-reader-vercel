@@ -20,24 +20,35 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .glassmorphism { background-color: rgba(17, 24, 39, 0.95); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
         
         /* 圖片燈箱 */
         #image-modal.hidden { display: none; }
+        /* 確保燈箱在最上層 */
+        #image-modal { z-index: 9999; }
+        
+        /* 控制列：確保在圖片上方 */
+        .modal-controls { position: absolute; top: 0; left: 0; right: 0; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 10001; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); pointer-events: auto; }
+
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 左右切換區：加大感應範圍 (20% 螢幕寬) */
-        .image-nav-area { position: absolute; top: 0; bottom: 0; width: 20%; display: flex; align-items: center; justify-content: center; z-index: 150; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        /* 左右切換區：加大感應範圍 (20% 螢幕寬)，且層級要高 */
+        .image-nav-area { position: absolute; top: 0; bottom: 0; width: 20%; display: flex; align-items: center; justify-content: center; z-index: 10000; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .image-nav-area:active { background-color: rgba(255, 255, 255, 0.05); }
-        .image-nav-btn { background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
-        .image-nav-btn:active { transform: scale(0.95); background-color: rgba(0, 0, 0, 0.8); }
+        .image-nav-btn { background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; pointer-events: none; /* 讓點擊穿透到 area */ }
+        .image-nav-area:active .image-nav-btn { transform: scale(0.95); background-color: rgba(0, 0, 0, 0.8); }
+        
+        /* 隱藏按鈕但不隱藏感應區 */
+        .image-nav-area.hidden-nav { display: none; } 
+        
         #image-prev-area { left: 0; justify-content: flex-start; padding-left: 16px; }
         #image-next-area { right: 0; justify-content: flex-end; padding-right: 16px; }
 
         .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem; }
         .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 200; pointer-events: none; }
+        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 20000; pointer-events: none; }
         #toast-notification.show { bottom: 30px; }
 
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.5; font-size: 0.95rem; }
@@ -59,7 +70,6 @@
         
         @media (min-width: 768px) { #app-container { max-width: 768px; border-left: 1px solid #374151; border-right: 1px solid #374151; } }
 
-        /* 字體大小 */
         .f-normal .art-title { font-size: 15px; line-height: 1.4; }
         .f-large .art-title { font-size: 17px; line-height: 1.5; }
         .f-xl .art-title { font-size: 19px; line-height: 1.5; }
@@ -71,6 +81,7 @@
 <body class="bg-black text-gray-100 overflow-hidden">
 
     <div id="app-container" class="mx-auto bg-black h-[100dvh] flex flex-col relative f-normal">
+        <!-- Header -->
         <header id="main-header" class="bg-gray-900 shadow-md flex-shrink-0 z-50 flex flex-col border-b border-gray-800">
             <div class="flex items-center justify-between p-3 pb-0">
                 <h1 id="app-logo" class="text-xl font-bold text-white tracking-wide pl-1 cursor-pointer">PTT<span class="text-blue-500 text-sm ml-1">Reader</span></h1>
@@ -87,7 +98,7 @@
                         <svg id="fav-icon-solid" class="h-6 w-6 hidden text-pink-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                     </button>
                     <button id="gallery-size-toggle-btn" class="hidden p-2 rounded-full hover:bg-gray-700 text-gray-300 transition-colors">
-                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     </button>
                     <div id="auth-container" class="flex-shrink-0 relative ml-1">
                          <button id="google-login-btn" class="bg-blue-600 text-white font-medium py-1 px-3 rounded text-xs hover:bg-blue-500 transition-colors">登入</button>
@@ -133,17 +144,23 @@
         <button id="floating-back-btn" class="hidden fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-500 transition-all active:scale-95"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg></button>
     </div>
 
-    <div id="image-modal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in touch-none">
-        <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
-            <button id="close-modal-btn" class="p-2 text-white hover:text-gray-300"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            <div class="flex gap-4">
+    <!-- 圖片燈箱 -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black z-[9999] flex flex-col animate-fade-in">
+        <!-- 頂部控制列 -->
+        <div class="modal-controls">
+            <button id="close-modal-btn" class="p-2 text-white hover:text-gray-300 z-50">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="flex gap-4 z-50">
                 <button id="download-btn" class="p-2 text-white hover:text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
                 <button id="favorite-from-modal-btn" class="p-2 text-white hover:text-pink-500"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></button>
             </div>
         </div>
         
+        <!-- 圖片縮放容器 -->
         <div id="pinch-zoom-target" class="flex-grow pinch-zoom-container relative"></div>
         
+        <!-- 左右切換區 -->
         <div id="image-prev-area" class="image-nav-area">
             <button id="image-prev-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
         </div>
@@ -164,7 +181,10 @@
         const state = { 
             board: 'Hot', view: 'list', articles: [], nextPage: null, loading: false, 
             favorites: [], read: new Set(JSON.parse(localStorage.getItem('read_v2')||'[]')),
-            imgs: [], imgIdx: 0, startIdx: 0, zoom: null, galSize: localStorage.getItem('gal_size') || 'sm',
+            imgs: [], // 原始圖片列表 (API 回傳順序)
+            modalImgs: [], // 燈箱播放列表 (依照點擊順序重排)
+            imgIdx: 0, // 燈箱目前索引 (對應 modalImgs)
+            zoom: null, galSize: localStorage.getItem('gal_size') || 'sm',
             fontLevel: parseInt(localStorage.getItem('font_level') || '0')
         };
 
@@ -211,24 +231,22 @@
             }, 200));
 
             $('close-modal-btn').onclick = closeModal;
-            // 按鈕區域點擊事件
+            // 綁定大區域點擊事件
             $('image-prev-area').onclick = e => { e.stopPropagation(); chgImg(-1); };
             $('image-next-area').onclick = e => { e.stopPropagation(); chgImg(1); };
             $('download-btn').onclick = downloadImg;
 
-            // Swipe Handlers (綁定在 zoomTgt 上)
-            els.zoomTgt.addEventListener('touchstart', e => {
-                if(state.zoom && state.zoom.scale > 1) return; // 放大時不觸發切換
+            // Swipe Gestures
+            els.modal.addEventListener('touchstart', e => {
+                if(state.zoom && state.zoom.scale > 1) return;
                 touchStartX = e.changedTouches[0].screenX;
                 touchStartY = e.changedTouches[0].screenY;
             }, {passive: true});
 
-            els.zoomTgt.addEventListener('touchend', e => {
+            els.modal.addEventListener('touchend', e => {
                 if(state.zoom && state.zoom.scale > 1) return;
                 const diffX = e.changedTouches[0].screenX - touchStartX;
                 const diffY = e.changedTouches[0].screenY - touchStartY;
-                
-                // 水平滑動距離 > 50 且 垂直距離 < 60 (判定為橫滑)
                 if(Math.abs(diffX) > 50 && Math.abs(diffY) < 60) {
                     if(diffX < 0) chgImg(1); // 左滑 -> 下一張
                     else chgImg(-1); // 右滑 -> 上一張
@@ -463,7 +481,7 @@
             try {
                 const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(item.link)}`);
                 const data = await res.json();
-                state.imgs = data.images;
+                state.imgs = data.images; // 保存 API 回傳的原始順序
                 
                 const contentHTML = processContent(data.content);
                 const pushesHTML = data.pushes.map(p => `
@@ -512,8 +530,9 @@
                 a.onclick = () => {
                     state.currArt = item.article;
                     state.imgs = item.all_images;
-                    const idx = item.all_images.indexOf(item.preview_image);
-                    openModal(idx >= 0 ? idx : 0);
+                    let idx = item.all_images.indexOf(item.preview_image);
+                    if (idx === -1) idx = 0;
+                    openModal(idx);
                 };
                 frag.appendChild(a);
             });
@@ -575,54 +594,49 @@
             }
         }
         
-        function openModal(idx) {
-            // 強制重置 DOM 與 Zoom 狀態
-            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+        // 核心邏輯：開啟燈箱並重排順序
+        function openModal(startIndex = 0) {
+            if (!state.imgs || state.imgs.length === 0) return;
+
+            // 銷毀舊實例
+            if (state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = '';
-            
-            state.imgIdx = idx;
-            state.startIdx = idx; // 記錄起始點，用於判斷何時結束循環
+
+            // 重排圖片陣列：[startIndex...end, 0...startIndex-1]
+            state.modalImgs = state.imgs.slice(startIndex).concat(state.imgs.slice(0, startIndex));
+            state.imgIdx = 0; // 燈箱總是從新陣列的第 0 張開始
+
             els.modal.classList.remove('hidden');
             renderModalImg();
         }
-        
+
         function closeModal() {
             els.modal.classList.add('hidden');
             if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = ''; 
         }
-        
-        // 核心修改：循環控制邏輯
+
         function chgImg(dir) {
-            const total = state.imgs.length;
-            let nextIdx;
-
-            if (dir === 1) {
-                // 下一張
-                nextIdx = (state.imgIdx + 1) % total;
-                // 如果繞了一圈回到起點，視為結束
-                if (nextIdx === state.startIdx) {
-                    toast('已看完所有圖片');
-                    return;
-                }
+            const newIdx = state.imgIdx + dir;
+            
+            // 檢查是否超出範圍 (0 ~ length-1)
+            if (newIdx >= 0 && newIdx < state.modalImgs.length) {
+                state.imgIdx = newIdx;
+                renderModalImg();
             } else {
-                // 上一張 (反向循環)
-                nextIdx = (state.imgIdx - 1 + total) % total;
+                toast(dir > 0 ? '沒有下一張' : '沒有上一張');
             }
-
-            state.imgIdx = nextIdx;
-            renderModalImg();
         }
-        
+
         function renderModalImg() {
-            // 每次渲染前徹底清除
-            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+            // 清除容器與銷毀 Zoom (關鍵步驟，防止圖片卡住)
+            if (state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = ''; 
             
-            // 插入 Loading 佔位
+            // Loading
             els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>`;
             
-            const url = state.imgs[state.imgIdx];
+            const url = state.modalImgs[state.imgIdx];
             const img = new Image();
             img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
             img.style.maxWidth = '100%';
@@ -630,10 +644,10 @@
             img.style.objectFit = 'contain';
             
             img.onload = () => {
-                els.zoomTgt.innerHTML = ''; // 移除 loading
+                els.zoomTgt.innerHTML = ''; // 清除 Loading
                 els.zoomTgt.appendChild(img);
                 
-                // 重新初始化縮放套件
+                // 初始化 PinchZoom
                 state.zoom = new PinchZoom.default(els.zoomTgt, {
                     minZoom: 1, 
                     maxZoom: 5,
@@ -642,11 +656,18 @@
                 });
             };
             
+            // 控制按鈕顯示
+            const isFirst = state.imgIdx === 0;
+            const isLast = state.imgIdx === state.modalImgs.length - 1;
+            
+            $('image-prev-area').classList.toggle('hidden-nav', isFirst);
+            $('image-next-area').classList.toggle('hidden-nav', isLast);
+            
             updateFavIcons();
         }
         
         async function downloadImg() {
-            const url = state.imgs[state.imgIdx];
+            const url = state.modalImgs[state.imgIdx]; // 使用 modalImgs
             try {
                 toast('下載中...');
                 const response = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`);
@@ -664,7 +685,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(objectUrl);
             } catch (e) {
-                toast('下載失敗');
+                toast('下載失敗: ' + e.message);
             }
         }
 
