@@ -17,10 +17,8 @@ try:
 except locale.Error:
     pass
 
-# 建立全域 Session 以重用 TCP 連線 (大幅提升速度)
 def create_session():
     s = requests.Session()
-    # 設定重試機制
     retries = Retry(total=3, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
     adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=retries)
     s.mount('https://', adapter)
@@ -35,9 +33,10 @@ def create_session():
 session = create_session()
 
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
-YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
+# 強化版 YouTube Regex: 支援 shorts, m.youtube, youtu.be, embed
+YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
-# 已移除: C_Chat, NBA, Baseball, Car
+# 已移除 NBA, Baseball, Car, C_Chat
 HOT_SCRAPE_BOARDS = [ "Gossiping", "Beauty", "Stock", "Lifeismoney", "MobileComm", "Boy-Girl", "Tech_Job", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex" ]
 
 # --- 核心函式 ---
@@ -58,11 +57,9 @@ def process_article_item_basic(item, board):
         meta_tag = item.select_one('.meta')
         push_tag = item.select_one('.nrec span')
         
-        # 過濾已刪除或結構不完整的文章
         if not (title_tag and title_tag.get('href') and meta_tag) or "本文已被刪除" in title_tag.text:
             return None
             
-        # 嚴格過濾公告
         title_text = title_tag.text.strip()
         if title_text.startswith('[公告]') or '公告' in title_text[:4]:
             return None
@@ -87,7 +84,6 @@ def process_article_item_basic(item, board):
     except Exception:
         return None
 
-# 改進版：自動抓取多頁直到數量足夠
 def fetch_ptt_article_list(board, start_url, min_items=15, max_pages=3):
     all_articles = []
     current_url = start_url
@@ -105,7 +101,6 @@ def fetch_ptt_article_list(board, start_url, min_items=15, max_pages=3):
             articles_tags = soup.select('div.r-ent')
             page_articles = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
             
-            # PTT 列表是舊->新，反轉讓最新的在上面
             page_articles.reverse()
             all_articles.extend(page_articles)
             
@@ -252,24 +247,20 @@ class handler(BaseHTTPRequestHandler):
         data, error = {}, None
         
         try:
-            # 圖片代理 (Proxy)
             if 'proxy_url' in query_params:
                 image_url = query_params['proxy_url'][0].replace('http://', 'https://', 1)
                 proxy_headers = {'User-Agent': session.headers['User-Agent'], 'Referer': image_url}
-                # 不使用 Session 以避免長時間佔用，但開啟 stream
                 resp = requests.get(image_url, headers=proxy_headers, timeout=20, stream=True)
                 resp.raise_for_status()
                 
                 self.send_response(200)
                 if 'Content-Type' in resp.headers: self.send_header('Content-Type', resp.headers['Content-Type'])
-                # 強制快取 7 天
                 self.send_header('Cache-Control', 'public, max-age=604800, immutable')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 for chunk in resp.iter_content(chunk_size=32768): self.wfile.write(chunk)
                 return
 
-            # API 請求
             board = query_params.get('board', [None])[0]
             if board == 'Hot': 
                 data = fetch_ptt_hot_articles()
