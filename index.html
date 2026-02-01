@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
     
-    <title>PTT 行動版</title>
+    <title>PTT Reader</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#111827">
     <link rel="apple-touch-icon" href="/icon-192x192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,6 +17,7 @@
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* 隱藏滾動條但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -31,21 +32,20 @@
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
 
-        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s ease; z-index: 100; pointer-events: none; }
+        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 100; pointer-events: none; }
         #toast-notification.show { bottom: 30px; }
 
-        .thumbnail-container { width: 80px; height: 80px; flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #1f2937; }
-        .thumbnail-container img { width: 100%; height: 100%; object-fit: cover; }
-        
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.5; font-size: 0.95rem; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
         .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #9ca3af; }
         .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; }
         .push-content { flex-grow: 1; color: #e5e7eb; }
-        
+
+        /* 美圖牆 */
         #gallery-grid { column-gap: 8px; padding: 4px; }
-        .gallery-item { margin-bottom: 8px; break-inside: avoid; display: block; overflow: hidden; border-radius: 8px; background: #1f2937; position: relative; }
-        .gallery-item img { width: 100%; height: auto; display: block; }
+        .gallery-item { margin-bottom: 8px; break-inside: avoid; display: block; overflow: hidden; border-radius: 8px; background: #1f2937; position: relative; cursor: pointer; }
+        .gallery-item img { width: 100%; height: auto; display: block; transition: opacity 0.3s; }
+        .gallery-item:active img { opacity: 0.8; }
         
         #gallery-grid.size-sm { column-count: 2; }
         @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } }
@@ -59,48 +59,47 @@
 <body class="bg-black text-gray-100 overflow-hidden">
 
     <div id="app-container" class="mx-auto bg-black h-[100dvh] flex flex-col relative">
-        <header id="main-header" class="bg-gray-900 shadow-md flex-shrink-0 z-50 p-3 flex items-center gap-3 border-b border-gray-800">
-            <select id="board-selector" class="bg-gray-800 text-white border border-gray-600 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 outline-none font-medium"></select>
-            
-            <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden pl-2 text-white"></h2>
-            
-            <div id="list-view-controls" class="flex-shrink-0 flex items-center gap-2">
-                <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-300">
-                    <svg id="sort-time-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <svg id="sort-hot-icon" class="h-6 w-6 hidden text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg>
-                </button>
+        <header id="main-header" class="bg-gray-900 shadow-md flex-shrink-0 z-50 flex flex-col border-b border-gray-800">
+            <div class="flex items-center justify-between p-3 pb-0">
+                <h1 class="text-xl font-bold text-white tracking-wide pl-1 cursor-pointer" onclick="window.scrollTo(0,0)">PTT<span class="text-blue-500 text-sm ml-1">Reader</span></h1>
                 
-                <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-300 hidden">
-                    <svg id="fav-icon-outline" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                    <svg id="fav-icon-solid" class="h-6 w-6 hidden text-pink-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                </button>
+                <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden pl-2 text-white"></h2>
 
-                <button id="gallery-size-toggle-btn" class="hidden p-2 rounded-full hover:bg-gray-700 text-gray-300">
-                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                </button>
-            </div>
-
-            <div id="auth-container" class="flex-shrink-0 relative ml-1">
-                 <button id="google-login-btn" class="bg-blue-600 text-white font-medium py-1.5 px-3 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap">登入</button>
-                
-                 <div id="user-info" class="hidden relative">
-                    <button id="avatar-btn" class="block w-8 h-8 rounded-full overflow-hidden border border-gray-500 focus:outline-none">
-                        <svg id="default-avatar" class="w-full h-full text-gray-400 bg-gray-700" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        <img id="user-avatar" class="w-full h-full object-cover hidden" src="" alt="User" onerror="this.classList.add('hidden');document.getElementById('default-avatar').classList.remove('hidden');">
+                <div id="list-view-controls" class="flex items-center gap-2">
+                    <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-300 transition-colors">
+                        <svg id="sort-time-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg id="sort-hot-icon" class="h-6 w-6 hidden text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg>
                     </button>
-                    
-                    <div id="logout-dropdown" class="hidden absolute right-0 top-10 w-36 bg-gray-800 rounded-lg shadow-xl py-2 z-[60] border border-gray-700">
-                        <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-700 mb-1">使用者選單</div>
-                        <button id="logout-btn" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700">登出</button>
+                    <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-300 hidden transition-colors">
+                        <svg id="fav-icon-outline" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        <svg id="fav-icon-solid" class="h-6 w-6 hidden text-pink-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    </button>
+                    <button id="gallery-size-toggle-btn" class="hidden p-2 rounded-full hover:bg-gray-700 text-gray-300 transition-colors">
+                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    </button>
+                    <div id="auth-container" class="flex-shrink-0 relative ml-1">
+                         <button id="google-login-btn" class="bg-blue-600 text-white font-medium py-1 px-3 rounded text-xs hover:bg-blue-500 transition-colors">登入</button>
+                         <div id="user-info" class="hidden relative">
+                             <button id="avatar-btn" class="block w-8 h-8 rounded-full overflow-hidden border border-gray-500 focus:outline-none">
+                                 <svg id="default-avatar" class="w-full h-full text-gray-400 bg-gray-700" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                 <img id="user-avatar" class="w-full h-full object-cover hidden" src="" alt="User" onerror="this.classList.add('hidden');document.getElementById('default-avatar').classList.remove('hidden');">
+                             </button>
+                             <div id="logout-dropdown" class="hidden absolute right-0 top-10 w-32 bg-gray-800 rounded shadow-xl py-2 z-[60] border border-gray-700">
+                                 <button id="logout-btn" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700">登出</button>
+                             </div>
+                         </div>
                     </div>
+                </div>
+
+                <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-2 hidden ml-auto">
+                    <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-gray-800 text-gray-300 transition-colors">
+                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                    </button>
                 </div>
             </div>
 
-            <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-2 hidden ml-auto">
-                <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-gray-800 text-gray-300">
-                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
-                </button>
-            </div>
+            <div class="w-full overflow-x-auto no-scrollbar py-2 px-3 flex items-center gap-2" id="board-tabs-container">
+                </div>
         </header>
 
         <div class="flex-grow relative overflow-hidden w-full">
@@ -154,7 +153,8 @@
         const $ = id => document.getElementById(id);
         const els = {
             app: $('app-container'), header: $('main-header'), list: $('articles-list'), detail: $('detail-content'), 
-            gal: $('gallery-grid'), title: $('header-title'), boardSel: $('board-selector'),
+            gal: $('gallery-grid'), title: $('header-title'), 
+            tabsContainer: $('board-tabs-container'),
             skel: $('skeleton-container'), loader: $('loading-indicator'), 
             views: { list: $('list-view'), detail: $('detail-view'), gallery: $('gallery-view') },
             modal: $('image-modal'), zoomTgt: $('pinch-zoom-target'),
@@ -167,13 +167,9 @@
         let uid = null;
 
         (function init() {
-            Object.entries(TOP_BOARDS).forEach(([k, v]) => {
-                const opt = document.createElement('option');
-                opt.value = k; opt.text = v;
-                els.boardSel.add(opt);
-            });
+            renderBoardTabs();
             
-            els.boardSel.onchange = e => loadBoard(e.target.value);
+            // Event Listeners
             $('toggle-sort-btn').onclick = () => {}; 
             $('floating-back-btn').onclick = () => goBack();
             $('header-favorite-btn').onclick = toggleFav;
@@ -196,11 +192,7 @@
             els.auth.btn.onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
             $('logout-btn').onclick = () => signOut(auth);
             
-            // 下拉選單切換
-            $('avatar-btn').onclick = e => { 
-                e.stopPropagation(); 
-                els.auth.drop.classList.toggle('hidden'); 
-            };
+            $('avatar-btn').onclick = e => { e.stopPropagation(); els.auth.drop.classList.toggle('hidden'); };
             document.onclick = () => els.auth.drop.classList.add('hidden');
 
             onAuthStateChanged(auth, u => {
@@ -229,8 +221,43 @@
             applyGalSize();
         })();
 
+        // 渲染橫向 Tab 標籤
+        function renderBoardTabs() {
+            els.tabsContainer.innerHTML = '';
+            Object.entries(TOP_BOARDS).forEach(([k, v]) => {
+                const btn = document.createElement('button');
+                btn.textContent = v;
+                btn.dataset.board = k;
+                btn.className = `whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border snap-start ${
+                    k === state.board 
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-900/40' 
+                    : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700 hover:text-gray-200'
+                }`;
+                
+                btn.onclick = () => {
+                    if (state.board === k) return;
+                    updateActiveTab(k);
+                    loadBoard(k);
+                };
+                els.tabsContainer.appendChild(btn);
+            });
+        }
+
+        function updateActiveTab(boardKey) {
+            const buttons = els.tabsContainer.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.dataset.board === boardKey) {
+                    btn.className = 'whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border border-blue-500 bg-blue-600 text-white shadow-md shadow-blue-900/40 snap-start';
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    btn.className = 'whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 snap-start';
+                }
+            });
+        }
+
         async function loadBoard(board) {
             state.board = board;
+            updateActiveTab(board);
             state.articles = [];
             state.nextPage = null;
             els.list.innerHTML = '';
@@ -436,18 +463,18 @@
             state.view = v;
             
             if(v === 'detail') {
-                els.boardSel.classList.add('hidden');
+                els.header.querySelector('.overflow-x-auto').classList.add('hidden'); // 隱藏 Tabs
                 els.title.classList.remove('hidden');
                 $('detail-view-controls').classList.remove('hidden');
                 $('floating-back-btn').classList.remove('hidden');
-                $('list-view-controls').classList.add('hidden'); // 隱藏列表控制項
-                $('auth-container').classList.add('hidden'); // 隱藏登入
+                $('list-view-controls').classList.add('hidden');
+                $('auth-container').classList.add('hidden');
             } else {
-                els.boardSel.classList.remove('hidden');
+                els.header.querySelector('.overflow-x-auto').classList.remove('hidden'); // 顯示 Tabs
                 els.title.classList.add('hidden');
                 $('detail-view-controls').classList.add('hidden');
                 $('floating-back-btn').classList.add('hidden');
-                $('auth-container').classList.remove('hidden'); // 顯示登入
+                $('auth-container').classList.remove('hidden');
                 
                 if (v === 'list') {
                      $('list-view-controls').classList.remove('hidden');
@@ -504,7 +531,6 @@
             a.click();
         }
 
-        // Favorites
         async function toggleFav() {
             if(!uid) return toast('請先登入');
             if(!state.currArt) return;
@@ -536,15 +562,9 @@
                 if(state.favorites.some(f=>f.link===link)) overlay.classList.remove('hidden');
                 else overlay.classList.add('hidden');
             });
-            
-            // 列表模式下的最愛切換顯示
-            const favOutline = $('fav-icon-outline');
-            const favSolid = $('fav-icon-solid');
-            // 這裡只是切換按鈕本身的狀態，不是每篇文章
         }
 
         function toggleShowFavs() {
-             // 簡易切換顯示最愛邏輯
              if(!uid) return toast('請先登入');
              const btn = $('toggle-favorites-btn');
              const isShowing = btn.classList.contains('text-pink-500');
