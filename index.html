@@ -17,7 +17,6 @@
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* 隱藏滾動條但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -28,16 +27,16 @@
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 圖片切換按鈕 - 優化：全高、半透明、防誤觸 */
+        /* 圖片切換按鈕 - 加大觸控區 (20% 寬) */
         .image-nav-area { position: absolute; top: 0; bottom: 0; width: 20%; display: flex; align-items: center; justify-content: center; z-index: 150; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .image-nav-area:active { background-color: rgba(255, 255, 255, 0.05); }
         .image-nav-btn { background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .image-nav-btn:active { transform: scale(0.95); background-color: rgba(0, 0, 0, 0.8); }
-        .image-nav-btn:disabled { opacity: 0; pointer-events: none; } /* 到底時隱藏 */
+        /* 使用 visibility 代替 display:none 以保持佈局，防止閃爍 */
+        .image-nav-area.hidden-nav { visibility: hidden; pointer-events: none; } 
         #image-prev-area { left: 0; justify-content: flex-start; padding-left: 16px; }
         #image-next-area { right: 0; justify-content: flex-end; padding-right: 16px; }
 
-        /* 影片容器 - 16:9 響應式 */
         .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem; }
         .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
@@ -52,7 +51,7 @@
 
         #gallery-grid { column-gap: 8px; padding: 4px; }
         .gallery-item { margin-bottom: 8px; break-inside: avoid; display: block; overflow: hidden; border-radius: 8px; background: #1f2937; position: relative; cursor: pointer; transform: translateZ(0); }
-        .gallery-item img { width: 100%; height: auto; display: block; transition: opacity 0.3s; pointer-events: none; /* 讓點擊事件穿透到父層 */ }
+        .gallery-item img { width: 100%; height: auto; display: block; transition: opacity 0.3s; pointer-events: none; }
         .gallery-item:active img { opacity: 0.8; }
         
         #gallery-grid.size-sm { column-count: 2; }
@@ -63,7 +62,6 @@
         
         @media (min-width: 768px) { #app-container { max-width: 768px; border-left: 1px solid #374151; border-right: 1px solid #374151; } }
 
-        /* 字體大小 */
         .f-normal .art-title { font-size: 15px; line-height: 1.4; }
         .f-large .art-title { font-size: 17px; line-height: 1.5; }
         .f-xl .art-title { font-size: 19px; line-height: 1.5; }
@@ -215,26 +213,25 @@
             }, 200));
 
             $('close-modal-btn').onclick = closeModal;
-            // 綁定到大區域
+            // 按鈕區域點擊事件
             $('image-prev-area').onclick = e => { e.stopPropagation(); chgImg(-1); };
             $('image-next-area').onclick = e => { e.stopPropagation(); chgImg(1); };
             $('download-btn').onclick = downloadImg;
 
-            // Touch Swipe Listeners (綁定在 zoomTgt 上，並確保不阻止預設行為以允許縮放)
-            els.zoomTgt.addEventListener('touchstart', e => {
-                if(state.zoom && state.zoom.scale > 1) return; // 放大時不滑動
+            // Swipe Handlers
+            els.modal.addEventListener('touchstart', e => {
+                if(state.zoom && state.zoom.scale > 1) return;
                 touchStartX = e.changedTouches[0].screenX;
                 touchStartY = e.changedTouches[0].screenY;
             }, {passive: true});
 
-            els.zoomTgt.addEventListener('touchend', e => {
+            els.modal.addEventListener('touchend', e => {
                 if(state.zoom && state.zoom.scale > 1) return;
                 const diffX = e.changedTouches[0].screenX - touchStartX;
                 const diffY = e.changedTouches[0].screenY - touchStartY;
-                // 水平滑動且垂直位移不大
-                if(Math.abs(diffX) > 50 && Math.abs(diffY) < 40) {
-                    if(diffX < 0) chgImg(1); // 左滑 -> 下一張
-                    else chgImg(-1); // 右滑 -> 上一張
+                if(Math.abs(diffX) > 50 && Math.abs(diffY) < 60) {
+                    if(diffX < 0) chgImg(1); 
+                    else chgImg(-1); 
                 }
             }, {passive: true});
 
@@ -579,8 +576,8 @@
         }
         
         function openModal(idx) {
-            // 清除可能殘留的狀態
-            if(state.zoom) { state.zoom.destroy(); state.zoom = null; }
+            // 重要：先徹底銷毀舊的 instance 與清空 DOM
+            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = '';
             
             state.imgIdx = idx;
@@ -589,8 +586,8 @@
         }
         function closeModal() {
             els.modal.classList.add('hidden');
-            if(state.zoom) { state.zoom.destroy(); state.zoom = null; }
-            els.zoomTgt.innerHTML = ''; // 徹底清除 DOM 避免汙染
+            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+            els.zoomTgt.innerHTML = ''; 
         }
         function chgImg(dir) {
             const newIdx = state.imgIdx + dir;
@@ -600,11 +597,10 @@
             }
         }
         function renderModalImg() {
-            // 重置
-            if(state.zoom) { state.zoom.destroy(); state.zoom = null; }
-            els.zoomTgt.innerHTML = ''; // 確保容器乾淨
+            // 每次渲染前都確保歸零，防止 PinchZoom 殘留 wrapper 導致圖片卡住
+            if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
+            els.zoomTgt.innerHTML = ''; 
             
-            // 加入 loading
             els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>`;
             
             const url = state.imgs[state.imgIdx];
@@ -615,10 +611,10 @@
             img.style.objectFit = 'contain';
             
             img.onload = () => {
-                els.zoomTgt.innerHTML = ''; // 清除 loading
+                els.zoomTgt.innerHTML = ''; 
                 els.zoomTgt.appendChild(img);
                 
-                // 重新初始化 PinchZoom
+                // 重建 PinchZoom
                 state.zoom = new PinchZoom.default(els.zoomTgt, {
                     minZoom: 1, 
                     maxZoom: 5,
@@ -627,21 +623,37 @@
                 });
             };
             
-            // 更新按鈕狀態
-            $('image-prev-btn').disabled = state.imgIdx === 0;
-            $('image-next-btn').disabled = state.imgIdx === state.imgs.length - 1;
-            // 控制透明按鈕層的可見性
-            $('image-prev-area').style.display = state.imgIdx === 0 ? 'none' : 'flex';
-            $('image-next-area').style.display = state.imgIdx === state.imgs.length - 1 ? 'none' : 'flex';
+            // 更新按鈕可見性
+            const isFirst = state.imgIdx === 0;
+            const isLast = state.imgIdx === state.imgs.length - 1;
+            
+            $('image-prev-area').classList.toggle('hidden-nav', isFirst);
+            $('image-next-area').classList.toggle('hidden-nav', isLast);
             
             updateFavIcons();
         }
+        
         async function downloadImg() {
             const url = state.imgs[state.imgIdx];
-            const a = document.createElement('a');
-            a.href = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
-            a.download = 'ptt-image.jpg';
-            a.click();
+            try {
+                toast('下載中...');
+                const response = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`);
+                if (!response.ok) throw new Error('Download failed');
+                
+                const blob = await response.blob();
+                const filename = url.split('/').pop().split('?')[0] || 'ptt-image.jpg';
+                const objectUrl = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(objectUrl);
+            } catch (e) {
+                toast('下載失敗');
+            }
         }
 
         async function toggleFav() {
