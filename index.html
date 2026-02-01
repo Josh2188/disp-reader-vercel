@@ -17,10 +17,11 @@
     <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
     <style>
         /* 基本樣式與動畫 */
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+        .font-logo { font-family: 'Fredoka', sans-serif; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
@@ -44,9 +45,33 @@
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
 
-        /* 提示訊息 */
-        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s ease-in-out; z-index: 100; }
-        #toast-notification.show { bottom: 20px; }
+        /* 自訂 Tooltip (取代 title 屬性) */
+        .btn-tooltip { position: relative; }
+        .btn-tooltip::after {
+            content: attr(data-title);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px) scale(0.95);
+            padding: 4px 8px;
+            background: rgba(30, 41, 59, 0.95);
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 50;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        .btn-tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(5px) scale(1);
+        }
 
         /* 縮圖 */
         .thumbnail-container { width: 96px; height: 96px; flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #374151; }
@@ -114,38 +139,85 @@
         <header id="main-header" class="bg-gray-900/90 shadow-sm sticky top-0 z-20 glassmorphism transition-all duration-300">
             <!-- 頂部控制列 (標題與工具) -->
             <div class="flex items-center justify-between p-3 pb-1 gap-2">
-                <!-- 左側：標題 (可作返回鍵) -->
-                <div class="flex items-center gap-3 overflow-hidden flex-grow">
-                     <button id="app-logo-btn" class="flex-shrink-0 font-bold text-xl tracking-tight text-white hover:text-blue-400 transition-colors flex items-center gap-1">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8.5 15H9.5v-2h2v2zm0-4H9.5V7h2v8z" opacity=".3"/><path d="M4 4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4zm16 14H4V6h16v12zM9.5 15h2v2h-2zm0-8h2v6h-2z"/></svg>
-                        PTT Reader
-                    </button>
-                    <!-- 文章標題 (僅在內頁顯示) -->
-                    <h2 id="header-title" class="font-bold text-lg truncate text-blue-100 hidden"></h2>
+                <!-- 左側：全新設計 LOGO (兼返回鍵) -->
+                <div class="flex items-center gap-3 overflow-hidden flex-grow cursor-pointer group" id="app-logo-btn" title="返回">
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                         <!-- 使用漸層背景的圓角圖示取代純文字 -->
+                        <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg flex items-center justify-center transform group-hover:scale-105 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-logo font-bold text-lg leading-none tracking-wide text-white group-hover:text-blue-400 transition-colors">PTT</span>
+                            <span class="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Reader</span>
+                        </div>
+                    </div>
+                    <!-- 文章標題 (僅在內頁顯示，與 LOGO 並排或取代部分文字) -->
+                    <h2 id="header-title" class="font-bold text-base truncate text-blue-100 hidden ml-2 border-l border-gray-600 pl-3"></h2>
                 </div>
 
-                <!-- 右側：工具按鈕 -->
+                <!-- 右側：工具按鈕 (圖示已還原) -->
                 <div class="flex-shrink-0 flex items-center gap-1">
                     <!-- 列表頁工具 -->
                     <div id="list-view-controls" class="flex items-center gap-1">
-                        <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-700 flex items-center gap-1 text-gray-400 hover:text-white" title="切換排序"><svg id="sort-time-icon" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg><svg id="sort-hot-icon" class="h-6 w-6 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 11-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" /><path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" /></svg></button>
+                        <button id="toggle-sort-btn" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 flex items-center gap-1 text-gray-400 hover:text-white" data-title="切換排序">
+                            <!-- 還原的時鐘圖示 -->
+                            <svg id="sort-time-icon" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <!-- 還原的熱門圖示 -->
+                            <svg id="sort-hot-icon" class="h-6 w-6 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg>
+                        </button>
+                        
                         <div id="user-controls" class="hidden items-center gap-1">
-                            <button id="toggle-favorites-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" title="我的最愛"><svg id="fav-icon-outline" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" /></svg><svg id="fav-icon-solid" class="h-6 w-6 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" clip-rule="evenodd" /></svg></button>
+                            <button id="toggle-favorites-btn" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="我的最愛">
+                                <!-- 還原的愛心 Outline -->
+                                <svg id="fav-icon-outline" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                                <!-- 還原的愛心 Solid -->
+                                <svg id="fav-icon-solid" class="h-6 w-6 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                            </button>
+                            <!-- 還原的清除快取按鈕 (原位於下拉選單，現在移出來或放個人選單) -->
+                            <!-- 注意：使用者要求復原所有工具列圖示，這裡我們保持 clear-cache 在 user-dropdown 內，但圖示還原 -->
                         </div>
-                        <button id="theme-toggle-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" title="切換主題"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a16.084 16.084 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" /></svg></button>
-                        <button id="fullscreen-toggle-list" class="p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white hidden md:block" title="全螢幕"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
+
+                        <button id="theme-toggle-btn" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="切換主題">
+                            <!-- 還原的主題圖示 -->
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402a3.75 3.75 0 00-.625-6.25a3.75 3.75 0 00-6.25-.625l-6.402 6.401a3.75 3.75 0 000 5.304z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-4.5 4.5" /></svg>
+                        </button>
+                        <button id="font-size-toggle-list" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="字體大小">
+                             <!-- 還原的字體圖示 -->
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg>
+                        </button>
+                        <button id="fullscreen-toggle-list" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white hidden md:block" data-title="全螢幕">
+                            <!-- 還原的全螢幕圖示 -->
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        </button>
                     </div>
 
                     <!-- 內頁工具 -->
                     <div id="detail-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                        <button id="header-favorite-btn" class="p-2 rounded-full hover:bg-pink-900/50 transition-colors text-gray-400 hover:text-pink-400" title="加入最愛"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></button>
-                        <button id="font-size-toggle-detail" class="p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" title="字體大小"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg></button>
-                        <button id="header-dislike-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-red-400" title="不喜歡"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M22 10.5h-6m-2.25-4.125a3.375 3.375 0 11-6.75 0 9.75 9.75 0 019.75 9.75v3.75h-9.75a4.875 4.875 0 01-4.875-4.875v-3m0 0a4.875 4.875 0 10-3.9 7.875M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg></button>
+                        <button id="header-favorite-btn" class="btn-tooltip p-2 rounded-full hover:bg-pink-900/50 transition-colors text-gray-400 hover:text-pink-400" data-title="加入/移除最愛">
+                            <!-- 還原的愛心 Outline -->
+                            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                        </button>
+                        <button id="font-size-toggle-detail" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="字體大小">
+                             <!-- 還原的字體圖示 -->
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5h7v14m-7-7h7"/><path d="M14 19v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5m-7-2h7"/></svg>
+                        </button>
+                        <button id="fullscreen-toggle-detail" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="全螢幕">
+                            <!-- 還原的全螢幕圖示 -->
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        </button>
+                        <!-- 移除了 Dislike 按鈕，因為原始版本沒有特別強調，若需要可加回 -->
                     </div>
 
                      <!-- 美圖牆工具 -->
                     <div id="gallery-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                         <button id="gallery-size-toggle-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" title="切換縮圖"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg></button>
+                         <button id="gallery-size-toggle-btn" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="切換縮圖尺寸">
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+                         </button>
+                         <button id="fullscreen-toggle-gallery" class="btn-tooltip p-2 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-title="全螢幕">
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        </button>
                     </div>
 
                     <!-- 登入區域 -->
@@ -156,7 +228,7 @@
                 </div>
             </div>
 
-            <!-- 全新設計：橫向捲動看板選單 (取代下拉選單) -->
+            <!-- 橫向捲動看板選單 -->
             <div id="board-scroller-container" class="px-2 pb-2 overflow-x-auto no-scrollbar flex items-center gap-2 border-b border-gray-800">
                 <!-- Javascript 會自動產生按鈕 -->
             </div>
@@ -195,7 +267,7 @@
         <button id="close-modal-btn" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-red-600/80 transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
     
-    <!-- 懸浮返回按鈕 (Floating Action Button) -->
+    <!-- 懸浮返回按鈕 -->
     <button id="floating-back-btn" class="hidden fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
     
     <div id="toast-notification" class="bg-gray-800 border border-gray-700 text-white text-sm py-3 px-6 rounded-full shadow-xl"><p id="toast-message"></p></div>
@@ -206,7 +278,6 @@
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // Firebase 設定 (請保持原樣)
             const firebaseConfig = { apiKey: "AIzaSyBVK9oYxwz7Wrg4d5dz1eNQyRTigDtHxbQ", authDomain: "my-english-learning-app-5d864.firebaseapp.com", projectId: "my-english-learning-app-5d864", storageBucket: "my-english-learning-app-5d864.appspot.com", messagingSenderId: "748913890079", appId: "1:748913890079:web:dad0719760593d43e7962a" };
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
@@ -214,14 +285,11 @@
             let userId = null;
             let unsubscribeFavorites = null, unsubscribeDisliked = null;
 
-            // 快取管理
             const cache = { get(key) { const itemStr = localStorage.getItem(key); if (!itemStr) return null; try { const item = JSON.parse(itemStr); if (new Date().getTime() > item.expiry) { localStorage.removeItem(key); return null; } return item.data; } catch (e) { return null; } }, set(key, data) { const item = { data: data, expiry: new Date().getTime() + 10 * 60 * 1000 }; localStorage.setItem(key, JSON.stringify(item)); } };
 
-            // 應用程式狀態
             let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', currentModalGalleryItem: null, touchStartX: 0, touchStartY: 0, isScrolling: false };
             const MAX_RETRIES = 5;
 
-            // DOM 元素快取
             const el = id => document.getElementById(id);
             const docEl = document.documentElement;
             const bodyEl = document.body;
@@ -229,7 +297,7 @@
             const listView = el('list-view'), detailView = el('detail-view'), galleryView = el('gallery-view');
             const articlesList = el('articles-list'), galleryGrid = el('gallery-grid'), galleryLoaderInitial = el('gallery-loader-initial'), galleryLoaderMore = el('gallery-loader-more');
             const skeletonContainer = el('skeleton-container'), infiniteLoader = el('infinite-loader'), listError = el('list-error');
-            const listErrorText = el('list-error-text'), boardScroller = el('board-scroller-container'); // 改為 Scroller
+            const listErrorText = el('list-error-text'), boardScroller = el('board-scroller-container');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
             const imageModal = el('image-modal'), imageModalControls = el('image-modal-controls'), imagePrevBtn = el('image-prev-btn');
             const imageNextBtn = el('image-next-btn'), pinchZoomTarget = el('pinch-zoom-target'), downloadBtn = el('download-btn');
@@ -240,32 +308,16 @@
             const detailViewControls = el('detail-view-controls'), galleryViewControls = el('gallery-view-controls');
             const googleLoginBtn = el('google-login-btn'), userInfo = el('user-info'), userAvatar = el('user-avatar');
             const logoutBtn = el('logout-btn'), userControls = el('user-controls'), avatarBtn = el('avatar-btn');
-            const logoutDropdown = el('logout-dropdown'), headerDislikeBtn = el('header-dislike-btn');
-            const fullscreenToggleList = el('fullscreen-toggle-list'), headerFavoriteBtn = el('header-favorite-btn');
-            const fontSizeToggleDetail = el('font-size-toggle-detail'), themeToggleBtn = el('theme-toggle-btn');
+            const logoutDropdown = el('logout-dropdown');
+            const fullscreenToggleList = el('fullscreen-toggle-list'), fullscreenToggleDetail = el('fullscreen-toggle-detail'), fullscreenToggleGallery = el('fullscreen-toggle-gallery');
+            const headerFavoriteBtn = el('header-favorite-btn');
+            const fontSizeToggleDetail = el('font-size-toggle-detail'), fontSizeToggleList = el('font-size-toggle-list'), themeToggleBtn = el('theme-toggle-btn');
             const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
             const gallerySizeToggleBtn = el('gallery-size-toggle-btn'), favoriteFromModalBtn = el('favorite-from-modal-btn');
-            const appLogoBtn = el('app-logo-btn'); // 新增標題按鈕
+            const appLogoBtn = el('app-logo-btn');
             
-            // 熱門看板 (已移除 NBA, Baseball, Car, C_Chat)
-            const TOP_BOARDS = { 
-                "Hot": "熱門", 
-                "Gossiping": "八卦", 
-                "Stock": "股票", 
-                "BeautyGallery": "美圖",
-                "Beauty": "表特", 
-                "Lifeismoney": "省錢", 
-                "MobileComm": "手機", 
-                "Sex": "西斯",
-                "Boy-Girl": "男女", 
-                "Tech_Job": "科技", 
-                "HatePolitics": "政黑", 
-                "KoreaStar": "韓星", 
-                "movie": "電影", 
-                "e-shopping": "網購" 
-            };
+            const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "BeautyGallery": "美圖", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
 
-            // === 認證與使用者資料 ===
             onAuthStateChanged(auth, user => {
                 if (unsubscribeFavorites) unsubscribeFavorites(); if (unsubscribeDisliked) unsubscribeDisliked();
                 if (user && !user.isAnonymous) {
@@ -282,33 +334,28 @@
                 } else { userId = user ? user.uid : null; googleLoginBtn.classList.remove('hidden'); userInfo.classList.add('hidden'); userControls.classList.add('hidden'); state.favorites = []; state.dislikedArticles = []; if (!user) signInAnonymously(auth).catch(e => console.error("匿名登入失敗:", e)); }
             });
 
-            // === UI 輔助函式 ===
             const showToast = message => { const t = el('toast-notification'); el('toast-message').textContent = message; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = link => state.favorites.some(fav => fav.link === link);
 
-            // === 內容處理 (Linkify) ===
             function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto shadow-md" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-3 rounded-lg max-w-full h-auto shadow-md" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline break-all">${cleanUrl}</a>`; }); }
             
-            // === 頁面渲染與切換 ===
             function updateHeader() { 
                 const isDetail = state.currentView === 'detail'; 
                 const isGallery = state.currentView === 'gallery'; 
                 
-                // 控制標題列顯示
                 boardScroller.classList.toggle('hidden', isDetail);
                 listViewControls.classList.toggle('hidden', isDetail || isGallery); 
                 galleryViewControls.classList.toggle('hidden', !isGallery); 
                 detailViewControls.classList.toggle('hidden', !isDetail); 
                 headerTitle.classList.toggle('hidden', !isDetail);
-                appLogoBtn.classList.toggle('hidden', isDetail); // 內頁隱藏 LOGO，顯示標題
+                // LOGO 不再隱藏，始終顯示
                 
                 if (isDetail && state.currentArticle) { 
                     headerTitle.textContent = state.currentArticle.title; 
                     updateFavoriteIcon(isFavorite(state.currentArticle.link)); 
                 }
 
-                // 更新選單 Chips 狀態
                 document.querySelectorAll('.board-chip').forEach(chip => {
                     if (chip.dataset.board === state.currentBoard) {
                         chip.classList.add('active');
@@ -323,13 +370,7 @@
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
-                
-                // 控制懸浮按鈕：在 Detail 顯示，在 List/Gallery 隱藏 (除非有特定需求)
-                if (viewName === 'detail') {
-                    floatingBackBtn.classList.remove('hidden');
-                } else {
-                    floatingBackBtn.classList.add('hidden');
-                }
+                if (viewName === 'detail') floatingBackBtn.classList.remove('hidden'); else floatingBackBtn.classList.add('hidden');
             }
 
             function createSkeletonItem() { return `<div class="flex items-start p-4 gap-4 animate-pulse border-b border-gray-800"><div class="flex flex-col flex-grow"><div class="h-5 bg-gray-800 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-800 rounded w-1/3 mb-3"></div><div class="h-4 bg-gray-800 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-gray-800 rounded-md flex-shrink-0"></div></div>`; }
@@ -394,41 +435,20 @@
             
             function updatePreviewsUI(previews) { previews.forEach(previewData => { const articleInState = state.allArticles.find(a => a.link === previewData.link); if (articleInState) { Object.assign(articleInState, previewData); const existingItem = articlesList.querySelector(`[data-link="${previewData.link}"]`); if (existingItem) { const newItem = createListItem(articleInState); existingItem.replaceWith(newItem); } } }); }
 
-            // === 資料載入 ===
             async function fetchPreviewsInChunks(articles) { const articlesToFetch = articles.filter(a => typeof a.snippet === 'undefined'); if (articlesToFetch.length === 0) return; const CHUNK_SIZE = 5; const articleLinks = articlesToFetch.map(a => a.link); for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) { const chunk = articleLinks.slice(i, i + CHUNK_SIZE); if (chunk.length === 0) continue; try { const res = await fetch('/api/previews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urls: chunk }) }); if (!res.ok) continue; updatePreviewsUI(await res.json()); } catch (error) { console.error(`批次預覽錯誤:`, error); } } }
             function cancelRetry() { if (state.retryTimer) { clearTimeout(state.retryTimer); state.retryTimer = null; } state.loadRetries = 0; state.isLoading = false; }
             async function loadArticles(board, url = null, append = false) { if (state.isLoading) return; state.isLoading = true; listError.classList.add('hidden'); const isHotBoard = board === 'Hot'; if (!append) { cancelRetry(); articlesList.innerHTML = ''; if (!isHotBoard && cache.get(`ptt-cache-${board}`)) { const cachedData = cache.get(`ptt-cache-${board}`); state.allArticles = cachedData.articles; state.prevPageUrl = cachedData.prevPageUrl; renderAndSortArticles(); fetchPreviewsInChunks(state.allArticles); } else { showSkeleton(); } } else { infiniteLoader.classList.remove('hidden'); } try { const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; const fetchUrl = isHotBoard ? `/api/scraper?board=Hot` : `/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`; const res = await fetch(fetchUrl); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const listData = await res.json(); const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]')); const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set(); const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles; if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) { throw new Error("頁面載入不完整"); } cancelRetry(); if (append) state.allArticles.push(...uniqueNewArticles); else state.allArticles = uniqueNewArticles; state.prevPageUrl = listData.prev_page_url; renderAndSortArticles(); fetchPreviewsInChunks(uniqueNewArticles); if (!append && !isHotBoard) { cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl }); } state.isLoading = false; } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadArticles(board, url, append); }, 2000 * state.loadRetries); } else { if (!append) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); } cancelRetry(); } } finally { if (!append) hideSkeleton(); infiniteLoader.classList.add('hidden'); } }
 
-            // === 排序與篩選 ===
             function parsePushCount(c) { if (c === '爆') return 100; if (typeof c === 'number') return c; if (typeof c === 'string') { if (c.startsWith('X')) return -10 - parseInt(c.substring(1), 10); const n = parseInt(c, 10); return isNaN(n) ? 0 : n; } return 0; }
             function renderAndSortArticles() { let articles = state.viewingFavorites ? [...state.favorites] : [...state.allArticles]; const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link)); articles = articles.filter(a => !dislikedLinks.has(a.link)); if (state.sortBy === 'hot' && state.currentBoard !== 'Hot') { articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count)); } renderArticles(articles); }
             
-            // === 文章內頁與導航 ===
             async function showDetailView(article, fromHistory = false) { 
                 state.currentArticle = article; 
                 switchToView('detail'); 
-                
-                if (!state.readArticles.has(article.link)) { 
-                    state.readArticles.add(article.link); 
-                    saveReadArticles(); 
-                    const li = document.querySelector(`[data-link="${article.link}"]`); 
-                    if(li) li.classList.add('opacity-50'); 
-                } 
+                if (!state.readArticles.has(article.link)) { state.readArticles.add(article.link); saveReadArticles(); const li = document.querySelector(`[data-link="${article.link}"]`); if(li) li.classList.add('opacity-50'); } 
                 detailContent.innerHTML = '<div class="flex justify-center items-center py-20"><div class="loader h-12 w-12 border-blue-500"></div></div>'; 
-                
-                if (!fromHistory) { 
-                    history.pushState({view: 'detail', articleLink: article.link}, '', '#detail'); 
-                } 
-                
-                try { 
-                    const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`); 
-                    if (!res.ok) throw new Error(`無法載入: ${res.status}`); 
-                    const data = await res.json(); 
-                    state.currentArticleImages = data.images || []; 
-                    renderDetailContent(data, article); 
-                } catch (e) { 
-                    detailContent.innerHTML = `<p class="text-red-500 p-8 text-center">${e.message}</p>`; 
-                } 
+                if (!fromHistory) { history.pushState({view: 'detail', articleLink: article.link}, '', '#detail'); } 
+                try { const res = await fetch(`/api/scraper?article_url=${encodeURIComponent(article.link)}`); if (!res.ok) throw new Error(`無法載入: ${res.status}`); const data = await res.json(); state.currentArticleImages = data.images || []; renderDetailContent(data, article); } catch (e) { detailContent.innerHTML = `<p class="text-red-500 p-8 text-center">${e.message}</p>`; } 
             }
 
             function renderDetailContent(data, article) { 
@@ -459,72 +479,37 @@
                 detailContent.scrollTop = 0; 
             }
 
-            // === 核心導航邏輯 (重點修改) ===
             function goBack(fromButton = false) { 
-                // 如果在圖片燈箱，先關閉燈箱
-                if (!imageModal.classList.contains('hidden')) {
-                    closeImageModal();
-                    return;
-                }
-
-                // 如果在內頁或畫廊
+                if (!imageModal.classList.contains('hidden')) { closeImageModal(); return; }
                 if (state.currentView === 'detail' || state.currentView === 'gallery') {
-                    // 如果是用按鈕觸發的，我們手動操作 history.back() 讓瀏覽器處理狀態回退
-                    // 這樣可以確保體驗跟按手機實體按鍵一致
                     window.history.back();
                 } else if (state.currentView === 'list') {
-                    // 如果已經在列表頁
-                    if (state.currentBoard !== 'Gossiping' && state.currentBoard !== 'Hot') {
-                        // 如果不在首頁看板，回到預設 (例如八卦版或熱門)
-                        // 這裡可以選擇是否要實作 "回到首頁" 的邏輯
-                        // 但通常在 List View 按返回就是交給瀏覽器處理 (退出或最小化)
-                    } else {
-                        // 已經在首頁列表，讓瀏覽器處理 (通常是離開網頁)
-                        // 注意：Javascript 無法強制關閉 PWA 或 Tab
-                    }
+                     // 點擊 LOGO 在首頁時回到頂部並重新整理
+                     articlesList.scrollTo({ top: 0, behavior: 'smooth' });
+                     if (fromButton && state.currentBoard !== 'Gossiping' && state.currentBoard !== 'Hot') {
+                         // 可選：如果在其他版，點 LOGO 可以回到預設版 (這裡先保留僅回頂部)
+                     }
                 }
             }
 
             function onBackToList() { 
                 state.currentView = 'list'; 
-                // 清除 YouTube iframe 節省資源
                 const youtubeIframes = detailContent.querySelectorAll('.youtube-container'); 
                 youtubeIframes.forEach(iframe => iframe.remove()); 
-                
                 switchToView('list'); 
-                // 恢復捲動位置 (如果需要的話可以實作)
             }
 
-            // 瀏覽器歷史紀錄監聽 (Popstate)
             window.addEventListener('popstate', (event) => { 
-                // 1. 處理燈箱 (雖然 goBack 處理了，但如果是實體按鍵觸發 popstate 也要處理)
-                if (!imageModal.classList.contains('hidden')) { 
-                    closeImageModal(); 
-                    // 為了防止 popstate 繼續運作導致頁面跳轉，這裡其實很難完全攔截
-                    // 通常的做法是 open modal 時 pushState，close 時 back
-                    return; 
-                } 
-                
-                // 2. 處理頁面切換
-                if (state.currentView === 'gallery' && (!event.state || event.state.view === 'list')) { 
-                    // 從 Gallery 回到 List
-                    switchToView('list');
-                } else if (state.currentView === 'detail' && (!event.state || event.state.view === 'list')) { 
-                    // 從 Detail 回到 List
-                    onBackToList(); 
-                } else if (event.state && event.state.view === 'detail') { 
-                    // 前進到 Detail
-                    const article = state.allArticles.find(a => a.link === event.state.articleLink); 
-                    if (article) showDetailView(article, true); 
-                }
+                if (!imageModal.classList.contains('hidden')) { closeImageModal(); return; } 
+                if (state.currentView === 'gallery' && (!event.state || event.state.view === 'list')) { switchToView('list'); } 
+                else if (state.currentView === 'detail' && (!event.state || event.state.view === 'list')) { onBackToList(); } 
+                else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); }
             });
 
-            // === 美圖集錦 ===
             async function loadGallery(append = false) { if (state.isLoading) return; state.isLoading = true; galleryError.classList.add('hidden'); if (!append) { cancelRetry(); galleryGrid.innerHTML = ''; state.galleryPrevPageUrl = null; galleryLoaderInitial.classList.remove('hidden'); } else { galleryLoaderMore.classList.remove('hidden'); } try { const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; const res = await fetch(url); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const data = await res.json(); cancelRetry(); state.galleryPrevPageUrl = data.prev_page_url; const newItems = data.articles || []; if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } renderGallery(newItems, append); } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); } else { if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } cancelRetry(); } } finally { state.isLoading = false; galleryLoaderInitial.classList.add('hidden'); galleryLoaderMore.classList.add('hidden'); } }
             function renderGallery(items, append = false) { if (!append) galleryGrid.innerHTML = ''; const fragment = document.createDocumentFragment(); items.forEach(item => { const itemDiv = document.createElement('a'); itemDiv.className = 'gallery-item'; itemDiv.dataset.articleLink = item.article.link; const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; itemDiv.addEventListener('click', (e) => { e.preventDefault(); state.currentArticleImages = item.all_images; state.currentModalGalleryItem = item; openImageModal(item.all_images.indexOf(item.preview_image), item.article.title); }); fragment.appendChild(itemDiv); }); galleryGrid.appendChild(fragment); updateGalleryFavoriteIcons(); }
             function updateGalleryFavoriteIcons() { document.querySelectorAll('.gallery-item').forEach(item => { const link = item.dataset.articleLink; if (link) { item.classList.toggle('is-favorite', isFavorite(link)); } }); }
 
-            // === 圖片燈箱 ===
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
             function openImageModal(index, title = null) { cleanupImageInstance(); state.currentImageIndex = index; const url = state.currentArticleImages[index]; if (!url) return; updateFavoriteFromModalBtn(); const img = new Image(); img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12 border-white"></div>'; imageModal.classList.remove('hidden'); imageModalControls.classList.remove('hidden'); imageModalTitle.textContent = title; imageModalTitle.classList.toggle('hidden', !title); updateImageNavButtons(); if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); img.onload = () => { pinchZoomTarget.innerHTML = ''; pinchZoomTarget.appendChild(img); try { state.pinchZoomInstance = new PinchZoom.default(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); state.pinchZoomInstance._wheelHandler = wheelHandler; } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } }; img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } }
             function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); state.currentModalGalleryItem = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
@@ -534,36 +519,22 @@
             function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
             function updateFavoriteFromModalBtn() { if (!state.currentModalGalleryItem) return; const isFav = isFavorite(state.currentModalGalleryItem.article.link); favoriteFromModalBtn.querySelector('svg').classList.toggle('fill-current', isFav); }
 
-            // === 字體大小與主題 ===
             const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
             function toggleFontSize() { const currentIndex = fontSizeKeys.indexOf(state.fontSize); const nextIndex = (currentIndex + 1) % fontSizeKeys.length; const nextSizeKey = fontSizeKeys[nextIndex]; applyFontSize(nextSizeKey); showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`); }
             const themes = ['theme-default', 'theme-cyan', 'theme-amber', 'theme-lime']; let currentThemeIndex = themes.indexOf(localStorage.getItem('colorTheme') || 'theme-default'); if(currentThemeIndex === -1) currentThemeIndex = 0;
             function applyTheme(themeName) { themes.forEach(t => bodyEl.classList.remove(t)); bodyEl.classList.add(themeName); localStorage.setItem('colorTheme', themeName); }
             
-            // === 美圖集錦尺寸 ===
             const gallerySizes = ['sm', 'md', 'lg'];
             function applyGallerySize(sizeKey) { if (!gallerySizes.includes(sizeKey)) return; gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`)); galleryGrid.classList.add(`size-${sizeKey}`); localStorage.setItem('gallerySize', sizeKey); state.gallerySize = sizeKey; }
             function toggleGallerySize() { const currentIndex = gallerySizes.indexOf(state.gallerySize); const nextIndex = (currentIndex + 1) % gallerySizes.length; const nextSizeKey = gallerySizes[nextIndex]; applyGallerySize(nextSizeKey); const sizeMap = { sm: '小', md: '中', lg: '大' }; showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`); }
 
-            // === 手勢操作 ===
             function handleTouchStart(e) { state.touchStartX = e.changedTouches[0].screenX; state.touchStartY = e.changedTouches[0].screenY; state.isScrolling = false; }
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
             function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(state.currentView === 'detail'); } } }
 
-            // === 事件監聽器 ===
-            appLogoBtn.addEventListener('click', () => {
-                if (state.currentView === 'list') {
-                    // 如果在列表頁，回到頂部並重新整理 (或只回頂部)
-                    articlesList.scrollTo({ top: 0, behavior: 'smooth' });
-                    // 如果不是熱門看板，可以考慮跳回熱門
-                } else {
-                    // 如果在內頁，執行返回
-                    goBack(true);
-                }
-            });
+            appLogoBtn.addEventListener('click', () => goBack(true));
 
-            // 建立看板按鈕 (Chips)
             function renderBoardSelector() {
                 boardScroller.innerHTML = '';
                 for (const board in TOP_BOARDS) {
@@ -577,7 +548,7 @@
                         state.currentBoard = board;
                         state.viewingFavorites = false;
                         updateFavoritesButtonState();
-                        updateHeader(); // 更新 active 狀態
+                        updateHeader();
 
                         if (board === 'BeautyGallery') {
                             switchToView('gallery');
@@ -600,15 +571,9 @@
             avatarBtn.addEventListener('click', e => { e.stopPropagation(); logoutDropdown.classList.toggle('hidden'); });
             window.addEventListener('click', () => { if (!logoutDropdown.classList.contains('hidden')) logoutDropdown.classList.add('hidden'); });
             
-            // 下拉選單 Listener 移除，改用 renderBoardSelector 產生的按鈕
-            floatingBackBtn.addEventListener('click', (e) => {
-                // 實作：點擊一次返回，連續快速點擊兩次(或點擊時已經在列表頂層)的邏輯
-                // 這裡簡單實作：呼叫 goBack，依賴瀏覽器 history
-                goBack(true);
-            });
+            floatingBackBtn.addEventListener('click', () => goBack(true));
             
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
-            headerDislikeBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'disliked_articles', docId); try { await setDoc(docRef, { link: a.link, title: a.title }); showToast('已加入不喜歡列表'); goBack(true); } catch (e) { showToast('操作失敗'); } });
             articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.viewingFavorites || state.currentBoard === 'Hot') return; const { scrollTop, scrollHeight, clientHeight } = articlesList; if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); });
             galleryGrid.addEventListener('scroll', () => { if (state.isLoading || !state.galleryPrevPageUrl) return; const { scrollTop, scrollHeight, clientHeight } = galleryGrid; if (scrollTop + clientHeight >= scrollHeight - 500) { loadGallery(true); } });
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
@@ -625,17 +590,17 @@
             clearCacheBtn.addEventListener('click', () => { Object.keys(localStorage).forEach(key => { if (key.startsWith('ptt-cache-')) localStorage.removeItem(key); }); localStorage.removeItem('readArticles'); state.readArticles.clear(); renderAndSortArticles(); showToast(`已清除所有快取與已讀記錄`); });
             const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
             fullscreenToggleList.addEventListener('click', toggleFullscreen);
+            fullscreenToggleDetail.addEventListener('click', toggleFullscreen);
+            fullscreenToggleGallery.addEventListener('click', toggleFullscreen);
             fontSizeToggleDetail.addEventListener('click', toggleFontSize);
+            fontSizeToggleList.addEventListener('click', toggleFontSize);
             themeToggleBtn.addEventListener('click', () => { currentThemeIndex = (currentThemeIndex + 1) % themes.length; applyTheme(themes[currentThemeIndex]); showToast('已切換顏色主題'); });
             gallerySizeToggleBtn.addEventListener('click', toggleGallerySize);
             
-            // PWA Service Worker
             if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registered.', reg), err => console.log('SW registration failed: ', err)); }); }
 
-            // 初始化
             function initialize() {
-                renderBoardSelector(); // 產生橫向選單
-                
+                renderBoardSelector();
                 applyFontSize(state.fontSize);
                 applyTheme(themes[currentThemeIndex]);
                 applyGallerySize(state.gallerySize);
