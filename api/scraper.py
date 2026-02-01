@@ -36,7 +36,9 @@ session = create_session()
 
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
-HOT_SCRAPE_BOARDS = [ "Gossiping", "Beauty", "C_Chat", "Stock", "Lifeismoney", "MobileComm", "NBA", "Baseball", "Boy-Girl", "Tech_Job", "Car", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex" ]
+
+# 已移除: C_Chat, NBA, Baseball, Car
+HOT_SCRAPE_BOARDS = [ "Gossiping", "Beauty", "Stock", "Lifeismoney", "MobileComm", "Boy-Girl", "Tech_Job", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex" ]
 
 # --- 核心函式 ---
 def format_ptt_time(time_str):
