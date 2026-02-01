@@ -20,20 +20,17 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-        .glassmorphism { background-color: rgba(17, 24, 39, 0.95); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
         
         /* 圖片燈箱 */
-        #image-modal.hidden, #image-modal-controls.hidden { display: none; }
+        #image-modal.hidden { display: none; }
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
         
-        /* 圖片切換按鈕 - 加大觸控區 (20% 寬) */
+        /* 左右切換區：加大感應範圍 (20% 螢幕寬) */
         .image-nav-area { position: absolute; top: 0; bottom: 0; width: 20%; display: flex; align-items: center; justify-content: center; z-index: 150; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .image-nav-area:active { background-color: rgba(255, 255, 255, 0.05); }
         .image-nav-btn { background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .image-nav-btn:active { transform: scale(0.95); background-color: rgba(0, 0, 0, 0.8); }
-        /* 使用 visibility 代替 display:none 以保持佈局，防止閃爍 */
-        .image-nav-area.hidden-nav { visibility: hidden; pointer-events: none; } 
         #image-prev-area { left: 0; justify-content: flex-start; padding-left: 16px; }
         #image-next-area { right: 0; justify-content: flex-end; padding-right: 16px; }
 
@@ -62,6 +59,7 @@
         
         @media (min-width: 768px) { #app-container { max-width: 768px; border-left: 1px solid #374151; border-right: 1px solid #374151; } }
 
+        /* 字體大小 */
         .f-normal .art-title { font-size: 15px; line-height: 1.4; }
         .f-large .art-title { font-size: 17px; line-height: 1.5; }
         .f-xl .art-title { font-size: 19px; line-height: 1.5; }
@@ -166,7 +164,7 @@
         const state = { 
             board: 'Hot', view: 'list', articles: [], nextPage: null, loading: false, 
             favorites: [], read: new Set(JSON.parse(localStorage.getItem('read_v2')||'[]')),
-            imgs: [], imgIdx: 0, zoom: null, galSize: localStorage.getItem('gal_size') || 'sm',
+            imgs: [], imgIdx: 0, startIdx: 0, zoom: null, galSize: localStorage.getItem('gal_size') || 'sm',
             fontLevel: parseInt(localStorage.getItem('font_level') || '0')
         };
 
@@ -218,20 +216,22 @@
             $('image-next-area').onclick = e => { e.stopPropagation(); chgImg(1); };
             $('download-btn').onclick = downloadImg;
 
-            // Swipe Handlers
-            els.modal.addEventListener('touchstart', e => {
-                if(state.zoom && state.zoom.scale > 1) return;
+            // Swipe Handlers (綁定在 zoomTgt 上)
+            els.zoomTgt.addEventListener('touchstart', e => {
+                if(state.zoom && state.zoom.scale > 1) return; // 放大時不觸發切換
                 touchStartX = e.changedTouches[0].screenX;
                 touchStartY = e.changedTouches[0].screenY;
             }, {passive: true});
 
-            els.modal.addEventListener('touchend', e => {
+            els.zoomTgt.addEventListener('touchend', e => {
                 if(state.zoom && state.zoom.scale > 1) return;
                 const diffX = e.changedTouches[0].screenX - touchStartX;
                 const diffY = e.changedTouches[0].screenY - touchStartY;
+                
+                // 水平滑動距離 > 50 且 垂直距離 < 60 (判定為橫滑)
                 if(Math.abs(diffX) > 50 && Math.abs(diffY) < 60) {
-                    if(diffX < 0) chgImg(1); 
-                    else chgImg(-1); 
+                    if(diffX < 0) chgImg(1); // 左滑 -> 下一張
+                    else chgImg(-1); // 右滑 -> 上一張
                 }
             }, {passive: true});
 
@@ -576,31 +576,50 @@
         }
         
         function openModal(idx) {
-            // 重要：先徹底銷毀舊的 instance 與清空 DOM
+            // 強制重置 DOM 與 Zoom 狀態
             if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = '';
             
             state.imgIdx = idx;
+            state.startIdx = idx; // 記錄起始點，用於判斷何時結束循環
             els.modal.classList.remove('hidden');
             renderModalImg();
         }
+        
         function closeModal() {
             els.modal.classList.add('hidden');
             if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = ''; 
         }
+        
+        // 核心修改：循環控制邏輯
         function chgImg(dir) {
-            const newIdx = state.imgIdx + dir;
-            if(newIdx >= 0 && newIdx < state.imgs.length) {
-                state.imgIdx = newIdx;
-                renderModalImg();
+            const total = state.imgs.length;
+            let nextIdx;
+
+            if (dir === 1) {
+                // 下一張
+                nextIdx = (state.imgIdx + 1) % total;
+                // 如果繞了一圈回到起點，視為結束
+                if (nextIdx === state.startIdx) {
+                    toast('已看完所有圖片');
+                    return;
+                }
+            } else {
+                // 上一張 (反向循環)
+                nextIdx = (state.imgIdx - 1 + total) % total;
             }
+
+            state.imgIdx = nextIdx;
+            renderModalImg();
         }
+        
         function renderModalImg() {
-            // 每次渲染前都確保歸零，防止 PinchZoom 殘留 wrapper 導致圖片卡住
+            // 每次渲染前徹底清除
             if(state.zoom) { state.zoom.destroy(); state.zoom = undefined; }
             els.zoomTgt.innerHTML = ''; 
             
+            // 插入 Loading 佔位
             els.zoomTgt.innerHTML = `<div class="loader w-10 h-10 border-4 border-t-transparent border-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>`;
             
             const url = state.imgs[state.imgIdx];
@@ -611,10 +630,10 @@
             img.style.objectFit = 'contain';
             
             img.onload = () => {
-                els.zoomTgt.innerHTML = ''; 
+                els.zoomTgt.innerHTML = ''; // 移除 loading
                 els.zoomTgt.appendChild(img);
                 
-                // 重建 PinchZoom
+                // 重新初始化縮放套件
                 state.zoom = new PinchZoom.default(els.zoomTgt, {
                     minZoom: 1, 
                     maxZoom: 5,
@@ -622,13 +641,6 @@
                     animationDuration: 200
                 });
             };
-            
-            // 更新按鈕可見性
-            const isFirst = state.imgIdx === 0;
-            const isLast = state.imgIdx === state.imgs.length - 1;
-            
-            $('image-prev-area').classList.toggle('hidden-nav', isFirst);
-            $('image-next-area').classList.toggle('hidden-nav', isLast);
             
             updateFavIcons();
         }
