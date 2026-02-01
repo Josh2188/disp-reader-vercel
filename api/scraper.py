@@ -33,7 +33,7 @@ def create_session():
 session = create_session()
 
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
-# 強化版 YouTube Regex: 支援 shorts, m.youtube, youtu.be, embed
+# 強化版 YouTube Regex
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
 # 已移除 NBA, Baseball, Car, C_Chat
