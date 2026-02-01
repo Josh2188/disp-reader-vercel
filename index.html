@@ -17,7 +17,6 @@
         body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* 隱藏滾動條但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -25,14 +24,21 @@
         
         /* 圖片燈箱 */
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
-        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.5); color: white; border: none; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 61; }
-        .image-nav-btn:disabled { opacity: 0.3; }
+        
+        /* 圖片切換按鈕 - 加大觸控區與提升 Z-index */
+        .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 150; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .image-nav-btn:active { background-color: rgba(255, 255, 255, 0.2); }
+        .image-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         #image-prev-btn { left: 16px; }
         #image-next-btn { right: 16px; }
 
-        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 100; pointer-events: none; }
+        /* 影片容器 - 16:9 響應式 */
+        .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.5rem; }
+        .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        #toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); z-index: 200; pointer-events: none; }
         #toast-notification.show { bottom: 30px; }
 
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.5; font-size: 0.95rem; }
@@ -41,7 +47,6 @@
         .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; }
         .push-content { flex-grow: 1; color: #e5e7eb; }
 
-        /* 美圖牆 */
         #gallery-grid { column-gap: 8px; padding: 4px; }
         .gallery-item { margin-bottom: 8px; break-inside: avoid; display: block; overflow: hidden; border-radius: 8px; background: #1f2937; position: relative; cursor: pointer; }
         .gallery-item img { width: 100%; height: auto; display: block; transition: opacity 0.3s; }
@@ -54,18 +59,26 @@
         #gallery-grid.size-lg { column-count: 1; }
         
         @media (min-width: 768px) { #app-container { max-width: 768px; border-left: 1px solid #374151; border-right: 1px solid #374151; } }
+
+        /* 字體大小 */
+        .f-normal .art-title { font-size: 15px; line-height: 1.4; }
+        .f-large .art-title { font-size: 17px; line-height: 1.5; }
+        .f-xl .art-title { font-size: 19px; line-height: 1.5; }
+        .f-normal .art-content { font-size: 1.125rem; line-height: 1.75; }
+        .f-large .art-content { font-size: 1.3rem; line-height: 1.8; }
+        .f-xl .art-content { font-size: 1.5rem; line-height: 1.9; }
     </style>
 </head>
 <body class="bg-black text-gray-100 overflow-hidden">
 
-    <div id="app-container" class="mx-auto bg-black h-[100dvh] flex flex-col relative">
+    <div id="app-container" class="mx-auto bg-black h-[100dvh] flex flex-col relative f-normal">
         <header id="main-header" class="bg-gray-900 shadow-md flex-shrink-0 z-50 flex flex-col border-b border-gray-800">
             <div class="flex items-center justify-between p-3 pb-0">
                 <h1 id="app-logo" class="text-xl font-bold text-white tracking-wide pl-1 cursor-pointer">PTT<span class="text-blue-500 text-sm ml-1">Reader</span></h1>
-                
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden pl-2 text-white"></h2>
-
+                
                 <div id="list-view-controls" class="flex items-center gap-2">
+                    <button id="font-size-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-300 transition-colors font-bold text-sm border border-transparent hover:border-gray-600">Aa</button>
                     <button id="toggle-sort-btn" class="p-2 rounded-full hover:bg-gray-700 text-gray-300 transition-colors">
                         <svg id="sort-time-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <svg id="sort-hot-icon" class="h-6 w-6 hidden text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg>
@@ -129,7 +142,9 @@
                 <button id="favorite-from-modal-btn" class="p-2 text-white hover:text-pink-500"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></button>
             </div>
         </div>
+        
         <div id="pinch-zoom-target" class="flex-grow pinch-zoom-container"></div>
+        
         <button id="image-prev-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
         <button id="image-next-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
     </div>
@@ -141,13 +156,13 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-        // 已移除 NBA, Baseball, Car, C_Chat
         const TOP_BOARDS = { "Hot": "熱門文章", "Gossiping": "八卦", "Beauty": "表特", "BeautyGallery": "美圖牆", "Sex": "西斯", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "Tech_Job": "科技", "movie": "電影", "e-shopping": "網購" };
         
         const state = { 
             board: 'Hot', view: 'list', articles: [], nextPage: null, loading: false, 
             favorites: [], read: new Set(JSON.parse(localStorage.getItem('read_v2')||'[]')),
-            imgs: [], imgIdx: 0, zoom: null, galSize: localStorage.getItem('gal_size') || 'sm'
+            imgs: [], imgIdx: 0, zoom: null, galSize: localStorage.getItem('gal_size') || 'sm',
+            fontLevel: parseInt(localStorage.getItem('font_level') || '0')
         };
 
         const $ = id => document.getElementById(id);
@@ -166,23 +181,24 @@
         const db = getFirestore(app);
         let uid = null;
 
+        // Touch Swipe Variables
+        let touchStartX = 0;
+        let touchEndX = 0;
+
         (function init() {
-            // 初始化 History
             history.replaceState({ view: 'list' }, '', '');
-            
             renderBoardTabs();
+            applyFontLevel();
             
-            // Event Listeners
             $('toggle-sort-btn').onclick = () => {}; 
-            // 返回鍵現在統一呼叫 goBack() -> history.back()
             $('floating-back-btn').onclick = () => goBack();
-            // 標題點擊
             els.logo.onclick = handleTitleClick;
 
             $('header-favorite-btn').onclick = toggleFav;
             $('favorite-from-modal-btn').onclick = toggleFavModal;
             $('gallery-size-toggle-btn').onclick = toggleGalSize;
             $('toggle-favorites-btn').onclick = toggleShowFavs;
+            $('font-size-btn').onclick = toggleFontLevel;
 
             els.list.addEventListener('scroll', throttle(() => {
                 if(els.list.scrollTop + els.list.clientHeight > els.list.scrollHeight - 500) loadMore();
@@ -196,19 +212,26 @@
             $('image-next-btn').onclick = e => { e.stopPropagation(); chgImg(1); };
             $('download-btn').onclick = downloadImg;
 
+            // Touch Swipe Listener for Modal
+            els.modal.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: true});
+
+            els.modal.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, {passive: true});
+
             els.auth.btn.onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
             $('logout-btn').onclick = () => signOut(auth);
             
             $('avatar-btn').onclick = e => { e.stopPropagation(); els.auth.drop.classList.toggle('hidden'); };
             document.onclick = () => els.auth.drop.classList.add('hidden');
 
-            // 處理瀏覽器返回鍵 (History API)
             window.addEventListener('popstate', (event) => {
                 if (state.view === 'detail') {
-                    // 如果目前是內頁，按返回後，UI 應該切回列表
                     switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
                 } else {
-                    // 其他情況確保 UI 狀態正確
                     switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
                 }
             });
@@ -239,12 +262,29 @@
             applyGalSize();
         })();
 
-        // 標題點擊處理
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) chgImg(1); // Left Swipe -> Next
+            if (touchEndX > touchStartX + 50) chgImg(-1); // Right Swipe -> Prev
+        }
+
+        function toggleFontLevel() {
+            state.fontLevel = (state.fontLevel + 1) % 3;
+            localStorage.setItem('font_level', state.fontLevel);
+            applyFontLevel();
+            toast(state.fontLevel === 0 ? '字體：標準' : state.fontLevel === 1 ? '字體：大' : '字體：特大');
+        }
+
+        function applyFontLevel() {
+            els.app.classList.remove('f-normal', 'f-large', 'f-xl');
+            if (state.fontLevel === 0) els.app.classList.add('f-normal');
+            else if (state.fontLevel === 1) els.app.classList.add('f-large');
+            else els.app.classList.add('f-xl');
+        }
+
         function handleTitleClick() {
             if (state.view === 'detail') {
-                goBack(); // 在內頁時返回
+                goBack();
             } else {
-                // 在列表頁時捲動到頂部
                 const target = state.view === 'gallery' ? els.gal : els.list;
                 target.scrollTo({ top: 0, behavior: 'smooth' });
             }
@@ -291,7 +331,6 @@
             els.list.innerHTML = '';
             els.gal.innerHTML = '';
             
-            // 切換看板時，重置 History 為列表狀態
             history.replaceState({ view: 'list' }, '', '');
 
             if (board === 'BeautyGallery') {
@@ -353,7 +392,7 @@
                 
                 div.innerHTML = `
                     <div class="flex-grow min-w-0">
-                        <h3 class="font-bold text-[15px] leading-snug text-gray-200 line-clamp-2 mb-1">
+                        <h3 class="art-title font-bold text-gray-200 line-clamp-2 mb-1">
                             ${state.board==='Hot'?`<span class="text-blue-400 mr-1">[${item.board}]</span>`:''}
                             ${item.title}
                             ${item.push_count?`<span class="ml-1 text-xs px-1.5 rounded-full ${getPushColor(item.push_count)} text-black font-bold">${item.push_count}</span>`:''}
@@ -405,7 +444,6 @@
             localStorage.setItem('read_v2', JSON.stringify([...state.read]));
             document.getElementById(`art-${btoa(item.link).slice(0,10)}`)?.classList.add('opacity-50');
 
-            // Push History State
             history.pushState({ view: 'detail' }, '', '#detail');
 
             switchView('detail');
@@ -436,7 +474,7 @@
                         </div>
                         <h1 class="text-xl font-bold text-gray-100 mt-2 leading-relaxed">${item.title}</h1>
                     </div>
-                    <div class="text-lg leading-relaxed text-gray-300 break-words space-y-4" id="main-text">
+                    <div class="art-content leading-relaxed text-gray-300 break-words space-y-4" id="main-text">
                         ${contentHTML}
                     </div>
                     <div class="mt-8 pt-4 border-t border-gray-800 space-y-1">
@@ -466,7 +504,9 @@
                 a.onclick = () => {
                     state.currArt = item.article;
                     state.imgs = item.all_images;
-                    openModal(item.all_images.indexOf(item.preview_image));
+                    // Fix index logic
+                    const idx = item.all_images.indexOf(item.preview_image);
+                    openModal(idx >= 0 ? idx : 0);
                 };
                 frag.appendChild(a);
             });
@@ -482,8 +522,11 @@
                     return `<img src="/api/scraper?proxy_url=${encodeURIComponent(clean)}" class="art-img rounded-lg my-3 w-full max-w-full cursor-pointer bg-gray-800 min-h-[150px]" loading="lazy" />`;
                 }
                 if(clean.match(/youtube\.com|youtu\.be/)) {
-                    const vid = clean.match(/v=([a-zA-Z0-9_-]+)/)?.[1] || clean.split('/').pop();
-                    return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${vid}" frameborder="0" allowfullscreen></iframe></div>`;
+                    // 修正 YouTube 嵌入邏輯
+                    const vid = clean.match(/v=([a-zA-Z0-9_-]+)/)?.[1] || clean.match(/youtu\.be\/([a-zA-Z0-9_-]+)/)?.[1] || clean.match(/embed\/([a-zA-Z0-9_-]+)/)?.[1];
+                    if(vid) {
+                        return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${vid}" frameborder="0" allowfullscreen></iframe></div>`;
+                    }
                 }
                 return `<a href="${url}" target="_blank" class="text-blue-400 break-all hover:underline">${url}</a>`;
             }).replace(/\n/g, '<br>');
@@ -497,20 +540,20 @@
             state.view = v;
             
             if(v === 'detail') {
-                els.header.querySelector('.overflow-x-auto').classList.add('hidden'); // 隱藏 Tabs
+                els.header.querySelector('.overflow-x-auto').classList.add('hidden'); 
                 els.title.classList.remove('hidden');
                 $('detail-view-controls').classList.remove('hidden');
                 $('floating-back-btn').classList.remove('hidden');
                 $('list-view-controls').classList.add('hidden');
                 $('auth-container').classList.add('hidden');
-                els.logo.classList.add('text-gray-300'); // Logo 變暗示意識別點擊可返回
+                els.logo.classList.add('text-gray-300');
             } else {
-                els.header.querySelector('.overflow-x-auto').classList.remove('hidden'); // 顯示 Tabs
+                els.header.querySelector('.overflow-x-auto').classList.remove('hidden');
                 els.title.classList.add('hidden');
                 $('detail-view-controls').classList.add('hidden');
                 $('floating-back-btn').classList.add('hidden');
                 $('auth-container').classList.remove('hidden');
-                els.logo.classList.remove('text-gray-300'); // Logo 恢復
+                els.logo.classList.remove('text-gray-300');
                 
                 if (v === 'list') {
                      $('list-view-controls').classList.remove('hidden');
@@ -522,7 +565,6 @@
 
         function goBack() {
             if(state.view === 'detail') {
-                // 使用 history.back() 觸發 popstate 事件來處理 UI 切換
                 history.back(); 
             }
         }
