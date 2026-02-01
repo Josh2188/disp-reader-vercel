@@ -2,6 +2,8 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 import json
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime, date, timedelta
@@ -14,16 +16,26 @@ import random
 try:
     locale.setlocale(locale.LC_TIME, 'zh_TW.UTF-8')
 except locale.Error:
-    print("警告: 無法設定 'zh_TW.UTF-8' locale。")
+    pass # Vercel 環境可能不支援，忽略
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer': 'https://www.ptt.cc/bbs/Beauty/index.html'
-}
-COOKIES = {'over18': '1'}
+# 建立全域 Session 以重用 TCP 連線 (大幅提升速度)
+def create_session():
+    s = requests.Session()
+    retries = Retry(total=3, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
+    adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=retries)
+    s.mount('https://', adapter)
+    s.mount('http://', adapter)
+    s.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.ptt.cc/bbs/Beauty/index.html'
+    })
+    s.cookies.update({'over18': '1'})
+    return s
+
+session = create_session()
+
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
-
 HOT_SCRAPE_BOARDS = [ "Gossiping", "Beauty", "C_Chat", "Stock", "Lifeismoney", "MobileComm", "NBA", "Baseball", "Boy-Girl", "Tech_Job", "Car", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex" ]
 
 # --- 核心函式 ---
@@ -58,78 +70,68 @@ def process_article_item_basic(item, board):
         return None
 
 def fetch_ptt_article_list(board, page_url):
-    max_retries = 5
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(page_url, headers=HEADERS, cookies=COOKIES, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
-            prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
-            if not prev_page_link_tag and "index1.html" not in page_url:
-                 raise ValueError("頁面不完整，缺少'上頁'按鈕")
-            articles_tags = soup.select('div.r-ent')
-            article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
-            article_list.reverse()
-            prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
-            return {"articles": article_list, "prev_page_url": prev_page_url}
-        except requests.exceptions.HTTPError as err:
-            if err.response.status_code == 404: return {"articles": [], "prev_page_url": None}
-            if attempt < max_retries - 1: time.sleep(2); continue
-            raise
-        except Exception as e:
-            if attempt < max_retries - 1: time.sleep(2); continue
-            raise e
+    try:
+        # 使用全域 session
+        response = session.get(page_url, timeout=8)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'lxml')
+        prev_page_link_tag = soup.select_one('a.btn.wide:-soup-contains("上頁")')
+        
+        # 寬鬆處理，避免因找不到上頁按鈕就全掛
+        articles_tags = soup.select('div.r-ent')
+        article_list = [data for item in articles_tags if (data := process_article_item_basic(item, board)) is not None]
+        article_list.reverse()
+        prev_page_url = "https://www.ptt.cc" + prev_page_link_tag['href'] if prev_page_link_tag else None
+        return {"articles": article_list, "prev_page_url": prev_page_url}
+    except Exception as e:
+        print(f"List Fetch Error: {e}")
+        return {"articles": [], "prev_page_url": None, "error": str(e)}
 
 def fetch_ptt_article_content(article_url):
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(article_url, headers=HEADERS, cookies=COOKIES, timeout=15)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
-            main_content = soup.select_one('#main-content')
-            if not main_content: raise Exception("找不到主要內容區塊。")
-            
-            author_full, timestamp = '', ''
-            for line in main_content.select('.article-metaline, .article-metaline-right'):
-                if line.select_one('.article-meta-tag'):
-                    tag = line.select_one('.article-meta-tag').get_text(strip=True)
-                    value = line.select_one('.article-meta-value').get_text(strip=True)
-                    if tag == '作者': author_full = value
-                    elif tag == '時間': timestamp = value
-                line.decompose()
-            
-            pushes = []
-            for push in main_content.select('.push'):
-                push_tag_span = push.select_one('.push-tag'); push_userid_span = push.select_one('.push-userid'); push_content_span = push.select_one('.push-content'); push_ipdatetime_span = push.select_one('.push-ipdatetime')
-                pushes.append({ "tag": push_tag_span.get_text(strip=True) if push_tag_span else '', "user": push_userid_span.get_text(strip=True) if push_userid_span else '', "content": push_content_span.get_text(strip=True) if push_content_span else '', "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else '' })
-                push.decompose()
-
-            images, videos = [], []
-            for link in main_content.select('a'):
-                href = link.get('href', '')
-                if IMAGE_REGEX.search(href): images.append(href)
-                else:
-                    yt_match = YOUTUBE_REGEX.search(href)
-                    if yt_match: videos.append({"id": yt_match.group(1), "url": href})
-
-            for tag in main_content.select('span.f2, script, style'): tag.decompose()
-            for br in main_content.find_all("br"): br.replace_with("\n")
-            
-            full_text = main_content.get_text()
-            content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
-            content = content_parts[0].strip()
-            
-            return { "author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images)), "videos": list({v['id']: v for v in videos}.values()), "pushes": pushes }
+    try:
+        # 使用全域 session
+        response = session.get(article_url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'lxml')
+        main_content = soup.select_one('#main-content')
+        if not main_content: raise Exception("找不到主要內容區塊。")
         
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(1)
-                continue
-            raise e
+        author_full, timestamp = '', ''
+        for line in main_content.select('.article-metaline, .article-metaline-right'):
+            if line.select_one('.article-meta-tag'):
+                tag = line.select_one('.article-meta-tag').get_text(strip=True)
+                value = line.select_one('.article-meta-value').get_text(strip=True)
+                if tag == '作者': author_full = value
+                elif tag == '時間': timestamp = value
+            line.decompose()
+        
+        pushes = []
+        for push in main_content.select('.push'):
+            push_tag_span = push.select_one('.push-tag'); push_userid_span = push.select_one('.push-userid'); push_content_span = push.select_one('.push-content'); push_ipdatetime_span = push.select_one('.push-ipdatetime')
+            pushes.append({ "tag": push_tag_span.get_text(strip=True) if push_tag_span else '', "user": push_userid_span.get_text(strip=True) if push_userid_span else '', "content": push_content_span.get_text(strip=True) if push_content_span else '', "time": push_ipdatetime_span.get_text(strip=True) if push_ipdatetime_span else '' })
+            push.decompose()
 
+        images, videos = [], []
+        for link in main_content.select('a'):
+            href = link.get('href', '')
+            if IMAGE_REGEX.search(href): images.append(href)
+            else:
+                yt_match = YOUTUBE_REGEX.search(href)
+                if yt_match: videos.append({"id": yt_match.group(1), "url": href})
 
-# --- "當前最熱" 看板專用函式 ---
+        for tag in main_content.select('span.f2, script, style'): tag.decompose()
+        for br in main_content.find_all("br"): br.replace_with("\n")
+        
+        full_text = main_content.get_text()
+        content_parts = re.split(r'--\n※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自:', full_text)
+        content = content_parts[0].strip()
+        
+        return { "author_full": author_full, "formatted_timestamp": format_ptt_time(timestamp), "content": content, "images": list(dict.fromkeys(images)), "videos": list({v['id']: v for v in videos}.values()), "pushes": pushes }
+    
+    except Exception as e:
+        print(f"Content Fetch Error: {e}")
+        raise e
+
 def parse_push_count_for_sort(c):
     if c == '爆': return 1000
     if isinstance(c, str):
@@ -143,56 +145,63 @@ def parse_push_count_for_sort(c):
 def fetch_one_board_page(board):
     try:
         url = f"https://www.ptt.cc/bbs/{board}/index.html"
+        # 直接呼叫 list 函式，不另開 session
         data = fetch_ptt_article_list(board, url)
         return data.get("articles", [])
     except Exception: return []
 
 def fetch_ptt_hot_articles():
     all_articles = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    # 減少 workers 數量以符合 Vercel 限制，但因為有 connection pool 速度會更快
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         future_to_board = {executor.submit(fetch_one_board_page, board): board for board in HOT_SCRAPE_BOARDS}
         for future in concurrent.futures.as_completed(future_to_board):
             try: all_articles.extend(future.result())
-            except Exception as exc: print(f'{future_to_board[future]} 抓取時發生錯誤: {exc}')
+            except Exception: pass
+            
     today, yesterday = date.today(), date.today() - timedelta(days=1)
-    today_str = today.strftime('%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d')
-    yesterday_str = yesterday.strftime('%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d')
+    # 修正 Windows/Linux 日期格式差異
+    fmt = '%#m/%d' if 'win' in str(locale.getlocale()).lower() else '%-m/%d'
+    try:
+        today_str = today.strftime(fmt)
+        yesterday_str = yesterday.strftime(fmt)
+    except:
+        # Fallback
+        today_str = f"{today.month}/{today.day}"
+        yesterday_str = f"{yesterday.month}/{yesterday.day}"
+
     recent_articles = [ a for a in all_articles if a.get('date', '').strip() in [today_str, yesterday_str] ]
     sorted_articles = sorted(recent_articles, key=lambda x: parse_push_count_for_sort(x.get('push_count', 0)), reverse=True)
     return {"articles": sorted_articles[:100], "prev_page_url": None}
 
-# --- "美圖集錦" 專用函式 (支援分頁) ---
+# --- 美圖集錦 ---
 def fetch_beauty_gallery_data(list_url=None):
     all_articles_info = []
     current_list_url = list_url
     final_prev_page_url = None
-
     pages_to_fetch = 3 if list_url is None else 1
     
-    if current_list_url is None:
-        current_list_url = "https://www.ptt.cc/bbs/Beauty/index.html"
+    if current_list_url is None: current_list_url = "https://www.ptt.cc/bbs/Beauty/index.html"
 
     for _ in range(pages_to_fetch):
         if not current_list_url: break
-        
         list_data = fetch_ptt_article_list("Beauty", current_list_url)
         page_articles = [a for a in list_data.get("articles", []) if '[公告]' not in a.get('title', '')]
         all_articles_info.extend(page_articles)
-        
         current_list_url = list_data.get("prev_page_url")
         final_prev_page_url = current_list_url
 
     gallery_items = []
+    # 內部定義，使用全域 session
     def process_article_for_gallery(article):
         try:
             content_data = fetch_ptt_article_content(article['link'])
             images = content_data.get('images', [])
             if not images: return None
-            # 更新: 將完整的 article 物件傳給前端
             return { "article": article, "all_images": images, "preview_image": random.choice(images) }
         except Exception: return None
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_article = {executor.submit(process_article_for_gallery, article): article for article in all_articles_info}
         for future in concurrent.futures.as_completed(future_to_article):
             result = future.result()
@@ -201,28 +210,43 @@ def fetch_beauty_gallery_data(list_url=None):
     return {"articles": gallery_items, "prev_page_url": final_prev_page_url}
 
 
-# --- Vercel 的 Serverless Function 入口 ---
+# --- Handler ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urlparse(self.path)
         query_params = parse_qs(unquote(parsed_path.query))
         data, error = {}, None
+        
         try:
+            # === 代理圖片加速 ===
             if 'proxy_url' in query_params:
                 image_url = query_params['proxy_url'][0].replace('http://', 'https://', 1)
+                
+                # 使用 session 抓圖，且不設定 timeout 避免斷線，開啟 stream
                 proxy_headers = {
-                    'User-Agent': HEADERS['User-Agent'],
+                    'User-Agent': session.headers['User-Agent'],
                     'Referer': image_url 
                 }
-                response = requests.get(image_url, timeout=20, stream=True, headers=proxy_headers)
-                response.raise_for_status()
+                
+                # 這裡使用 requests.get 獨立請求，避免長時間佔用 session pool
+                resp = requests.get(image_url, headers=proxy_headers, timeout=20, stream=True)
+                resp.raise_for_status()
+                
                 self.send_response(200)
-                if 'Content-Type' in response.headers: self.send_header('Content-Type', response.headers['Content-Type'])
-                self.send_header('Cache-control', 'public, max-age=604800')
+                if 'Content-Type' in resp.headers: 
+                    self.send_header('Content-Type', resp.headers['Content-Type'])
+                
+                # 關鍵優化：加上強快取，瀏覽器端快取 1 週
+                self.send_header('Cache-Control', 'public, max-age=604800, immutable')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                for chunk in response.iter_content(chunk_size=8192): self.wfile.write(chunk)
+                
+                # 串流傳輸
+                for chunk in resp.iter_content(chunk_size=32768): # 加大 chunk size
+                    self.wfile.write(chunk)
                 return
 
+            # === 一般 API ===
             board = query_params.get('board', [None])[0]
             if board == 'Hot': 
                 data = fetch_ptt_hot_articles()
@@ -236,16 +260,17 @@ class handler(BaseHTTPRequestHandler):
             elif board: 
                 data = fetch_ptt_article_list(board, f"https://www.ptt.cc/bbs/{board}/index.html")
             else: 
-                raise ValueError("缺少看板名稱或文章/列表 URL")
+                raise ValueError("無效參數")
+
         except Exception as e:
             error = e
-            print(f"Error in /api/scraper: {e}")
+            print(f"Scraper Error: {e}")
             data = {"error": str(e)}
+
         self.send_response(500 if error else 200)
         self.send_header('Content-type', 'application/json')
+        # API 資料不快取，保持最新
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Expires', '0')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
         return
