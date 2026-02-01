@@ -61,7 +61,7 @@
     <div id="app-container" class="mx-auto bg-black h-[100dvh] flex flex-col relative">
         <header id="main-header" class="bg-gray-900 shadow-md flex-shrink-0 z-50 flex flex-col border-b border-gray-800">
             <div class="flex items-center justify-between p-3 pb-0">
-                <h1 class="text-xl font-bold text-white tracking-wide pl-1 cursor-pointer" onclick="window.scrollTo(0,0)">PTT<span class="text-blue-500 text-sm ml-1">Reader</span></h1>
+                <h1 id="app-logo" class="text-xl font-bold text-white tracking-wide pl-1 cursor-pointer">PTT<span class="text-blue-500 text-sm ml-1">Reader</span></h1>
                 
                 <h2 id="header-title" class="font-bold text-lg truncate flex-grow hidden pl-2 text-white"></h2>
 
@@ -98,8 +98,7 @@
                 </div>
             </div>
 
-            <div class="w-full overflow-x-auto no-scrollbar py-2 px-3 flex items-center gap-2" id="board-tabs-container">
-                </div>
+            <div class="w-full overflow-x-auto no-scrollbar py-2 px-3 flex items-center gap-2" id="board-tabs-container"></div>
         </header>
 
         <div class="flex-grow relative overflow-hidden w-full">
@@ -142,7 +141,8 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-        const TOP_BOARDS = { "Hot": "熱門文章", "Gossiping": "八卦", "Beauty": "表特", "BeautyGallery": "美圖牆", "Sex": "西斯", "Stock": "股票", "C_Chat": "希洽", "Lifeismoney": "省錢", "MobileComm": "手機", "NBA": "NBA", "Baseball": "棒球", "Car": "汽車", "Tech_Job": "科技", "movie": "電影", "e-shopping": "網購" };
+        // 已移除 NBA, Baseball, Car, C_Chat
+        const TOP_BOARDS = { "Hot": "熱門文章", "Gossiping": "八卦", "Beauty": "表特", "BeautyGallery": "美圖牆", "Sex": "西斯", "Stock": "股票", "Lifeismoney": "省錢", "MobileComm": "手機", "Tech_Job": "科技", "movie": "電影", "e-shopping": "網購" };
         
         const state = { 
             board: 'Hot', view: 'list', articles: [], nextPage: null, loading: false, 
@@ -153,7 +153,7 @@
         const $ = id => document.getElementById(id);
         const els = {
             app: $('app-container'), header: $('main-header'), list: $('articles-list'), detail: $('detail-content'), 
-            gal: $('gallery-grid'), title: $('header-title'), 
+            gal: $('gallery-grid'), title: $('header-title'), logo: $('app-logo'),
             tabsContainer: $('board-tabs-container'),
             skel: $('skeleton-container'), loader: $('loading-indicator'), 
             views: { list: $('list-view'), detail: $('detail-view'), gallery: $('gallery-view') },
@@ -167,11 +167,18 @@
         let uid = null;
 
         (function init() {
+            // 初始化 History
+            history.replaceState({ view: 'list' }, '', '');
+            
             renderBoardTabs();
             
             // Event Listeners
             $('toggle-sort-btn').onclick = () => {}; 
+            // 返回鍵現在統一呼叫 goBack() -> history.back()
             $('floating-back-btn').onclick = () => goBack();
+            // 標題點擊
+            els.logo.onclick = handleTitleClick;
+
             $('header-favorite-btn').onclick = toggleFav;
             $('favorite-from-modal-btn').onclick = toggleFavModal;
             $('gallery-size-toggle-btn').onclick = toggleGalSize;
@@ -194,6 +201,17 @@
             
             $('avatar-btn').onclick = e => { e.stopPropagation(); els.auth.drop.classList.toggle('hidden'); };
             document.onclick = () => els.auth.drop.classList.add('hidden');
+
+            // 處理瀏覽器返回鍵 (History API)
+            window.addEventListener('popstate', (event) => {
+                if (state.view === 'detail') {
+                    // 如果目前是內頁，按返回後，UI 應該切回列表
+                    switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
+                } else {
+                    // 其他情況確保 UI 狀態正確
+                    switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
+                }
+            });
 
             onAuthStateChanged(auth, u => {
                 uid = u ? u.uid : null;
@@ -221,7 +239,17 @@
             applyGalSize();
         })();
 
-        // 渲染橫向 Tab 標籤
+        // 標題點擊處理
+        function handleTitleClick() {
+            if (state.view === 'detail') {
+                goBack(); // 在內頁時返回
+            } else {
+                // 在列表頁時捲動到頂部
+                const target = state.view === 'gallery' ? els.gal : els.list;
+                target.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
         function renderBoardTabs() {
             els.tabsContainer.innerHTML = '';
             Object.entries(TOP_BOARDS).forEach(([k, v]) => {
@@ -263,6 +291,9 @@
             els.list.innerHTML = '';
             els.gal.innerHTML = '';
             
+            // 切換看板時，重置 History 為列表狀態
+            history.replaceState({ view: 'list' }, '', '');
+
             if (board === 'BeautyGallery') {
                 switchView('gallery');
                 $('list-view-controls').classList.add('hidden');
@@ -374,6 +405,9 @@
             localStorage.setItem('read_v2', JSON.stringify([...state.read]));
             document.getElementById(`art-${btoa(item.link).slice(0,10)}`)?.classList.add('opacity-50');
 
+            // Push History State
+            history.pushState({ view: 'detail' }, '', '#detail');
+
             switchView('detail');
             els.detail.innerHTML = '<div class="flex justify-center py-20"><div class="loader w-8 h-8 rounded-full border-2 border-t-transparent border-blue-500"></div></div>';
             els.title.textContent = item.title;
@@ -469,12 +503,14 @@
                 $('floating-back-btn').classList.remove('hidden');
                 $('list-view-controls').classList.add('hidden');
                 $('auth-container').classList.add('hidden');
+                els.logo.classList.add('text-gray-300'); // Logo 變暗示意識別點擊可返回
             } else {
                 els.header.querySelector('.overflow-x-auto').classList.remove('hidden'); // 顯示 Tabs
                 els.title.classList.add('hidden');
                 $('detail-view-controls').classList.add('hidden');
                 $('floating-back-btn').classList.add('hidden');
                 $('auth-container').classList.remove('hidden');
+                els.logo.classList.remove('text-gray-300'); // Logo 恢復
                 
                 if (v === 'list') {
                      $('list-view-controls').classList.remove('hidden');
@@ -486,7 +522,8 @@
 
         function goBack() {
             if(state.view === 'detail') {
-                switchView(state.board === 'BeautyGallery' ? 'gallery' : 'list');
+                // 使用 history.back() 觸發 popstate 事件來處理 UI 切換
+                history.back(); 
             }
         }
         
