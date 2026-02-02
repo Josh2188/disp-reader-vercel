@@ -27,6 +27,7 @@
             background-color: #020617; 
             background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 70%);
             background-attachment: fixed;
+            overscroll-behavior-x: none; /* 防止滑動切換看板時觸發瀏覽器上一頁 */
         }
         .font-logo { font-family: 'Fredoka', sans-serif; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
@@ -66,7 +67,7 @@
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: grab; }
         .pinch-zoom-container.is-dragging { cursor: grabbing; }
-        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: auto; } /* pointer-events: auto 確保手勢能被捕捉 */
         .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.3); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; z-index: 61; }
         #image-modal:hover .image-nav-btn { opacity: 1; }
         .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
@@ -106,7 +107,6 @@
         .thumbnail-base img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
         .thumbnail-base:hover img { transform: scale(1.1); }
         
-        /* 縮小推文間距 */
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.25rem; line-height: 1.35; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
         .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #9ca3af; }
@@ -252,14 +252,12 @@
         <div class="flex-grow relative">
             <!-- 文章列表 -->
             <div id="list-view" class="absolute inset-0 flex flex-col">
-                <!-- 縮小 Skeleton 間距 -->
                 <div id="skeleton-container" class="flex-grow divide-y divide-white/5 overflow-y-auto no-scrollbar"></div>
                 <main id="articles-list" class="flex-grow divide-y divide-white/5 overflow-y-auto no-scrollbar hidden pb-20"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-500 h-8 w-8"></div></div>
                 <div id="list-error" class="text-center py-20 text-red-400 hidden"><p id="list-error-text"></p></div>
             </div>
             <!-- 文章內頁 -->
-            <!-- 縮小內距 p-2 -->
             <div id="detail-view" class="absolute inset-0 hidden"><main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-2 md:p-4 pb-24"></main></div>
             <!-- 美圖集錦 -->
             <div id="gallery-view" class="absolute inset-0 hidden flex flex-col">
@@ -279,7 +277,7 @@
         <div id="image-modal-title" class="absolute bottom-6 left-4 right-4 text-white text-center text-sm truncate z-60 drop-shadow-md font-medium pointer-events-none opacity-80"></div>
     </div>
     <div id="image-modal-controls" class="hidden fixed top-4 right-4 flex gap-3 z-[60]">
-        <button id="favorite-from-modal-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-pink-600/80 transition-all border border-white/10" title="收藏"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></button>
+        <!-- 移除愛心按鈕 -->
         <button id="download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
         <button id="close-modal-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-red-600/80 transition-all border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
@@ -330,10 +328,11 @@
             const headerFavoriteBtn = el('header-favorite-btn');
             const fontSizeToggleDetail = el('font-size-toggle-detail'), fontSizeToggleList = el('font-size-toggle-list'), themeToggleBtn = el('theme-toggle-btn');
             const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
-            const gallerySizeToggleBtn = el('gallery-size-toggle-btn'), favoriteFromModalBtn = el('favorite-from-modal-btn');
+            const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
             const appLogoBtn = el('app-logo-btn');
             
             const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "BeautyGallery": "美圖", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
+            const BOARD_KEYS = Object.keys(TOP_BOARDS);
 
             onAuthStateChanged(auth, user => {
                 if (unsubscribeFavorites) unsubscribeFavorites(); if (unsubscribeDisliked) unsubscribeDisliked();
@@ -345,7 +344,6 @@
                         if (state.viewingFavorites) renderAndSortArticles(); 
                         if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         if(state.currentView === 'gallery') updateGalleryFavoriteIcons();
-                        if(!imageModal.classList.contains('hidden')) updateFavoriteFromModalBtn();
                     });
                     unsubscribeDisliked = onSnapshot(collection(db, 'users', userId, 'disliked_articles'), snap => { state.dislikedArticles = snap.docs.map(d => d.data()); renderAndSortArticles(); });
                 } else { userId = user ? user.uid : null; googleLoginBtn.classList.remove('hidden'); userInfo.classList.add('hidden'); userControls.classList.add('hidden'); state.favorites = []; state.dislikedArticles = []; if (!user) signInAnonymously(auth).catch(e => console.error("匿名登入失敗:", e)); }
@@ -389,7 +387,6 @@
                 if (viewName === 'detail') floatingBackBtn.classList.remove('hidden'); else floatingBackBtn.classList.add('hidden');
             }
 
-            // 修改為 p-2 (1/2 間距)
             function createSkeletonItem() { return `<div class="flex items-start p-2 gap-2 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
             function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
@@ -412,19 +409,14 @@
 
             function createListItem(article, index) { 
                 const item = document.createElement('div'); 
-                // 修改：p-2 (縮小 padding), gap-2 (縮小 gap), hover:bg-white/5 (維持)
                 const baseClass = `p-2 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${state.readArticles.has(article.link) ? 'opacity-50' : ''}`;
                 
-                // === 動態排版邏輯 ===
                 const hasImage = !!article.thumbnail;
                 let layoutType = 'standard';
-                // 1. 每 7 篇如果有圖，就變成大圖卡片 (Big Card)
                 if (hasImage && index > 0 && index % 7 === 0) layoutType = 'big-card';
-                // 2. 偶數篇圖片在右邊，奇數篇圖片在左邊 (Zig-Zag)
                 else if (hasImage && index % 2 !== 0) layoutType = 'left-thumb';
                 else layoutType = 'right-thumb'; 
 
-                // 設定容器 Flex 方向 - gap 縮小至 2 (0.5rem)
                 if (layoutType === 'big-card') {
                     item.className = `${baseClass} flex flex-col gap-2`;
                 } else if (layoutType === 'left-thumb') {
@@ -446,30 +438,21 @@
                 let thumbnailHTML = ''; 
                 if (article.thumbnail) { 
                     const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`; 
-                    
-                    // 動態設定圖片容器樣式 (5 種變化)
                     let containerClass = "thumbnail-base relative group";
                     
                     if (layoutType === 'big-card') {
-                        // 1. 大圖卡片
                         containerClass += " w-full aspect-video mt-1 rounded-xl"; 
                     } else {
-                        // 更多樣化的尺寸邏輯
                         const sizeVariant = index % 5;
                         if (sizeVariant === 0) {
-                            // 2. 標準方圖 (中)
                             containerClass += " w-24 h-24"; 
                         } else if (sizeVariant === 1) {
-                            // 3. 直式圖 (Portrait) - 適合手機截圖
                             containerClass += " w-20 h-28";
                         } else if (sizeVariant === 2) {
-                            // 4. 較大方圖
                             containerClass += " w-28 h-28";
                         } else if (sizeVariant === 3) {
-                            // 5. 橫向小圖 (Landscape)
                             containerClass += " w-32 h-20";
                         } else {
-                            // 6. 迷你方圖
                             containerClass += " w-20 h-20";
                         }
                     }
@@ -524,11 +507,9 @@
                     const tagClass = `push-tag-${p.tag}`; 
                     const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim(); 
                     const contentWithMedia = linkifyAndMediafy(cleanedContent); 
-                    // 修改：pb-1 mb-1 (縮小推文間距)
                     return `<div class="push border-b border-white/5 pb-1 mb-1"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content text-sm leading-normal">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; 
                 }).join(''); 
                 
-                // 修改：內文區塊間距縮小 mb-3 p-3, mb-1
                 detailContent.innerHTML = `
                     <div class="mb-3 p-3 rounded-xl card-bg">
                         <h1 class="font-bold text-xl md:text-2xl leading-snug text-main-title mb-1 tracking-wide">${article.title}</h1>
@@ -611,7 +592,7 @@
                 state.currentImageIndex = index; 
                 const url = state.currentArticleImages[index]; 
                 if (!url) return; 
-                updateFavoriteFromModalBtn(); 
+                
                 const img = new Image(); 
                 img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; 
                 pinchZoomTarget.innerHTML = '<div class="loader h-12 w-12 border-white"></div>'; 
@@ -628,7 +609,7 @@
                     try { 
                         const PinchZoomClass = window.PinchZoom?.default || window.PinchZoom;
                         if (PinchZoomClass) {
-                            state.pinchZoomInstance = new PinchZoomClass(pinchZoomTarget, { minZoom: 0.5, maxZoom: 8 }); 
+                            state.pinchZoomInstance = new PinchZoomClass(pinchZoomTarget, { minZoom: 1, maxZoom: 8 }); 
                             const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; 
                             pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); 
                             state.pinchZoomInstance._wheelHandler = wheelHandler; 
@@ -640,10 +621,10 @@
             
             function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); state.currentModalGalleryItem = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
             function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
-            function showNextImage(e) { e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
-            function showPrevImage(e) { e.stopPropagation(); if (state.currentImageIndex > 0) openImageModal(state.currentImageIndex - 1, imageModalTitle.textContent); }
+            function showNextImage(e) { if(e) e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
+            function showPrevImage(e) { if(e) e.stopPropagation(); if (state.currentImageIndex > 0) openImageModal(state.currentImageIndex - 1, imageModalTitle.textContent); }
             function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
-            function updateFavoriteFromModalBtn() { if (!state.currentModalGalleryItem) return; const isFav = isFavorite(state.currentModalGalleryItem.article.link); favoriteFromModalBtn.querySelector('svg').classList.toggle('fill-current', isFav); }
+            // updateFavoriteFromModalBtn 已移除
 
             const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
@@ -655,9 +636,82 @@
             function applyGallerySize(sizeKey) { if (!gallerySizes.includes(sizeKey)) return; gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`)); galleryGrid.classList.add(`size-${sizeKey}`); localStorage.setItem('gallerySize', sizeKey); state.gallerySize = sizeKey; }
             function toggleGallerySize() { const currentIndex = gallerySizes.indexOf(state.gallerySize); const nextIndex = (currentIndex + 1) % gallerySizes.length; const nextSizeKey = gallerySizes[nextIndex]; applyGallerySize(nextSizeKey); const sizeMap = { sm: '小', md: '中', lg: '大' }; showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`); }
 
+            // 手勢操作 - 一般頁面
             function handleTouchStart(e) { state.touchStartX = e.changedTouches[0].screenX; state.touchStartY = e.changedTouches[0].screenY; state.isScrolling = false; }
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
             function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(state.currentView === 'detail'); } } }
+
+            // === 圖片燈箱滑動邏輯 (新增) ===
+            let imgTouchStartX = 0;
+            let imgTouchStartY = 0;
+            const imageModalEl = el('image-modal');
+            
+            imageModalEl.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 1) return; // 忽略多指縮放
+                imgTouchStartX = e.touches[0].clientX;
+                imgTouchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            imageModalEl.addEventListener('touchend', (e) => {
+                if (!state.pinchZoomInstance) return;
+                // 如果圖片放大倍率大於 1.1，則視為使用者在查看細節，不切換圖片
+                if (state.pinchZoomInstance.scale > 1.1) return;
+
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchEndX - imgTouchStartX;
+                const diffY = touchEndY - imgTouchStartY;
+
+                // 判斷是否為水平滑動
+                if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
+                    if (diffX > 0) {
+                        showPrevImage(); // 向右滑 -> 上一張
+                    } else {
+                        showNextImage(); // 向左滑 -> 下一張
+                    }
+                }
+            }, { passive: true });
+
+            // === 列表頁看板切換邏輯 (新增) ===
+            let listTouchStartX = 0;
+            let listTouchStartY = 0;
+            const listViewEl = el('list-view');
+
+            listViewEl.addEventListener('touchstart', (e) => {
+                listTouchStartX = e.touches[0].clientX;
+                listTouchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            listViewEl.addEventListener('touchend', (e) => {
+                // 如果在瀏覽內頁，不觸發看板切換
+                if (state.currentView !== 'list') return;
+
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchEndX - listTouchStartX;
+                const diffY = touchEndY - listTouchStartY;
+
+                // 判斷是否為明顯的水平滑動，且垂直位移很小 (避免與捲動衝突)
+                if (Math.abs(diffX) > 80 && Math.abs(diffY) < 60) {
+                    const currentIndex = BOARD_KEYS.indexOf(state.currentBoard);
+                    if (currentIndex === -1) return;
+
+                    let nextIndex = -1;
+                    if (diffX < 0) { // 向左滑 -> 下一個看板
+                        nextIndex = (currentIndex + 1) % BOARD_KEYS.length;
+                    } else { // 向右滑 -> 上一個看板
+                        nextIndex = (currentIndex - 1 + BOARD_KEYS.length) % BOARD_KEYS.length;
+                    }
+
+                    if (nextIndex !== -1) {
+                        const nextBoard = BOARD_KEYS[nextIndex];
+                        // 模擬點擊該看板按鈕
+                        const chip = document.querySelector(`.board-chip[data-board="${nextBoard}"]`);
+                        if (chip) chip.click();
+                    }
+                }
+            }, { passive: true });
+
 
             appLogoBtn.addEventListener('click', () => goBack(true));
 
@@ -673,7 +727,6 @@
                         cancelRetry();
                         state.currentBoard = board;
                         state.viewingFavorites = false;
-                        updateFavoritesButtonState();
                         updateHeader();
 
                         if (board === 'BeautyGallery') {
@@ -731,7 +784,7 @@
             pinchZoomTarget.addEventListener('click', e => e.stopPropagation());
             imagePrevBtn.addEventListener('click', showPrevImage);
             imageNextBtn.addEventListener('click', showNextImage);
-            favoriteFromModalBtn.addEventListener('click', async () => { if (!state.currentModalGalleryItem || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentModalGalleryItem.article; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
+            // favoriteFromModalBtn 已移除
             downloadBtn.addEventListener('click', async e => { e.stopPropagation(); const url = state.currentArticleImages[state.currentImageIndex]; if (!url) return; showToast('正在準備下載...'); downloadBtn.disabled = true; try { const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`); if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`); const blob = await res.blob(); const objUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = objUrl; a.download = url.split('/').pop().split('?')[0] || 'download'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(objUrl); a.remove(); showToast('下載已開始'); } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; } });
             clearCacheBtn.addEventListener('click', () => { Object.keys(localStorage).forEach(key => { if (key.startsWith('ptt-cache-')) localStorage.removeItem(key); }); localStorage.removeItem('readArticles'); state.readArticles.clear(); renderAndSortArticles(); showToast(`已清除所有快取與已讀記錄`); });
             const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
