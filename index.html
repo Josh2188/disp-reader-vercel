@@ -46,6 +46,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
         
         /* === 毛玻璃與質感 === */
         .glassmorphism { 
@@ -101,11 +102,12 @@
         }
 
         /* === 內容樣式 === */
-        .thumbnail-container { width: 96px; height: 96px; flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .thumbnail-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-        .thumbnail-container:hover img { transform: scale(1.1); }
+        /* 移除原本固定的寬高，改用 Tailwind class 控制 */
+        .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.75rem; background-color: #1e293b; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .thumbnail-base img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+        .thumbnail-base:hover img { transform: scale(1.1); }
         
-        .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.4; } /* 推文行距也縮小 */
+        .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.4; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
         .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #9ca3af; }
         .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; }
@@ -132,7 +134,6 @@
         #gallery-grid.size-lg { column-count: 1; } @media (min-width: 640px) { #gallery-grid.size-lg { column-count: 2; } }
 
         /* === 主題與文字顏色 === */
-        /* 微調對比度，讓文字在深色漸層背景上更清晰 */
         .theme-default .text-main-title { color: #e2e8f0; } .theme-default .text-main-link { color: #60a5fa; } .theme-default .text-main-content { color: #cbd5e1; } .theme-default .push-userid { color: #60a5fa; }
         .theme-cyan .text-main-title { color: #cffafe; } .theme-cyan .text-main-link { color: #22d3ee; } .theme-cyan .text-main-content { color: #d1d5db; } .theme-cyan .push-userid { color: #22d3ee; }
         .theme-amber .text-main-title { color: #fef3c7; } .theme-amber .text-main-link { color: #fbbf24; } .theme-amber .text-main-content { color: #d6d3d1; } .theme-amber .push-userid { color: #fbbf24; }
@@ -393,7 +394,8 @@
             
             function renderArticles(articleData) { 
                 const fragment = document.createDocumentFragment(); 
-                articleData.forEach(article => fragment.appendChild(createListItem(article))); 
+                // 修改：傳入 index 給 createListItem
+                articleData.forEach((article, index) => fragment.appendChild(createListItem(article, index))); 
                 articlesList.innerHTML = ''; 
                 articlesList.appendChild(fragment); 
             }
@@ -406,22 +408,59 @@
                 return 'text-blue-400 bg-blue-900/10'; 
             }
 
-            function createListItem(article) { 
+            function createListItem(article, index) { 
                 const item = document.createElement('div'); 
-                item.className = `flex items-start p-4 gap-3 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-colors animate-fade-in-up ${state.readArticles.has(article.link) ? 'opacity-50' : ''}`; 
+                const baseClass = `p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${state.readArticles.has(article.link) ? 'opacity-50' : ''}`;
+                
+                // === 動態排版邏輯 ===
+                const hasImage = !!article.thumbnail;
+                let layoutType = 'standard';
+                // 1. 每 7 篇如果有圖，就變成大圖卡片 (Big Card)
+                if (hasImage && index > 0 && index % 7 === 0) layoutType = 'big-card';
+                // 2. 偶數篇圖片在右邊，奇數篇圖片在左邊 (Zig-Zag)
+                else if (hasImage && index % 2 !== 0) layoutType = 'left-thumb';
+                else layoutType = 'right-thumb'; // 預設圖片在右
+
+                // 設定容器 Flex 方向
+                if (layoutType === 'big-card') {
+                    item.className = `${baseClass} flex flex-col gap-3`;
+                } else if (layoutType === 'left-thumb') {
+                    item.className = `${baseClass} flex flex-row-reverse gap-4 items-start`;
+                } else {
+                    item.className = `${baseClass} flex flex-row gap-4 items-start`;
+                }
+
                 item.dataset.link = article.link; 
                 
                 const pushClass = getPushCountBgClass(article.push_count);
                 const pushHTML = article.push_count ? `<span class="flex-shrink-0 ml-auto text-xs font-mono px-2 py-0.5 rounded ${pushClass}">${article.push_count}</span>` : ''; 
                 const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-blue-400 mr-2 bg-blue-900/30 px-1.5 py-0.5 rounded border border-blue-900/50">${article.board}</span>` : ''; 
                 const timestampText = article.formatted_timestamp ? `${article.formatted_timestamp.split(' ')[0]}` : `${article.date}`; 
+                
+                // 根據是否是大卡片決定內文顯示行數 (大卡片可以多顯示一點)
+                const snippetClass = layoutType === 'big-card' ? 'line-clamp-3' : 'line-clamp-2';
                 const snippetText = article.snippet || ''; 
                 
                 let thumbnailHTML = ''; 
                 if (article.thumbnail) { 
                     const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`; 
-                    const imageHTML = `<img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="w-full h-full object-cover" onerror="this.closest('.thumbnail-container').style.display='none';">`; 
-                    thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-container border border-white/10 ml-2">${imageHTML}</div>`; 
+                    
+                    // 動態設定圖片容器樣式
+                    let containerClass = "thumbnail-base relative group";
+                    
+                    if (layoutType === 'big-card') {
+                        containerClass += " w-full aspect-video mt-2 rounded-xl"; // 大圖：全寬、16:9
+                    } else {
+                        // 小圖模式：隨機一點尺寸變化 (每3篇變大一點)
+                        if (index % 3 === 0) {
+                            containerClass += " w-32 h-32"; // 中型縮圖
+                        } else {
+                            containerClass += " w-24 h-24"; // 標準縮圖
+                        }
+                    }
+
+                    const imageHTML = `<img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" onerror="this.closest('.thumbnail-base').style.display='none';">`; 
+                    thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}">${imageHTML}</div>`; 
                 } 
                 
                 item.innerHTML = `
@@ -434,7 +473,7 @@
                             <span class="mr-2">${article.author}</span>
                             <span>• ${timestampText}</span>
                         </div>
-                        <p data-snippet-for="${article.link}" class="text-sm text-main-content mt-1.5 line-clamp-2 leading-normal opacity-80">${snippetText}</p>
+                        <p data-snippet-for="${article.link}" class="text-sm text-main-content mt-1.5 ${snippetClass} leading-normal opacity-80">${snippetText}</p>
                     </div>
                     ${thumbnailHTML}`; 
                 
@@ -446,7 +485,7 @@
                 return item; 
             }
             
-            function updatePreviewsUI(previews) { previews.forEach(previewData => { const articleInState = state.allArticles.find(a => a.link === previewData.link); if (articleInState) { Object.assign(articleInState, previewData); const existingItem = articlesList.querySelector(`[data-link="${previewData.link}"]`); if (existingItem) { const newItem = createListItem(articleInState); existingItem.replaceWith(newItem); } } }); }
+            function updatePreviewsUI(previews) { previews.forEach(previewData => { const articleInState = state.allArticles.find(a => a.link === previewData.link); if (articleInState) { Object.assign(articleInState, previewData); const existingItem = articlesList.querySelector(`[data-link="${previewData.link}"]`); if (existingItem) { const parent = existingItem.parentNode; const index = Array.from(parent.children).indexOf(existingItem); const newItem = createListItem(articleInState, index); existingItem.replaceWith(newItem); } } }); }
 
             async function fetchPreviewsInChunks(articles) { const articlesToFetch = articles.filter(a => typeof a.snippet === 'undefined'); if (articlesToFetch.length === 0) return; const CHUNK_SIZE = 5; const articleLinks = articlesToFetch.map(a => a.link); for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) { const chunk = articleLinks.slice(i, i + CHUNK_SIZE); if (chunk.length === 0) continue; try { const res = await fetch('/api/previews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urls: chunk }) }); if (!res.ok) continue; updatePreviewsUI(await res.json()); } catch (error) { console.error(`批次預覽錯誤:`, error); } } }
             function cancelRetry() { if (state.retryTimer) { clearTimeout(state.retryTimer); state.retryTimer = null; } state.loadRetries = 0; state.isLoading = false; }
@@ -473,7 +512,6 @@
                     return `<div class="push border-b border-white/5 pb-2 mb-2"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content text-sm leading-normal">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; 
                 }).join(''); 
                 
-                // 改用 Card 風格的標題區塊，增加質感
                 detailContent.innerHTML = `
                     <div class="mb-6 p-4 rounded-xl card-bg">
                         <h1 class="font-bold text-xl md:text-2xl leading-snug text-main-title mb-3 tracking-wide">${article.title}</h1>
@@ -498,10 +536,8 @@
                 if (state.currentView === 'detail' || state.currentView === 'gallery') {
                     window.history.back();
                 } else if (state.currentView === 'list') {
-                     // 點擊 LOGO 在首頁時回到頂部並重新整理
                      articlesList.scrollTo({ top: 0, behavior: 'smooth' });
                      if (fromButton && state.currentBoard !== 'Gossiping' && state.currentBoard !== 'Hot') {
-                         // 可選：如果在其他版，點 LOGO 可以回到預設版 (這裡先保留僅回頂部)
                      }
                 }
             }
@@ -527,7 +563,7 @@
                 const fragment = document.createDocumentFragment(); 
                 items.forEach(item => { 
                     const itemDiv = document.createElement('a'); 
-                    itemDiv.className = 'gallery-item animate-fade-in-up'; /* 加入動畫 */
+                    itemDiv.className = 'gallery-item animate-fade-in-up'; 
                     itemDiv.dataset.articleLink = item.article.link; 
                     const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; 
                     itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; 
