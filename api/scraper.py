@@ -36,7 +36,7 @@ IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 # 強化版 YouTube Regex
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
-# 已從列表移除: NBA, Baseball, Car, C_Chat, 但保留在此以免有舊連結請求
+# 已從列表移除: NBA, Baseball, Car, C_Chat
 HOT_SCRAPE_BOARDS = [ "Gossiping", "Beauty", "Stock", "Lifeismoney", "MobileComm", "Boy-Girl", "Tech_Job", "HatePolitics", "KoreaStar", "movie", "e-shopping", "Sex" ]
 
 # --- 核心函式 ---
@@ -200,19 +200,22 @@ def fetch_ptt_hot_articles():
     today = date.today()
     yesterday = today - timedelta(days=1)
     
-    fmt1 = '%m/%d'
-    fmt2 = '%-m/%-d' # Linux
-    fmt3 = '%#m/%#d' # Windows
-    
-    valid_dates = []
+    # 建立多種日期格式以匹配 PTT 的各種寫法
+    valid_dates = set()
     for d in [today, yesterday]:
-        valid_dates.append(d.strftime(fmt1))
-        try: valid_dates.append(d.strftime(fmt2))
+        valid_dates.add(d.strftime('%m/%d'))      # 格式: 02/03
+        try: valid_dates.add(d.strftime('%-m/%-d')) # 格式: 2/3 (Linux)
         except: pass
-        try: valid_dates.append(d.strftime(fmt3))
+        try: valid_dates.add(d.strftime('%#m/%#d')) # 格式: 2/3 (Windows)
         except: pass
+        # PTT 常見格式: 2/03 (月份不補零，日期補零)
+        valid_dates.add(f"{d.month}/{d.day:02d}")
+        # PTT 有時也會出現: 2/3 (都不補零)
+        valid_dates.add(f"{d.month}/{d.day}")
     
+    # 只要文章日期包含在有效日期集合中，就保留
     recent_articles = [a for a in all_articles if any(d in a.get('date', '') for d in valid_dates)]
+    
     sorted_articles = sorted(recent_articles, key=lambda x: parse_push_count_for_sort(x.get('push_count', 0)), reverse=True)
     return {"articles": sorted_articles[:100], "prev_page_url": None}
 
