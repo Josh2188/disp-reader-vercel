@@ -295,7 +295,10 @@
         <div id="image-modal-title" class="absolute bottom-6 left-4 right-4 text-white text-center text-sm truncate z-60 drop-shadow-md font-medium pointer-events-none opacity-80"></div>
     </div>
     <div id="image-modal-controls" class="hidden fixed top-4 right-4 flex gap-3 z-[60]">
-        <!-- 愛心按鈕回歸 -->
+        <!-- 循環放大按鈕 -->
+        <button id="zoom-cycle-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10" title="循環縮放">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
+        </button>
         <button id="favorite-from-modal-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-pink-600/80 transition-all border border-white/10" title="收藏">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
         </button>
@@ -353,6 +356,7 @@
             const appLogoBtn = el('app-logo-btn');
             const beautyModeBtn = el('beauty-mode-btn');
             const favoriteFromModalBtn = el('favorite-from-modal-btn');
+            const zoomCycleBtn = el('zoom-cycle-btn');
             
             const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
             const BOARD_KEYS = Object.keys(TOP_BOARDS);
@@ -433,15 +437,22 @@
 
             function createListItem(article, index) { 
                 const item = document.createElement('div'); 
-                // 修改：針對已讀文章，只降低透明度，標題顏色另外處理
                 const isRead = state.readArticles.has(article.link);
                 const baseClass = `p-2 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${isRead ? 'opacity-75' : ''}`;
                 
                 const hasImage = !!article.thumbnail;
                 let layoutType = 'standard';
-                if (hasImage && index > 0 && index % 7 === 0) layoutType = 'big-card';
-                else if (hasImage && index % 2 !== 0) layoutType = 'left-thumb';
-                else layoutType = 'right-thumb'; 
+                // 增加更多隨機變化的排版 (7種變化)
+                const variant = (index + Math.floor(Math.random() * 2)) % 7; 
+
+                if (hasImage) {
+                    if (index > 0 && index % 8 === 0) layoutType = 'big-card'; // 每8篇一大卡
+                    else if (variant === 0 || variant === 4) layoutType = 'right-thumb'; // 右圖
+                    else if (variant === 1 || variant === 5) layoutType = 'left-thumb'; // 左圖
+                    else layoutType = 'right-thumb'; // 預設右圖
+                } else {
+                    layoutType = 'no-image';
+                }
 
                 if (layoutType === 'big-card') item.className = `${baseClass} flex flex-col gap-2`;
                 else if (layoutType === 'left-thumb') item.className = `${baseClass} flex flex-row-reverse gap-2 items-start`;
@@ -457,21 +468,25 @@
                 const snippetClass = layoutType === 'big-card' ? 'line-clamp-3' : 'line-clamp-2';
                 const snippetText = article.snippet || ''; 
                 
-                // 標題顏色處理：已讀則加上 text-read (CSS 中定義為淡色)
                 const titleClass = isRead ? 'text-read' : 'text-main-title';
 
                 let thumbnailHTML = ''; 
                 if (article.thumbnail) { 
                     const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`; 
                     let containerClass = "thumbnail-base relative group";
-                    if (layoutType === 'big-card') containerClass += " w-full aspect-video mt-1 rounded-xl"; 
-                    else {
-                        const sizeVariant = index % 5;
-                        if (sizeVariant === 0) containerClass += " w-24 h-24"; 
-                        else if (sizeVariant === 1) containerClass += " w-20 h-28";
-                        else if (sizeVariant === 2) containerClass += " w-28 h-28";
-                        else if (sizeVariant === 3) containerClass += " w-32 h-20";
-                        else containerClass += " w-20 h-20";
+                    
+                    if (layoutType === 'big-card') {
+                        containerClass += " w-full aspect-video mt-1 rounded-xl"; 
+                    } else {
+                        // 更多樣化的尺寸邏輯 (7種)
+                        const sizeVar = index % 7;
+                        if (sizeVar === 0) containerClass += " w-24 h-24"; 
+                        else if (sizeVar === 1) containerClass += " w-20 h-28"; // 直式
+                        else if (sizeVar === 2) containerClass += " w-28 h-28"; // 大方
+                        else if (sizeVar === 3) containerClass += " w-32 h-20"; // 橫向
+                        else if (sizeVar === 4) containerClass += " w-20 h-20"; // 小方
+                        else if (sizeVar === 5) containerClass += " w-24 h-32"; // 長直
+                        else containerClass += " w-24 h-24";
                     }
                     const imageHTML = `<img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" onerror="this.closest('.thumbnail-base').style.display='none';">`; 
                     thumbnailHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}">${imageHTML}</div>`; 
@@ -588,7 +603,7 @@
                             openImageModal(idx, item.article.title); 
                         } else {
                             state.currentArticleImages = [item.preview_image];
-                            state.currentModalGalleryItem = item; // 重要：設定當前項目以便收藏
+                            state.currentModalGalleryItem = item; 
                             openImageModal(0, item.article.title);
                         }
                     }); 
@@ -602,23 +617,19 @@
 
             function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
             
-            // 重構：圖片載入邏輯，解決閃爍與自動縮小
             function openImageModal(index, title = null) { 
                 state.currentImageIndex = index; 
                 const url = state.currentArticleImages[index]; 
                 if (!url) return; 
                 
-                // 更新標題與按鈕狀態
                 imageModalTitle.textContent = title || (state.currentModalGalleryItem ? state.currentModalGalleryItem.article.title : '');
                 imageModalTitle.classList.toggle('hidden', !imageModalTitle.textContent);
                 updateImageNavButtons();
                 updateFavoriteFromModalBtn();
 
-                // 顯示模態框
                 imageModal.classList.remove('hidden'); 
                 imageModalControls.classList.remove('hidden'); 
                 
-                // 顯示 Loading (覆蓋在舊圖上或空容器上)
                 if(!pinchZoomTarget.querySelector('.loader')) {
                     const loader = document.createElement('div');
                     loader.className = 'loader h-12 w-12 border-white absolute z-10';
@@ -630,23 +641,19 @@
 
                 if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); 
                 
-                // 預載圖片
                 const img = new Image(); 
                 img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; 
                 
                 img.onload = () => { 
-                    cleanupImageInstance(); // 清除舊實例
-                    img.className = 'animate-fade-in'; // 加入淡入動畫
-                    pinchZoomTarget.innerHTML = ''; // 清除 loader 與舊圖
+                    cleanupImageInstance(); 
+                    img.className = 'animate-fade-in'; 
+                    pinchZoomTarget.innerHTML = ''; 
                     pinchZoomTarget.appendChild(img); 
                     
                     try { 
                         const PinchZoomClass = window.PinchZoom?.default || window.PinchZoom;
                         if (PinchZoomClass) {
-                            // 設定 minZoom 為 1，避免自動縮小回彈，tapZoomFactor 設定雙擊放大倍率
                             state.pinchZoomInstance = new PinchZoomClass(pinchZoomTarget, { minZoom: 1, maxZoom: 8, tapZoomFactor: 3, animationDuration: 300 }); 
-                            
-                            // 防止滾輪縮放干擾
                             const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; 
                             pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); 
                             state.pinchZoomInstance._wheelHandler = wheelHandler; 
@@ -666,22 +673,37 @@
             const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
             function toggleFontSize() { const currentIndex = fontSizeKeys.indexOf(state.fontSize); const nextIndex = (currentIndex + 1) % fontSizeKeys.length; const nextSizeKey = fontSizeKeys[nextIndex]; applyFontSize(nextSizeKey); showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`); }
-            
-            // 新增主題
-            const themes = ['theme-default', 'theme-cyan', 'theme-amber', 'theme-lime', 'theme-rose', 'theme-violet', 'theme-emerald']; 
-            let currentThemeIndex = themes.indexOf(localStorage.getItem('colorTheme') || 'theme-default'); if(currentThemeIndex === -1) currentThemeIndex = 0;
+            const themes = ['theme-default', 'theme-cyan', 'theme-amber', 'theme-lime', 'theme-rose', 'theme-violet', 'theme-emerald']; let currentThemeIndex = themes.indexOf(localStorage.getItem('colorTheme') || 'theme-default'); if(currentThemeIndex === -1) currentThemeIndex = 0;
             function applyTheme(themeName) { themes.forEach(t => bodyEl.classList.remove(t)); bodyEl.classList.add(themeName); localStorage.setItem('colorTheme', themeName); }
             
             const gallerySizes = ['sm', 'md', 'lg'];
             function applyGallerySize(sizeKey) { if (!gallerySizes.includes(sizeKey)) return; gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`)); galleryGrid.classList.add(`size-${sizeKey}`); localStorage.setItem('gallerySize', sizeKey); state.gallerySize = sizeKey; }
             function toggleGallerySize() { const currentIndex = gallerySizes.indexOf(state.gallerySize); const nextIndex = (currentIndex + 1) % gallerySizes.length; const nextSizeKey = gallerySizes[nextIndex]; applyGallerySize(nextSizeKey); const sizeMap = { sm: '小', md: '中', lg: '大' }; showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`); }
 
+            // 循環放大邏輯
+            const zoomLevels = [1, 1.5, 2, 2.5, 3, 4, 5];
+            let currentZoomIndex = 0;
+            zoomCycleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!state.pinchZoomInstance) return;
+                
+                currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
+                const newZoom = zoomLevels[currentZoomIndex];
+                
+                // 設定縮放中心為畫面中心
+                const rect = pinchZoomTarget.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                state.pinchZoomInstance.zoomTo(newZoom, { x: centerX, y: centerY });
+                showToast(`縮放: ${newZoom * 100}%`);
+            });
+
             // 手勢操作 - 一般頁面
             function handleTouchStart(e) { state.touchStartX = e.changedTouches[0].screenX; state.touchStartY = e.changedTouches[0].screenY; state.isScrolling = false; }
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
             function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(state.currentView === 'detail'); } } }
 
-            // === 圖片燈箱滑動邏輯 (修正) ===
             let imgTouchStartX = 0;
             let imgTouchStartY = 0;
             const imageModalEl = el('image-modal');
@@ -690,12 +712,10 @@
                 if (e.touches.length > 1) return;
                 imgTouchStartX = e.touches[0].clientX;
                 imgTouchStartY = e.touches[0].clientY;
-            }, { passive: true }); // 使用 passive: true 讓瀏覽器知道我們不會阻止捲動，除非必要
+            }, { passive: true });
 
             imageModalEl.addEventListener('touchend', (e) => {
-                // 如果正在縮放狀態，不觸發換頁
                 if (!state.pinchZoomInstance) return;
-                // 注意：不同版本的 pinch-zoom-js API 可能不同，這裡使用 scale 屬性判斷
                 if (state.pinchZoomInstance.scale > 1.05) return; 
 
                 const touchEndX = e.changedTouches[0].clientX;
@@ -703,7 +723,6 @@
                 const diffX = touchEndX - imgTouchStartX;
                 const diffY = touchEndY - imgTouchStartY;
 
-                // 判斷是否為水平滑動，增加垂直容錯率
                 if (Math.abs(diffX) > 60 && Math.abs(diffY) < 100) {
                     if (diffX > 0) {
                         showPrevImage();
@@ -713,7 +732,6 @@
                 }
             }, { passive: true });
 
-            // === 列表頁看板切換邏輯 ===
             let listTouchStartX = 0;
             let listTouchStartY = 0;
             const listViewEl = el('list-view');
@@ -736,9 +754,9 @@
                     if (currentIndex === -1) return;
 
                     let nextIndex = -1;
-                    if (diffX < 0) { // 向左滑 -> 下一個看板
+                    if (diffX < 0) { 
                         nextIndex = (currentIndex + 1) % BOARD_KEYS.length;
-                    } else { // 向右滑 -> 上一個看板
+                    } else { 
                         nextIndex = (currentIndex - 1 + BOARD_KEYS.length) % BOARD_KEYS.length;
                     }
 
@@ -750,10 +768,9 @@
                 }
             }, { passive: true });
 
-            // 美圖牆模式按鈕事件
             beautyModeBtn.addEventListener('click', () => {
                 cancelRetry();
-                state.currentBoard = 'BeautyGallery'; // 這只是內部狀態，UI上沒有這個看板
+                state.currentBoard = 'BeautyGallery'; 
                 state.viewingFavorites = false;
                 
                 document.querySelectorAll('.board-chip').forEach(c => c.classList.remove('active'));
@@ -780,7 +797,6 @@
                         state.viewingFavorites = false;
                         updateHeader();
 
-                        // 恢復列表模式
                         const isHotBoard = board === 'Hot';
                         toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
                         if (isHotBoard) state.sortBy = 'hot';
@@ -811,7 +827,6 @@
                     const originalUrl = image.dataset.originalUrl; 
                     let idx = state.currentArticleImages.indexOf(originalUrl); 
                     if (idx === -1) { state.currentArticleImages.push(originalUrl); idx = state.currentArticleImages.length - 1; }
-                    // 為了能在這裡也能收藏，我們需要暫時設定一個 "當前項目"
                     state.currentModalGalleryItem = { article: state.currentArticle }; 
                     openImageModal(idx); 
                     return; 
@@ -833,7 +848,6 @@
             imagePrevBtn.addEventListener('click', showPrevImage);
             imageNextBtn.addEventListener('click', showNextImage);
             
-            // 重新綁定愛心按鈕事件
             favoriteFromModalBtn.addEventListener('click', async () => { 
                 if (!state.currentModalGalleryItem || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; 
                 const a = state.currentModalGalleryItem.article; 
