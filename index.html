@@ -27,7 +27,7 @@
             background-color: #020617; 
             background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 70%);
             background-attachment: fixed;
-            overscroll-behavior-x: none; /* 防止滑動切換看板時觸發瀏覽器上一頁 */
+            overscroll-behavior-x: none;
         }
         .font-logo { font-family: 'Fredoka', sans-serif; }
         .loader { border-top-color: #3b82f6; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
@@ -67,7 +67,7 @@
         #image-modal.hidden, #image-modal-controls.hidden { display: none; }
         .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: grab; }
         .pinch-zoom-container.is-dragging { cursor: grabbing; }
-        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: auto; } /* pointer-events: auto 確保手勢能被捕捉 */
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: auto; }
         .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.3); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; z-index: 61; }
         #image-modal:hover .image-nav-btn { opacity: 1; }
         .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
@@ -189,6 +189,13 @@
                 <div class="flex-shrink-0 flex items-center gap-1">
                     <!-- 列表工具 -->
                     <div id="list-view-controls" class="flex items-center gap-1">
+                        <!-- 獨立的「美圖牆」按鈕 -->
+                        <button id="beauty-mode-btn" class="btn-tooltip p-2 rounded-full hover:bg-white/10 flex items-center gap-1 text-pink-400 hover:text-pink-300 transition-colors" data-title="美圖牆">
+                            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                            </svg>
+                        </button>
+
                         <button id="toggle-sort-btn" class="btn-tooltip p-2 rounded-full hover:bg-white/10 flex items-center gap-1 text-gray-400 hover:text-white transition-colors" data-title="切換排序">
                             <svg id="sort-time-icon" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             <svg id="sort-hot-icon" class="h-6 w-6 hidden text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.797A8.333 8.333 0 0112 6c1.23 0 2.398.256 3.362.714z" /></svg>
@@ -277,7 +284,6 @@
         <div id="image-modal-title" class="absolute bottom-6 left-4 right-4 text-white text-center text-sm truncate z-60 drop-shadow-md font-medium pointer-events-none opacity-80"></div>
     </div>
     <div id="image-modal-controls" class="hidden fixed top-4 right-4 flex gap-3 z-[60]">
-        <!-- 移除愛心按鈕 -->
         <button id="download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
         <button id="close-modal-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-red-600/80 transition-all border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
@@ -330,8 +336,10 @@
             const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
             const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
             const appLogoBtn = el('app-logo-btn');
+            const beautyModeBtn = el('beauty-mode-btn');
             
-            const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "BeautyGallery": "美圖", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
+            // 從 TOP_BOARDS 移除了 BeautyGallery
+            const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
             const BOARD_KEYS = Object.keys(TOP_BOARDS);
 
             onAuthStateChanged(auth, user => {
@@ -359,7 +367,7 @@
                 const isDetail = state.currentView === 'detail'; 
                 const isGallery = state.currentView === 'gallery'; 
                 
-                boardScroller.classList.toggle('hidden', isDetail);
+                boardScroller.classList.toggle('hidden', isDetail || isGallery); // Gallery 模式也隱藏看板選單
                 listViewControls.classList.toggle('hidden', isDetail || isGallery); 
                 galleryViewControls.classList.toggle('hidden', !isGallery); 
                 detailViewControls.classList.toggle('hidden', !isDetail); 
@@ -536,6 +544,7 @@
                 } else if (state.currentView === 'list') {
                      articlesList.scrollTo({ top: 0, behavior: 'smooth' });
                      if (fromButton && state.currentBoard !== 'Gossiping' && state.currentBoard !== 'Hot') {
+                         // 可選：回到預設看板
                      }
                 }
             }
@@ -624,7 +633,6 @@
             function showNextImage(e) { if(e) e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
             function showPrevImage(e) { if(e) e.stopPropagation(); if (state.currentImageIndex > 0) openImageModal(state.currentImageIndex - 1, imageModalTitle.textContent); }
             function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
-            // updateFavoriteFromModalBtn 已移除
 
             const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
@@ -641,20 +649,19 @@
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
             function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(state.currentView === 'detail'); } } }
 
-            // === 圖片燈箱滑動邏輯 (新增) ===
+            // === 圖片燈箱滑動邏輯 ===
             let imgTouchStartX = 0;
             let imgTouchStartY = 0;
             const imageModalEl = el('image-modal');
             
             imageModalEl.addEventListener('touchstart', (e) => {
-                if (e.touches.length > 1) return; // 忽略多指縮放
+                if (e.touches.length > 1) return;
                 imgTouchStartX = e.touches[0].clientX;
                 imgTouchStartY = e.touches[0].clientY;
             }, { passive: true });
 
             imageModalEl.addEventListener('touchend', (e) => {
                 if (!state.pinchZoomInstance) return;
-                // 如果圖片放大倍率大於 1.1，則視為使用者在查看細節，不切換圖片
                 if (state.pinchZoomInstance.scale > 1.1) return;
 
                 const touchEndX = e.changedTouches[0].clientX;
@@ -662,17 +669,16 @@
                 const diffX = touchEndX - imgTouchStartX;
                 const diffY = touchEndY - imgTouchStartY;
 
-                // 判斷是否為水平滑動
                 if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
                     if (diffX > 0) {
-                        showPrevImage(); // 向右滑 -> 上一張
+                        showPrevImage();
                     } else {
-                        showNextImage(); // 向左滑 -> 下一張
+                        showNextImage();
                     }
                 }
             }, { passive: true });
 
-            // === 列表頁看板切換邏輯 (新增) ===
+            // === 列表頁看板切換邏輯 ===
             let listTouchStartX = 0;
             let listTouchStartY = 0;
             const listViewEl = el('list-view');
@@ -683,7 +689,6 @@
             }, { passive: true });
 
             listViewEl.addEventListener('touchend', (e) => {
-                // 如果在瀏覽內頁，不觸發看板切換
                 if (state.currentView !== 'list') return;
 
                 const touchEndX = e.changedTouches[0].clientX;
@@ -691,7 +696,6 @@
                 const diffX = touchEndX - listTouchStartX;
                 const diffY = touchEndY - listTouchStartY;
 
-                // 判斷是否為明顯的水平滑動，且垂直位移很小 (避免與捲動衝突)
                 if (Math.abs(diffX) > 80 && Math.abs(diffY) < 60) {
                     const currentIndex = BOARD_KEYS.indexOf(state.currentBoard);
                     if (currentIndex === -1) return;
@@ -705,13 +709,26 @@
 
                     if (nextIndex !== -1) {
                         const nextBoard = BOARD_KEYS[nextIndex];
-                        // 模擬點擊該看板按鈕
                         const chip = document.querySelector(`.board-chip[data-board="${nextBoard}"]`);
                         if (chip) chip.click();
                     }
                 }
             }, { passive: true });
 
+            // 美圖牆模式按鈕事件
+            beautyModeBtn.addEventListener('click', () => {
+                cancelRetry();
+                state.currentBoard = 'BeautyGallery';
+                state.viewingFavorites = false;
+                
+                // 視覺更新
+                document.querySelectorAll('.board-chip').forEach(c => c.classList.remove('active'));
+                updateHeader();
+
+                switchToView('gallery');
+                history.pushState({view: 'gallery'}, '', '#gallery');
+                loadGallery(false);
+            });
 
             appLogoBtn.addEventListener('click', () => goBack(true));
 
@@ -729,17 +746,12 @@
                         state.viewingFavorites = false;
                         updateHeader();
 
-                        if (board === 'BeautyGallery') {
-                            switchToView('gallery');
-                            history.pushState({view: 'gallery'}, '', '#gallery');
-                            loadGallery(false);
-                        } else {
-                            const isHotBoard = board === 'Hot';
-                            toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
-                            if (isHotBoard) state.sortBy = 'hot';
-                            switchToView('list');
-                            loadArticles(board);
-                        }
+                        // 恢復列表模式 (如果之前在美圖牆)
+                        const isHotBoard = board === 'Hot';
+                        toggleSortBtn.style.display = isHotBoard ? 'none' : 'flex';
+                        if (isHotBoard) state.sortBy = 'hot';
+                        switchToView('list');
+                        loadArticles(board);
                     });
                     boardScroller.appendChild(btn);
                 }
@@ -784,7 +796,7 @@
             pinchZoomTarget.addEventListener('click', e => e.stopPropagation());
             imagePrevBtn.addEventListener('click', showPrevImage);
             imageNextBtn.addEventListener('click', showNextImage);
-            // favoriteFromModalBtn 已移除
+            
             downloadBtn.addEventListener('click', async e => { e.stopPropagation(); const url = state.currentArticleImages[state.currentImageIndex]; if (!url) return; showToast('正在準備下載...'); downloadBtn.disabled = true; try { const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`); if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`); const blob = await res.blob(); const objUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = objUrl; a.download = url.split('/').pop().split('?')[0] || 'download'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(objUrl); a.remove(); showToast('下載已開始'); } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; } });
             clearCacheBtn.addEventListener('click', () => { Object.keys(localStorage).forEach(key => { if (key.startsWith('ptt-cache-')) localStorage.removeItem(key); }); localStorage.removeItem('readArticles'); state.readArticles.clear(); renderAndSortArticles(); showToast(`已清除所有快取與已讀記錄`); });
             const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
