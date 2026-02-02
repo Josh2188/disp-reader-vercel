@@ -24,8 +24,8 @@
             font-family: 'Noto Sans TC', sans-serif; 
             -webkit-tap-highlight-color: transparent; 
             user-select: none; 
-            background-color: #020617; /* 更深邃的背景 */
-            background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 70%); /* 頂部微光 */
+            background-color: #020617; 
+            background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 70%);
             background-attachment: fixed;
         }
         .font-logo { font-family: 'Fredoka', sans-serif; }
@@ -102,19 +102,19 @@
         }
 
         /* === 內容樣式 === */
-        /* 移除原本固定的寬高，改用 Tailwind class 控制 */
-        .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.75rem; background-color: #1e293b; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); }
         .thumbnail-base img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
         .thumbnail-base:hover img { transform: scale(1.1); }
         
-        .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.5rem; line-height: 1.4; }
+        /* 縮小推文間距 */
+        .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.25rem; line-height: 1.35; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
         .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #9ca3af; }
         .push-userid { flex-shrink: 0; font-weight: 600; margin-right: 0.5rem; }
         .push-content { flex-grow: 999; flex-basis: 0; min-width: 50%; word-break: break-all; margin-right: 0.5rem; }
         .push-info { flex-grow: 1; min-width: 130px; text-align: right; font-size: 0.75rem; color: #64748b; white-space: nowrap; }
 
-        .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+        .youtube-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 0.5rem 0; border-radius: 0.5rem; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.3); }
         .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         .youtube-thumbnail { cursor: pointer; position: relative; display: block; }
         .youtube-thumbnail::after { content: '▶'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; color: white; background-color: rgba(0,0,0,0.5); width: 60px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; line-height: 42px; padding-left: 5px; backdrop-filter: blur(4px); }
@@ -143,7 +143,7 @@
         .board-chip { 
             white-space: nowrap; padding: 6px 16px; border-radius: 9999px; font-size: 0.9rem; font-weight: 500; 
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            background-color: rgba(51, 65, 85, 0.5); /* 半透明 */
+            background-color: rgba(51, 65, 85, 0.5); 
             color: #94a3b8; 
             border: 1px solid rgba(255,255,255,0.05);
             backdrop-filter: blur(4px);
@@ -252,13 +252,15 @@
         <div class="flex-grow relative">
             <!-- 文章列表 -->
             <div id="list-view" class="absolute inset-0 flex flex-col">
+                <!-- 縮小 Skeleton 間距 -->
                 <div id="skeleton-container" class="flex-grow divide-y divide-white/5 overflow-y-auto no-scrollbar"></div>
                 <main id="articles-list" class="flex-grow divide-y divide-white/5 overflow-y-auto no-scrollbar hidden pb-20"></main>
                 <div id="infinite-loader" class="flex justify-center items-center py-4 hidden"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-500 h-8 w-8"></div></div>
                 <div id="list-error" class="text-center py-20 text-red-400 hidden"><p id="list-error-text"></p></div>
             </div>
             <!-- 文章內頁 -->
-            <div id="detail-view" class="absolute inset-0 hidden"><main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-4 md:p-6 pb-24"></main></div>
+            <!-- 縮小內距 p-2 -->
+            <div id="detail-view" class="absolute inset-0 hidden"><main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-2 md:p-4 pb-24"></main></div>
             <!-- 美圖集錦 -->
             <div id="gallery-view" class="absolute inset-0 hidden flex flex-col">
                 <main id="gallery-grid" class="flex-grow overflow-y-auto no-scrollbar pb-20 pt-2"></main>
@@ -387,14 +389,14 @@
                 if (viewName === 'detail') floatingBackBtn.classList.remove('hidden'); else floatingBackBtn.classList.add('hidden');
             }
 
-            function createSkeletonItem() { return `<div class="flex items-start p-4 gap-4 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
+            // 修改為 p-2 (1/2 間距)
+            function createSkeletonItem() { return `<div class="flex items-start p-2 gap-2 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
             function showSkeleton() { skeletonContainer.innerHTML = Array(8).fill(createSkeletonItem()).join(''); skeletonContainer.classList.remove('hidden'); articlesList.classList.add('hidden'); }
             function hideSkeleton() { skeletonContainer.classList.add('hidden'); articlesList.classList.remove('hidden'); }
             function updateFavoriteIcon(isFav) { if(auth.currentUser && !auth.currentUser.isAnonymous) headerFavoriteBtn.querySelector('svg').classList.toggle('fill-pink-500', isFav); }
             
             function renderArticles(articleData) { 
                 const fragment = document.createDocumentFragment(); 
-                // 修改：傳入 index 給 createListItem
                 articleData.forEach((article, index) => fragment.appendChild(createListItem(article, index))); 
                 articlesList.innerHTML = ''; 
                 articlesList.appendChild(fragment); 
@@ -410,7 +412,8 @@
 
             function createListItem(article, index) { 
                 const item = document.createElement('div'); 
-                const baseClass = `p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${state.readArticles.has(article.link) ? 'opacity-50' : ''}`;
+                // 修改：p-2 (縮小 padding), gap-2 (縮小 gap), hover:bg-white/5 (維持)
+                const baseClass = `p-2 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${state.readArticles.has(article.link) ? 'opacity-50' : ''}`;
                 
                 // === 動態排版邏輯 ===
                 const hasImage = !!article.thumbnail;
@@ -419,15 +422,15 @@
                 if (hasImage && index > 0 && index % 7 === 0) layoutType = 'big-card';
                 // 2. 偶數篇圖片在右邊，奇數篇圖片在左邊 (Zig-Zag)
                 else if (hasImage && index % 2 !== 0) layoutType = 'left-thumb';
-                else layoutType = 'right-thumb'; // 預設圖片在右
+                else layoutType = 'right-thumb'; 
 
-                // 設定容器 Flex 方向
+                // 設定容器 Flex 方向 - gap 縮小至 2 (0.5rem)
                 if (layoutType === 'big-card') {
-                    item.className = `${baseClass} flex flex-col gap-3`;
+                    item.className = `${baseClass} flex flex-col gap-2`;
                 } else if (layoutType === 'left-thumb') {
-                    item.className = `${baseClass} flex flex-row-reverse gap-4 items-start`;
+                    item.className = `${baseClass} flex flex-row-reverse gap-2 items-start`;
                 } else {
-                    item.className = `${baseClass} flex flex-row gap-4 items-start`;
+                    item.className = `${baseClass} flex flex-row gap-2 items-start`;
                 }
 
                 item.dataset.link = article.link; 
@@ -437,7 +440,6 @@
                 const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-blue-400 mr-2 bg-blue-900/30 px-1.5 py-0.5 rounded border border-blue-900/50">${article.board}</span>` : ''; 
                 const timestampText = article.formatted_timestamp ? `${article.formatted_timestamp.split(' ')[0]}` : `${article.date}`; 
                 
-                // 根據是否是大卡片決定內文顯示行數 (大卡片可以多顯示一點)
                 const snippetClass = layoutType === 'big-card' ? 'line-clamp-3' : 'line-clamp-2';
                 const snippetText = article.snippet || ''; 
                 
@@ -445,17 +447,30 @@
                 if (article.thumbnail) { 
                     const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(article.thumbnail)}`; 
                     
-                    // 動態設定圖片容器樣式
+                    // 動態設定圖片容器樣式 (5 種變化)
                     let containerClass = "thumbnail-base relative group";
                     
                     if (layoutType === 'big-card') {
-                        containerClass += " w-full aspect-video mt-2 rounded-xl"; // 大圖：全寬、16:9
+                        // 1. 大圖卡片
+                        containerClass += " w-full aspect-video mt-1 rounded-xl"; 
                     } else {
-                        // 小圖模式：隨機一點尺寸變化 (每3篇變大一點)
-                        if (index % 3 === 0) {
-                            containerClass += " w-32 h-32"; // 中型縮圖
+                        // 更多樣化的尺寸邏輯
+                        const sizeVariant = index % 5;
+                        if (sizeVariant === 0) {
+                            // 2. 標準方圖 (中)
+                            containerClass += " w-24 h-24"; 
+                        } else if (sizeVariant === 1) {
+                            // 3. 直式圖 (Portrait) - 適合手機截圖
+                            containerClass += " w-20 h-28";
+                        } else if (sizeVariant === 2) {
+                            // 4. 較大方圖
+                            containerClass += " w-28 h-28";
+                        } else if (sizeVariant === 3) {
+                            // 5. 橫向小圖 (Landscape)
+                            containerClass += " w-32 h-20";
                         } else {
-                            containerClass += " w-24 h-24"; // 標準縮圖
+                            // 6. 迷你方圖
+                            containerClass += " w-20 h-20";
                         }
                     }
 
@@ -469,11 +484,11 @@
                             <h3 class="font-bold text-base leading-snug text-main-title line-clamp-2 pr-2">${boardNameHTML}${article.title}</h3>
                             ${pushHTML}
                         </div>
-                        <div class="flex items-center text-xs text-gray-400 mt-1">
+                        <div class="flex items-center text-xs text-gray-400 mt-0.5">
                             <span class="mr-2">${article.author}</span>
                             <span>• ${timestampText}</span>
                         </div>
-                        <p data-snippet-for="${article.link}" class="text-sm text-main-content mt-1.5 ${snippetClass} leading-normal opacity-80">${snippetText}</p>
+                        <p data-snippet-for="${article.link}" class="text-sm text-main-content mt-1 ${snippetClass} leading-tight opacity-80">${snippetText}</p>
                     </div>
                     ${thumbnailHTML}`; 
                 
@@ -509,23 +524,25 @@
                     const tagClass = `push-tag-${p.tag}`; 
                     const cleanedContent = (p.content || '').trim().replace(/^:/, '').trim(); 
                     const contentWithMedia = linkifyAndMediafy(cleanedContent); 
-                    return `<div class="push border-b border-white/5 pb-2 mb-2"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content text-sm leading-normal">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; 
+                    // 修改：pb-1 mb-1 (縮小推文間距)
+                    return `<div class="push border-b border-white/5 pb-1 mb-1"><span class="push-tag ${tagClass}">${p.tag}</span><span class="push-userid text-main-link">${p.user}</span><span class="push-content text-main-content text-sm leading-normal">${contentWithMedia}</span><span class="push-info">${p.time}</span></div>`; 
                 }).join(''); 
                 
+                // 修改：內文區塊間距縮小 mb-3 p-3, mb-1
                 detailContent.innerHTML = `
-                    <div class="mb-6 p-4 rounded-xl card-bg">
-                        <h1 class="font-bold text-xl md:text-2xl leading-snug text-main-title mb-3 tracking-wide">${article.title}</h1>
+                    <div class="mb-3 p-3 rounded-xl card-bg">
+                        <h1 class="font-bold text-xl md:text-2xl leading-snug text-main-title mb-1 tracking-wide">${article.title}</h1>
                         <div class="flex items-center text-sm text-gray-400">
                             <div class="flex-grow">
                                 <p><span class="text-blue-400 font-medium">${data.author_full}</span></p>
-                                <p class="text-xs mt-1 opacity-70">${data.formatted_timestamp}</p>
+                                <p class="text-xs mt-0.5 opacity-70">${data.formatted_timestamp}</p>
                             </div>
                             <div class="text-xs px-3 py-1 bg-white/10 rounded-full border border-white/5">${article.board}</div>
                         </div>
                     </div>
-                    <div class="text-lg leading-7 whitespace-pre-wrap break-words text-main-content font-light tracking-wide px-1">${contentHTML}</div>
-                    <div class="mt-8 pt-4 border-t border-white/10">
-                        <h3 class="font-bold text-gray-400 mb-4 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.772-1.165 2 2 0 01-3.91.009c-.52.01-1.04-.05-1.526-.174A2 2 0 012 18V8a2 2 0 012-2h14zM9 10h.01M15 10h.01M21 12h.01"/></svg>推文討論</h3>
+                    <div class="text-base leading-normal whitespace-pre-wrap break-words text-main-content font-light tracking-wide px-1">${contentHTML}</div>
+                    <div class="mt-4 pt-4 border-t border-white/10">
+                        <h3 class="font-bold text-gray-400 mb-2 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.772-1.165 2 2 0 01-3.91.009c-.52.01-1.04-.05-1.526-.174A2 2 0 012 18V8a2 2 0 012-2h14zM9 10h.01M15 10h.01M21 12h.01"/></svg>推文討論</h3>
                         <div class="pushes-container">${pushesHTML}</div>
                     </div>`; 
                 detailContent.scrollTop = 0; 
