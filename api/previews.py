@@ -60,12 +60,14 @@ def get_article_preview_data(article_url):
 
         # 提取圖片 (最多 3 張)
         images = []
+        # 先找所有連結
         for link in main_content.find_all('a', href=True):
             href = link['href']
             if IMAGE_REGEX.search(href):
-                images.append(href)
-                if len(images) >= 3: # 限制抓取數量
-                    break
+                if href not in images:
+                    images.append(href)
+            if len(images) >= 3: # 限制抓取數量
+                break
         
         # 提取內文摘要
         for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
