@@ -30,7 +30,7 @@ session = create_session()
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
-# 優化：只解析需要的區塊
+# 只解析主要內容區塊，提升效能
 main_strainer = SoupStrainer('div', id='main-content')
 
 def format_ptt_time(time_str):
@@ -47,7 +47,6 @@ def get_article_preview_data(article_url):
         if response.status_code != 200:
             return {"link": article_url, "error": "Fetch failed"}
 
-        # 使用 strainer 加速解析
         soup = BeautifulSoup(response.text, 'lxml', parse_only=main_strainer)
         main_content = soup.select_one('#main-content')
         
@@ -60,11 +59,11 @@ def get_article_preview_data(article_url):
         if len(metas) >= 3:
             timestamp = metas[2].text.strip()
 
-        # 提取圖片 (最多 3 張，用於列表拼貼)
+        # 提取圖片 (嘗試抓取前 3 張)
         images = []
         seen_images = set()
         
-        # 1. 先找 YouTube 縮圖
+        # 1. 優先找有超連結的圖片/影片
         for link in main_content.find_all('a', href=True):
             href = link['href']
             yt_match = YOUTUBE_REGEX.search(href)
@@ -74,25 +73,23 @@ def get_article_preview_data(article_url):
                     images.append(yt_thumb)
                     seen_images.add(yt_thumb)
             
-            if IMAGE_REGEX.search(href):
+            elif IMAGE_REGEX.search(href):
                 if href not in seen_images:
                     images.append(href)
                     seen_images.add(href)
             
-            if len(images) >= 3: # 限制抓取 3 張
-                break
+            if len(images) >= 3: break
 
-        # 2. 如果圖片不夠，嘗試找 img 標籤 (PTT 網頁版有時會自動展開圖片)
+        # 2. 如果不夠 3 張，嘗試找 img 標籤 (有些自動開圖沒有 link)
         if len(images) < 3:
              for img in main_content.find_all('img', src=True):
                 src = img['src']
-                if src not in seen_images:
+                if src and src not in seen_images:
                      images.append(src)
                      seen_images.add(src)
-                if len(images) >= 3:
-                    break
+                if len(images) >= 3: break
         
-        # 清理 DOM 以提取純文字摘要
+        # 提取內文摘要 (移除干擾元素)
         for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
             tag.decompose()
         for a in main_content.find_all('a'):
@@ -104,7 +101,7 @@ def get_article_preview_data(article_url):
         return {
             "link": article_url, 
             "images": images, # 回傳圖片列表
-            "thumbnail": images[0] if images else None, # 相容舊欄位
+            "thumbnail": images[0] if images else None, # 相容性欄位
             "formatted_timestamp": format_ptt_time(timestamp), 
             "snippet": snippet, 
             "error": None
@@ -125,7 +122,7 @@ class handler(BaseHTTPRequestHandler):
                 raise ValueError("無效的請求格式")
 
             urls = body['urls']
-            # 使用多執行緒並行抓取，加快列表載入速度
+            # 使用多執行緒並行抓取
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 results = list(executor.map(get_article_preview_data, urls))
             data = results
