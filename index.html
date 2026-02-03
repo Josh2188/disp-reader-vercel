@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="PTT Reader">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 改用 Viewer.js -->
+    <!-- Viewer.js: 強大的圖片瀏覽器 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
     
@@ -53,8 +53,6 @@
 
         /* === Viewer.js 客製化 === */
         .viewer-backdrop { background-color: rgba(0, 0, 0, 0.98) !important; }
-        .viewer-toolbar > ul > li { background-color: rgba(255, 255, 255, 0.1); width: 40px; height: 40px; border-radius: 50%; margin: 0 4px; }
-        .viewer-toolbar > ul > li:hover { background-color: rgba(255, 255, 255, 0.3); }
         /* 隱藏 Viewer.js 預設的部分按鈕，讓介面更簡潔 */
         .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical { display: none; }
         
@@ -93,7 +91,7 @@
         .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; backdrop-filter: blur(2px); }
         .gallery-item.is-favorite .fav-overlay { display: block; }
 
-        /* RWD 欄位 (新增 xs) */
+        /* RWD 欄位 (新增 xs - 3欄) */
         #gallery-grid.size-xs { column-count: 3; } @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
         #gallery-grid.size-sm { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } } @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
         #gallery-grid.size-md { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } } @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
@@ -196,7 +194,7 @@
         </div>
     </div>
 
-    <!-- Viewer.js 浮動控制層 (取代原本的 DOM Modal) -->
+    <!-- Viewer.js 浮動控制層 -->
     <div id="viewer-custom-overlay" class="hidden fixed top-0 left-0 w-full h-full z-[2016] flex flex-col justify-between pointer-events-none">
         <div class="flex justify-end p-4 pt-4 gap-3">
             <button id="viewer-zoom-cycle-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="循環縮放">
@@ -272,6 +270,7 @@
                         if (state.viewingFavorites) renderAndSortArticles(); 
                         if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         if(state.currentView === 'gallery') updateGalleryFavoriteIcons();
+                        if(state.viewerInstance) updateFavoriteFromOverlay();
                     });
                     unsubscribeDisliked = onSnapshot(collection(db, 'users', userId, 'disliked_articles'), snap => { state.dislikedArticles = snap.docs.map(d => d.data()); renderAndSortArticles(); });
                 } else { userId = user ? user.uid : null; googleLoginBtn.classList.remove('hidden'); userInfo.classList.add('hidden'); userControls.classList.add('hidden'); state.favorites = []; state.dislikedArticles = []; if (!user) signInAnonymously(auth).catch(e => console.error("匿名登入失敗:", e)); }
@@ -305,7 +304,6 @@
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
-                // 浮動按鈕只在列表頁顯示
                 if (viewName === 'list') floatingBackBtn.classList.remove('hidden'); 
                 else floatingBackBtn.classList.add('hidden');
             }
@@ -501,17 +499,14 @@
             function openImageViewer(images, index, contextItem = null) {
                 if (state.viewerInstance) state.viewerInstance.destroy();
                 
-                // 建立隱藏的圖片列表
                 const div = document.createElement('div');
                 div.style.display = 'none';
                 images.forEach(src => {
                     const img = document.createElement('img');
                     img.src = `/api/scraper?proxy_url=${encodeURIComponent(src)}`;
-                    // 如果是在美圖牆模式，我們把關聯的文章連結塞進圖片屬性
                     if (contextItem && contextItem.article) {
                         img.dataset.articleLink = contextItem.article.link;
                     } else if (state.currentArticle) {
-                        // 在文章內頁，所有圖片都屬於同一篇文章
                         img.dataset.articleLink = state.currentArticle.link;
                     }
                     div.appendChild(img);
@@ -534,11 +529,7 @@
                         viewerCustomOverlay.classList.add('hidden');
                     },
                     view(e) {
-                        // 圖片切換時更新愛心狀態
                         state.currentImageIndex = e.detail.index;
-                        const img = viewer.images[e.detail.index]; // Viewer.js 內部的圖片元素
-                        // 我們要找的是對應的原始圖片的 dataset，Viewer.js 複製了屬性嗎？
-                        // Viewer.js 會基於原始 DOM 建立圖片，但 `e.detail.originalImage` 才是原始 DOM
                         const originalImg = e.detail.originalImage;
                         if (originalImg && originalImg.dataset.articleLink) {
                             state.currentModalGalleryItem = { article: { link: originalImg.dataset.articleLink } };
@@ -548,6 +539,38 @@
                     ready() {
                         viewerCustomOverlay.classList.remove('hidden');
                         updateFavoriteFromOverlay();
+                        
+                        // === 關鍵修正：Viewer.js 左右滑動切換 ===
+                        const viewerCanvas = document.querySelector('.viewer-canvas');
+                        if (viewerCanvas) {
+                            let startX = 0;
+                            let startY = 0;
+                            viewerCanvas.addEventListener('touchstart', (e) => {
+                                startX = e.changedTouches[0].clientX;
+                                startY = e.changedTouches[0].clientY;
+                            }, { passive: true });
+
+                            viewerCanvas.addEventListener('touchend', (e) => {
+                                const endX = e.changedTouches[0].clientX;
+                                const endY = e.changedTouches[0].clientY;
+                                const diffX = endX - startX;
+                                const diffY = endY - startY;
+
+                                // 只有當水平滑動距離夠大，且垂直移動很小時才觸發
+                                if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
+                                    // 檢查當前是否放大中 (imageData.ratio)
+                                    // Viewer.js 1.x: viewer.imageData.ratio, viewer.initialImageData.ratio
+                                    const currentRatio = viewer.imageData.ratio;
+                                    const initialRatio = viewer.initialImageData.ratio;
+                                    
+                                    // 如果放大比例超過初始比例的 1.1 倍，視為在查看細節，不切換圖片
+                                    if (currentRatio > initialRatio * 1.1) return;
+
+                                    if (diffX > 0) viewer.prev();
+                                    else viewer.next();
+                                }
+                            }, { passive: true });
+                        }
                     }
                 });
                 
@@ -562,13 +585,24 @@
                 viewerFavoriteBtn.querySelector('svg').classList.toggle('text-pink-500', isFav);
             }
 
-            // 循環放大邏輯
+            // 循環放大邏輯 (Viewer.js)
             const zoomLevels = [1.5, 2, 2.5, 3, 4, 5, 1];
             let currentZoomIdx = 0;
             viewerZoomCycleBtn.addEventListener('click', () => {
                 if (!state.viewerInstance) return;
                 const ratio = zoomLevels[currentZoomIdx];
-                state.viewerInstance.zoomTo(ratio);
+                
+                // viewer.zoomTo 接受的是絕對比例，需要基於初始比例計算嗎？
+                // Viewer.js zoomTo(ratio, hasTooltip) - ratio 是相對縮放還是絕對？
+                // 文檔：Zoom to a specific ratio.
+                // 我們應該使用相對初始大小的比例。
+                // 獲取初始比例
+                const initialRatio = state.viewerInstance.initialImageData.ratio;
+                // 1代表回復原狀，其他代表放大倍數
+                const targetRatio = ratio * initialRatio;
+                
+                state.viewerInstance.zoomTo(targetRatio, true);
+                
                 currentZoomIdx = (currentZoomIdx + 1) % zoomLevels.length;
                 showToast(`縮放: ${ratio * 100}%`);
             });
