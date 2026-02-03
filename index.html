@@ -54,7 +54,9 @@
         /* === Viewer.js 客製化 === */
         .viewer-backdrop { background-color: rgba(0, 0, 0, 0.98) !important; }
         .viewer-container { touch-action: none; } 
+        /* 隱藏 Viewer.js 預設按鈕 */
         .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical, .viewer-one-to-one, .viewer-zoom-in, .viewer-zoom-out, .viewer-rotate-left, .viewer-rotate-right { display: none; }
+        /* 調整 Toolbar 位置與樣式 */
         .viewer-toolbar { width: auto; margin: 0 auto; bottom: 20px; border-radius: 99px; background-color: rgba(50,50,50,0.5); backdrop-filter: blur(5px); }
         .viewer-toolbar > ul > li { width: 44px; height: 44px; background-color: transparent; }
         .viewer-toolbar > ul > li:hover { background-color: rgba(255,255,255,0.1); border-radius: 50%; }
@@ -68,8 +70,9 @@
         .btn-tooltip:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(5px) scale(1); }
 
         /* === 內容樣式 === */
-        .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #000; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); position: relative; }
-        .thumbnail-base img { width: 100%; height: 100%; object-fit: contain; object-position: center; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* 回歸 object-cover 讓版面整齊美觀 */
+        .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); position: relative; }
+        .thumbnail-base img { width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
         .thumbnail-base:hover img { transform: scale(1.05); }
         
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.25rem; line-height: 1.35; }
@@ -92,13 +95,13 @@
         .article-image:hover { filter: brightness(0.9); }
 
         #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
-        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; background-color: #000; }
+        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; }
         .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; object-fit: contain; }
         .gallery-item:hover img { transform: scale(1.05); }
         .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; backdrop-filter: blur(2px); }
         .gallery-item.is-favorite .fav-overlay { display: block; }
 
-        /* RWD 欄位 */
+        /* RWD 欄位 (新增 xs - 3欄) */
         #gallery-grid.size-xs { column-count: 3; } @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
         #gallery-grid.size-sm { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } } @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
         #gallery-grid.size-md { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } } @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
@@ -204,7 +207,6 @@
     <!-- Viewer.js 浮動控制層 -->
     <div id="viewer-custom-overlay" class="hidden fixed top-0 left-0 w-full h-full z-[2016] flex flex-col justify-between pointer-events-none">
         <div class="flex justify-end p-4 pt-4 gap-3">
-            <!-- 加回下載按鈕 -->
             <button id="viewer-download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="下載圖片">
                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             </button>
@@ -217,13 +219,9 @@
         </div>
     </div>
     
-    <!-- 浮動返回按鈕：在手機版 (p-3 opacity-80) 與電腦版 (md:p-4 md:opacity-100) 的樣式 -->
-    <!-- 透過 Javascript 在 goBack 中判斷行為，透過 CSS 控制樣式 -->
-    <button id="floating-back-btn" class="fixed z-40 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10 
-    flex items-center justify-center
-    bottom-4 right-4 p-3 opacity-80
-    md:bottom-6 md:right-6 md:p-4 md:opacity-100">
-        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+    <!-- 浮動返回按鈕：在手機版 (hidden) 隱藏，在中型螢幕以上 (md:flex) 顯示 -->
+    <button id="floating-back-btn" class="fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10 hidden md:flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
     </button>
     
     <div id="toast-notification" class="bg-slate-800 border border-slate-600 text-white text-sm py-3 px-6 rounded-full shadow-2xl"><p id="toast-message"></p></div>
@@ -304,9 +302,7 @@
                 const urlRegex = /(https?:\/\/[^\s<>"]+)/g; 
                 const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; 
                 const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)$/i; 
-                // 新增影片支援
                 const videoRegex = /\.(mp4|webm|mov)($|\?)/i;
-                // Imgur GIFV
                 const imgurGifvRegex = /imgur\.com\/([a-zA-Z0-9]+)\.gifv/i;
                 
                 const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); 
@@ -314,34 +310,25 @@
                 
                 return processedText.replace(urlRegex, url => { 
                     const cleanUrl = url.split('&amp;')[0]; 
-                    
-                    // Youtube
                     const ytMatch = cleanUrl.match(youtubeRegex); 
                     if (ytMatch) { 
                         const videoId = ytMatch[1]; 
                         return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`; 
                     }
-                    
-                    // Video files
                     if (videoRegex.test(cleanUrl)) {
                          return `<div class="video-container"><video src="${cleanUrl}" controls playsinline loop muted preload="metadata"></video></div>`;
                     }
-
-                    // Imgur GIFV -> MP4
                     const gifvMatch = cleanUrl.match(imgurGifvRegex);
                     if (gifvMatch) {
                         const mp4Url = `https://i.imgur.com/${gifvMatch[1]}.mp4`;
                         return `<div class="video-container"><video src="${mp4Url}" controls playsinline loop muted autoplay></video></div>`;
                     }
-
-                    // Images
                     const hasImageExtension = imageRegex.test(cleanUrl); 
                     const isKnownImageHost = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//.test(cleanUrl); 
                     if (hasImageExtension || isKnownImageHost) { 
                         const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; 
                         return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto shadow-md cursor-pointer" data-original-url="${cleanUrl}" loading="lazy">`; 
                     } 
-                    
                     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline break-all">${cleanUrl}</a>`; 
                 }); 
             }
@@ -368,7 +355,7 @@
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
-                // 浮動按鈕邏輯已由 CSS hidden md:flex 取代，此處無需操作 classList
+                // 浮動按鈕邏輯已由 CSS hidden md:flex 取代
             }
 
             function createSkeletonItem() { return `<div class="flex items-start p-2 gap-2 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
@@ -427,15 +414,15 @@
                 let mediaHTML = ''; 
                 if (hasImage) { 
                     if (layoutType === 'collage-3') {
-                        const imgs = images.slice(0, 3).map(src => `<div class="thumbnail-base w-full h-24"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-contain bg-black"></div>`).join('');
+                        const imgs = images.slice(0, 3).map(src => `<div class="thumbnail-base w-full h-24 overflow-hidden rounded"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-cover"></div>`).join('');
                         mediaHTML = `<div class="grid grid-cols-3 gap-1 mt-1 w-full">${imgs}</div>`;
                     } else if (layoutType === 'collage-2') {
-                        const imgs = images.slice(0, 2).map(src => `<div class="thumbnail-base w-full h-32"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-contain bg-black"></div>`).join('');
+                        const imgs = images.slice(0, 2).map(src => `<div class="thumbnail-base w-full h-32 overflow-hidden rounded"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-cover"></div>`).join('');
                         mediaHTML = `<div class="grid grid-cols-2 gap-1 mt-1 w-full">${imgs}</div>`;
                     } else {
                         const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`; 
-                        let containerClass = "thumbnail-base relative group bg-black";
-                        if (layoutType === 'big-card') containerClass += " w-full aspect-video mt-1 rounded-xl"; 
+                        let containerClass = "thumbnail-base relative group rounded overflow-hidden";
+                        if (layoutType === 'big-card') containerClass += " w-full aspect-video mt-1"; 
                         else {
                             const sizeVar = index % 5;
                             if (sizeVar === 0) containerClass += " w-24 h-24"; 
@@ -443,7 +430,7 @@
                             else if (sizeVar === 2) containerClass += " w-28 h-28";
                             else containerClass += " w-24 h-24";
                         }
-                        mediaHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="w-full h-full object-contain"></div>`; 
+                        mediaHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="w-full h-full object-cover"></div>`; 
                     }
                 } 
                 
@@ -517,13 +504,8 @@
 
             function goBack(fromButton = false) { 
                 if (state.viewerInstance) { state.viewerInstance.hide(); return; }
-                // 在這裡統一處理返回邏輯
-                if (state.currentView === 'detail' || state.currentView === 'gallery') {
-                    window.history.back();
-                } else if (state.currentView === 'list') {
-                    // 如果在列表頁按返回 (無論是手機按鈕或電腦按鈕)，都是回到頂部
-                    articlesList.scrollTo({ top: 0, behavior: 'smooth' });
-                }
+                if (state.currentView === 'detail' || state.currentView === 'gallery') { window.history.back(); } 
+                else if (state.currentView === 'list') { articlesList.scrollTo({ top: 0, behavior: 'smooth' }); }
             }
 
             function onBackToList() { 
