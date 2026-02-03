@@ -64,7 +64,7 @@ def get_article_preview_data(article_url):
         images = []
         seen_images = set()
         
-        # 先找 YouTube 縮圖
+        # 1. 先找 YouTube 縮圖
         for link in main_content.find_all('a', href=True):
             href = link['href']
             yt_match = YOUTUBE_REGEX.search(href)
@@ -82,7 +82,7 @@ def get_article_preview_data(article_url):
             if len(images) >= 3: # 限制抓取 3 張
                 break
 
-        # 增強：如果找不到超連結圖片，嘗試找 img 標籤 (PTT 網頁版有時會自動展開圖片)
+        # 2. 如果圖片不夠，嘗試找 img 標籤 (PTT 網頁版有時會自動展開圖片)
         if len(images) < 3:
              for img in main_content.find_all('img', src=True):
                 src = img['src']
