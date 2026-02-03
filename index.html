@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="PTT Reader">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Viewer.js: 強大的圖片瀏覽器 -->
+    <!-- Viewer.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
     
@@ -53,10 +53,12 @@
 
         /* === Viewer.js 客製化 === */
         .viewer-backdrop { background-color: rgba(0, 0, 0, 0.98) !important; }
-        /* 隱藏 Viewer.js 預設的部分按鈕，讓介面更簡潔 */
-        .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical { display: none; }
+        .viewer-toolbar > ul > li { background-color: rgba(255, 255, 255, 0.15); width: 40px; height: 40px; border-radius: 50%; margin: 0 4px; transition: background 0.2s; }
+        .viewer-toolbar > ul > li:hover { background-color: rgba(255, 255, 255, 0.4); }
+        /* 隱藏部分按鈕 */
+        .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical, .viewer-one-to-one { display: none; }
+        .viewer-container { touch-action: none; } /* 重要：防止手勢衝突 */
         
-        /* 自定義懸浮按鈕層 */
         #viewer-custom-overlay { pointer-events: none; }
         #viewer-custom-overlay button { pointer-events: auto; }
 
@@ -252,7 +254,6 @@
             const appLogoBtn = el('app-logo-btn');
             const beautyModeBtn = el('beauty-mode-btn');
             
-            // Viewer.js 自訂按鈕
             const viewerCustomOverlay = el('viewer-custom-overlay');
             const viewerZoomCycleBtn = el('viewer-zoom-cycle-btn');
             const viewerFavoriteBtn = el('viewer-favorite-btn');
@@ -304,7 +305,8 @@
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
-                if (viewName === 'list') floatingBackBtn.classList.remove('hidden'); 
+                if (viewName === 'detail') floatingBackBtn.classList.add('hidden'); // 內頁隱藏
+                else if (viewName === 'list') floatingBackBtn.classList.remove('hidden');
                 else floatingBackBtn.classList.add('hidden');
             }
 
@@ -339,8 +341,9 @@
                 
                 let layoutType = 'standard';
                 if (hasImage) {
-                    if (images.length >= 3 && index % 5 === 0) layoutType = 'collage-3';
-                    else if (images.length === 2 && index % 4 === 0) layoutType = 'collage-2';
+                    // 多圖拼貼邏輯
+                    if (images.length >= 3 && index % 5 === 0) layoutType = 'collage-3'; // 3張
+                    else if (images.length === 2 && index % 4 === 0) layoutType = 'collage-2'; // 2張
                     else if (index > 0 && index % 8 === 0) layoutType = 'big-card'; 
                     else if (index % 2 !== 0) layoutType = 'left-thumb';
                     else layoutType = 'right-thumb';
@@ -364,14 +367,21 @@
                 let mediaHTML = ''; 
                 if (hasImage) { 
                     if (layoutType === 'collage-3') {
-                        const imgs = images.slice(0, 3).map(src => `<div class="thumbnail-base w-full h-24"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-cover"></div>`).join('');
-                        mediaHTML = `<div class="grid grid-cols-3 gap-1 mt-1 w-full">${imgs}</div>`;
+                        // 左大右兩小 (1+2 grid)
+                        const imgs = images.slice(0, 3);
+                        mediaHTML = `
+                        <div class="grid grid-cols-3 grid-rows-2 gap-1 mt-1 w-full h-48 rounded-lg overflow-hidden">
+                            <div class="col-span-2 row-span-2 bg-gray-800"><img src="/api/scraper?proxy_url=${encodeURIComponent(imgs[0])}" loading="lazy" class="w-full h-full object-cover"></div>
+                            <div class="bg-gray-800"><img src="/api/scraper?proxy_url=${encodeURIComponent(imgs[1])}" loading="lazy" class="w-full h-full object-cover"></div>
+                            <div class="bg-gray-800"><img src="/api/scraper?proxy_url=${encodeURIComponent(imgs[2])}" loading="lazy" class="w-full h-full object-cover"></div>
+                        </div>`;
                     } else if (layoutType === 'collage-2') {
-                        const imgs = images.slice(0, 2).map(src => `<div class="thumbnail-base w-full h-32"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-cover"></div>`).join('');
-                        mediaHTML = `<div class="grid grid-cols-2 gap-1 mt-1 w-full">${imgs}</div>`;
+                        // 兩張並排
+                        const imgs = images.slice(0, 2).map(src => `<div class="bg-gray-800"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="w-full h-full object-cover"></div>`).join('');
+                        mediaHTML = `<div class="grid grid-cols-2 gap-1 mt-1 w-full h-32 rounded-lg overflow-hidden">${imgs}</div>`;
                     } else {
                         const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`; 
-                        let containerClass = "thumbnail-base relative group";
+                        let containerClass = "thumbnail-base relative group bg-gray-800";
                         if (layoutType === 'big-card') containerClass += " w-full aspect-video mt-1 rounded-xl"; 
                         else {
                             const sizeVar = index % 5;
@@ -519,6 +529,7 @@
                     button: true,
                     navbar: true,
                     title: true,
+                    transition: false, // 關閉過渡動畫解決閃爍
                     toolbar: {
                         zoomIn: 1, zoomOut: 1, oneToOne: 1, reset: 1, prev: 1, play: 0, next: 1, rotateLeft: 1, rotateRight: 1, flipHorizontal: 0, flipVertical: 0,
                     },
@@ -540,7 +551,8 @@
                         viewerCustomOverlay.classList.remove('hidden');
                         updateFavoriteFromOverlay();
                         
-                        // === 關鍵修正：Viewer.js 左右滑動切換 ===
+                        // === 關鍵修正：手勢滑動 ===
+                        // 注入自訂手勢邏輯到 Viewer.js 容器
                         const viewerCanvas = document.querySelector('.viewer-canvas');
                         if (viewerCanvas) {
                             let startX = 0;
@@ -556,15 +568,13 @@
                                 const diffX = endX - startX;
                                 const diffY = endY - startY;
 
-                                // 只有當水平滑動距離夠大，且垂直移動很小時才觸發
+                                // 判斷水平滑動
                                 if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
-                                    // 檢查當前是否放大中 (imageData.ratio)
-                                    // Viewer.js 1.x: viewer.imageData.ratio, viewer.initialImageData.ratio
-                                    const currentRatio = viewer.imageData.ratio;
-                                    const initialRatio = viewer.initialImageData.ratio;
-                                    
-                                    // 如果放大比例超過初始比例的 1.1 倍，視為在查看細節，不切換圖片
-                                    if (currentRatio > initialRatio * 1.1) return;
+                                    // 檢查是否放大中
+                                    const imageData = viewer.imageData;
+                                    const initialImageData = viewer.initialImageData;
+                                    // 如果放大比例 > 初始比例 + 容許值，則不切換
+                                    if (imageData.ratio > initialImageData.ratio * 1.05) return;
 
                                     if (diffX > 0) viewer.prev();
                                     else viewer.next();
@@ -585,26 +595,25 @@
                 viewerFavoriteBtn.querySelector('svg').classList.toggle('text-pink-500', isFav);
             }
 
-            // 循環放大邏輯 (Viewer.js)
+            // 循環放大邏輯 (修復)
             const zoomLevels = [1.5, 2, 2.5, 3, 4, 5, 1];
             let currentZoomIdx = 0;
             viewerZoomCycleBtn.addEventListener('click', () => {
                 if (!state.viewerInstance) return;
-                const ratio = zoomLevels[currentZoomIdx];
+                const targetRatio = zoomLevels[currentZoomIdx];
                 
-                // viewer.zoomTo 接受的是絕對比例，需要基於初始比例計算嗎？
-                // Viewer.js zoomTo(ratio, hasTooltip) - ratio 是相對縮放還是絕對？
-                // 文檔：Zoom to a specific ratio.
-                // 我們應該使用相對初始大小的比例。
-                // 獲取初始比例
-                const initialRatio = state.viewerInstance.initialImageData.ratio;
-                // 1代表回復原狀，其他代表放大倍數
-                const targetRatio = ratio * initialRatio;
+                // Viewer.js zoomTo 接受絕對比例，但我們想基於初始比例
+                // 先重置縮放，確保基準點
+                if (targetRatio === 1) {
+                    state.viewerInstance.reset();
+                } else {
+                    // 計算目標絕對比例
+                    const initialRatio = state.viewerInstance.initialImageData.ratio;
+                    state.viewerInstance.zoomTo(initialRatio * targetRatio, true);
+                }
                 
-                state.viewerInstance.zoomTo(targetRatio, true);
-                
+                showToast(`縮放: ${targetRatio * 100}%`);
                 currentZoomIdx = (currentZoomIdx + 1) % zoomLevels.length;
-                showToast(`縮放: ${ratio * 100}%`);
             });
 
             viewerFavoriteBtn.addEventListener('click', async () => {
