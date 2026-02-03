@@ -54,10 +54,38 @@
         /* === Viewer.js 客製化 === */
         .viewer-backdrop { background-color: rgba(0, 0, 0, 0.98) !important; }
         .viewer-container { touch-action: none; } 
-        .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical, .viewer-one-to-one, .viewer-zoom-in, .viewer-zoom-out, .viewer-rotate-left, .viewer-rotate-right { display: none; }
-        .viewer-toolbar { width: auto; margin: 0 auto; bottom: 20px; border-radius: 99px; background-color: rgba(50,50,50,0.5); backdrop-filter: blur(5px); }
-        .viewer-toolbar > ul > li { width: 44px; height: 44px; background-color: transparent; }
-        .viewer-toolbar > ul > li:hover { background-color: rgba(255,255,255,0.1); border-radius: 50%; }
+        /* 隱藏 Viewer.js 預設不常用的按鈕 */
+        .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical, .viewer-one-to-one, .viewer-title { display: none; }
+        
+        /* Toolbar 樣式優化 */
+        .viewer-toolbar { 
+            width: auto; 
+            margin: 0 auto; 
+            bottom: 20px; 
+            border-radius: 99px; 
+            background-color: rgba(50,50,50,0.6); 
+            backdrop-filter: blur(8px); 
+        }
+        .viewer-toolbar > ul > li { 
+            width: 44px; 
+            height: 44px; 
+            background-color: transparent; 
+            border-radius: 50%;
+            margin: 0 2px;
+        }
+        .viewer-toolbar > ul > li:hover { background-color: rgba(255,255,255,0.2); }
+
+        /* 手機版 Viewer 調整 */
+        @media (max-width: 768px) {
+            .viewer-toolbar {
+                bottom: 40px; /* 避開底部 */
+                width: 90%;
+            }
+            .viewer-toolbar > ul > li {
+                width: 40px; 
+                height: 40px;
+            }
+        }
         
         #viewer-custom-overlay { pointer-events: none; }
         #viewer-custom-overlay button { pointer-events: auto; }
@@ -68,9 +96,9 @@
         .btn-tooltip:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(5px) scale(1); }
 
         /* === 內容樣式 === */
-        /* 修改：使用 object-contain + transparent bg 確保圖片完整且無黑邊 */
+        /* 修改：回歸 object-cover 填滿 */
         .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: rgba(255,255,255,0.05); box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); position: relative; }
-        .thumbnail-base img { width: 100%; height: 100%; object-fit: contain; object-position: center; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+        .thumbnail-base img { width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
         .thumbnail-base:hover img { transform: scale(1.05); }
         
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.25rem; line-height: 1.35; }
@@ -94,12 +122,12 @@
 
         #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
         .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; }
-        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; object-fit: contain; } /* 美圖牆也改為完整顯示 */
+        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; object-fit: cover; }
         .gallery-item:hover img { transform: scale(1.05); }
         .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; backdrop-filter: blur(2px); }
         .gallery-item.is-favorite .fav-overlay { display: block; }
 
-        /* RWD 欄位 (新增 xs - 3欄) */
+        /* RWD 欄位 */
         #gallery-grid.size-xs { column-count: 3; } @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
         #gallery-grid.size-sm { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } } @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
         #gallery-grid.size-md { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } } @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
@@ -119,36 +147,35 @@
         .board-chip.active { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); border-color: rgba(59, 130, 246, 0.5); transform: translateY(-1px); }
         .board-chip:hover:not(.active) { background-color: rgba(71, 85, 105, 0.6); color: #f1f5f9; }
 
-        /* 返回按鈕樣式：電腦版固定右下角，手機版固定右下角但縮小並增加透明度 */
+        /* 返回按鈕樣式：電腦版固定右下角，手機版調整位置並加大觸控區 */
         #floating-back-btn {
             position: fixed;
-            bottom: 1.5rem; /* 24px */
-            right: 1.5rem;  /* 24px */
+            bottom: 24px;
+            right: 24px;
             z-index: 40;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 9999px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
             transition: all 0.2s;
             cursor: pointer;
             border: 1px solid rgba(255, 255, 255, 0.1);
             background-color: #2563eb;
             color: white;
+            width: 56px;
+            height: 56px;
         }
-        #floating-back-btn:hover { background-color: #3b82f6; transform: scale(1.05); }
-
+        #floating-back-btn:hover { background-color: #3b82f6; transform: scale(1.1); }
+        
+        /* 手機版調整：避開底部導航列 */
         @media (max-width: 768px) {
             #floating-back-btn {
-                display: none !important; /* 強制在手機上隱藏 */
-            }
-        }
-        @media (min-width: 768px) {
-            #floating-back-btn {
-                display: flex !important; /* 強制在電腦上顯示 */
-                width: 3.5rem; /* 56px */
-                height: 3.5rem;
-                padding: 1rem;
+                bottom: 80px; 
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                opacity: 0.9;
             }
         }
     </style>
@@ -234,7 +261,7 @@
     <!-- Viewer.js 浮動控制層 -->
     <div id="viewer-custom-overlay" class="hidden fixed top-0 left-0 w-full h-full z-[2016] flex flex-col justify-between pointer-events-none">
         <div class="flex justify-end p-4 pt-4 gap-3">
-            <button id="viewer-download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="下載圖片">
+             <button id="viewer-download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="下載圖片">
                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             </button>
             <button id="viewer-zoom-cycle-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="循環縮放">
@@ -246,8 +273,8 @@
         </div>
     </div>
     
-    <!-- 浮動返回按鈕: 手機版(max-width: 768px) hidden, 電腦版(min-width: 768px) flex -->
-    <button id="floating-back-btn" class="fixed z-40 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10 flex items-center justify-center">
+    <!-- 浮動返回按鈕 -->
+    <button id="floating-back-btn" class="fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10 flex items-center justify-center">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
     </button>
     
@@ -381,7 +408,6 @@
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
-                // 浮動按鈕顯示邏輯完全交由 CSS (hidden md:flex) 處理
             }
 
             function createSkeletonItem() { return `<div class="flex items-start p-2 gap-2 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
@@ -439,12 +465,11 @@
                 
                 let mediaHTML = ''; 
                 if (hasImage) { 
-                    // 重要修正：使用 object-contain + bg-transparent (透過移除 bg-black) + 邊框 解決黑邊問題
-                    const imgClass = "w-full h-full object-contain transition-transform duration-700 hover:scale-105";
-                    const containerBase = "thumbnail-base relative overflow-hidden rounded-lg border border-white/10 bg-transparent"; // bg-transparent
+                    // 改回 object-cover
+                    const imgClass = "w-full h-full object-cover transition-transform duration-700 hover:scale-105";
+                    const containerBase = "thumbnail-base relative overflow-hidden rounded-lg border border-white/10"; 
 
                     if (layoutType === 'collage-3') {
-                        // 左1大 + 右2小
                         const imgs = images.slice(0, 3);
                         mediaHTML = `
                         <div class="grid grid-cols-3 grid-rows-2 gap-1 mt-1 w-full h-48 rounded-lg overflow-hidden">
@@ -453,7 +478,6 @@
                             <div class="${containerBase}"><img src="/api/scraper?proxy_url=${encodeURIComponent(imgs[2])}" loading="lazy" class="${imgClass}"></div>
                         </div>`;
                     } else if (layoutType === 'collage-2') {
-                        // 2張並排
                         const imgs = images.slice(0, 2).map(src => `<div class="${containerBase} h-32"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="${imgClass}"></div>`).join('');
                         mediaHTML = `<div class="grid grid-cols-2 gap-1 mt-1 w-full">${imgs}</div>`;
                     } else {
@@ -632,7 +656,6 @@
                         updateFavoriteFromOverlay();
                         
                         // === 關鍵修正：手勢滑動 ===
-                        // 注入自訂手勢邏輯到 Viewer.js 容器
                         const viewerContainer = document.querySelector('.viewer-container');
                         if (viewerContainer) {
                             let startX = 0;
@@ -651,10 +674,8 @@
 
                                 // 判斷水平滑動
                                 if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
-                                    // 檢查是否放大中
                                     const imageData = viewer.imageData;
                                     const initialImageData = viewer.initialImageData;
-                                    // 如果放大比例 > 初始比例 + 容許值，則不切換
                                     if (imageData.ratio > initialImageData.ratio * 1.05) return;
 
                                     e.preventDefault(); 
@@ -702,8 +723,6 @@
                 if (!currentImg) return;
                 
                 const src = currentImg.src;
-                // 從 src 提取原始 URL (如果是 proxy url)
-                // 例如 /api/scraper?proxy_url=...
                 let originalUrl = src;
                 try {
                     const urlObj = new URL(src, window.location.origin);
@@ -714,14 +733,13 @@
 
                 showToast('正在準備下載...');
                 try {
-                    const res = await fetch(src); // Fetch from proxy to avoid CORS
+                    const res = await fetch(src); 
                     if (!res.ok) throw new Error('Download failed');
                     const blob = await res.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    // 嘗試從原始 URL 獲取檔名
                     const filename = originalUrl.split('/').pop().split('?')[0] || 'download.jpg';
                     a.download = filename;
                     document.body.appendChild(a);
