@@ -68,7 +68,6 @@
         .btn-tooltip:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(5px) scale(1); }
 
         /* === 內容樣式 === */
-        /* 修改：使用 object-contain 和 bg-black 確保圖片完整顯示 */
         .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #000; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); position: relative; }
         .thumbnail-base img { width: 100%; height: 100%; object-fit: contain; object-position: center; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
         .thumbnail-base:hover img { transform: scale(1.05); }
@@ -94,12 +93,12 @@
 
         #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
         .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; background-color: #000; }
-        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; object-fit: contain; } /* 美圖牆也改為完整顯示 */
+        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; object-fit: contain; }
         .gallery-item:hover img { transform: scale(1.05); }
         .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; backdrop-filter: blur(2px); }
         .gallery-item.is-favorite .fav-overlay { display: block; }
 
-        /* RWD 欄位 (新增 xs - 3欄) */
+        /* RWD 欄位 */
         #gallery-grid.size-xs { column-count: 3; } @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
         #gallery-grid.size-sm { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } } @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
         #gallery-grid.size-md { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } } @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
@@ -218,9 +217,13 @@
         </div>
     </div>
     
-    <!-- 浮動返回按鈕：在手機版 (hidden) 隱藏，在中型螢幕以上 (md:flex) 顯示 -->
-    <button id="floating-back-btn" class="fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10 hidden md:flex items-center justify-center">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+    <!-- 浮動返回按鈕：在手機版 (p-3 opacity-80) 與電腦版 (md:p-4 md:opacity-100) 的樣式 -->
+    <!-- 透過 Javascript 在 goBack 中判斷行為，透過 CSS 控制樣式 -->
+    <button id="floating-back-btn" class="fixed z-40 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10 
+    flex items-center justify-center
+    bottom-4 right-4 p-3 opacity-80
+    md:bottom-6 md:right-6 md:p-4 md:opacity-100">
+        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
     </button>
     
     <div id="toast-notification" class="bg-slate-800 border border-slate-600 text-white text-sm py-3 px-6 rounded-full shadow-2xl"><p id="toast-message"></p></div>
@@ -271,7 +274,7 @@
             const viewerCustomOverlay = el('viewer-custom-overlay');
             const viewerZoomCycleBtn = el('viewer-zoom-cycle-btn');
             const viewerFavoriteBtn = el('viewer-favorite-btn');
-            const viewerDownloadBtn = el('viewer-download-btn'); // 新增
+            const viewerDownloadBtn = el('viewer-download-btn');
 
             const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
             const BOARD_KEYS = Object.keys(TOP_BOARDS);
@@ -365,7 +368,7 @@
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
-                // 浮動按鈕邏輯已由 CSS hidden md:flex 取代
+                // 浮動按鈕邏輯已由 CSS hidden md:flex 取代，此處無需操作 classList
             }
 
             function createSkeletonItem() { return `<div class="flex items-start p-2 gap-2 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
@@ -514,8 +517,13 @@
 
             function goBack(fromButton = false) { 
                 if (state.viewerInstance) { state.viewerInstance.hide(); return; }
-                if (state.currentView === 'detail' || state.currentView === 'gallery') { window.history.back(); } 
-                else if (state.currentView === 'list') { articlesList.scrollTo({ top: 0, behavior: 'smooth' }); }
+                // 在這裡統一處理返回邏輯
+                if (state.currentView === 'detail' || state.currentView === 'gallery') {
+                    window.history.back();
+                } else if (state.currentView === 'list') {
+                    // 如果在列表頁按返回 (無論是手機按鈕或電腦按鈕)，都是回到頂部
+                    articlesList.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             }
 
             function onBackToList() { 
