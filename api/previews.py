@@ -30,7 +30,7 @@ session = create_session()
 IMAGE_REGEX = re.compile(r'\.(jpg|jpeg|png|gif|avif|webp)$', re.IGNORECASE)
 YOUTUBE_REGEX = re.compile(r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
 
-# 只解析主要內容區塊，提升效能
+# 優化：只解析需要的區塊
 main_strainer = SoupStrainer('div', id='main-content')
 
 def format_ptt_time(time_str):
@@ -59,11 +59,11 @@ def get_article_preview_data(article_url):
         if len(metas) >= 3:
             timestamp = metas[2].text.strip()
 
-        # 提取圖片 (嘗試抓取前 3 張)
+        # 提取圖片 (最多 3 張，用於列表拼貼)
         images = []
         seen_images = set()
         
-        # 1. 優先找有超連結的圖片/影片
+        # 1. 先找有超連結的圖片/影片
         for link in main_content.find_all('a', href=True):
             href = link['href']
             yt_match = YOUTUBE_REGEX.search(href)
@@ -89,7 +89,7 @@ def get_article_preview_data(article_url):
                      seen_images.add(src)
                 if len(images) >= 3: break
         
-        # 提取內文摘要 (移除干擾元素)
+        # 清理 DOM 以提取純文字摘要
         for tag in main_content.select('.article-metaline, .article-metaline-right, .push, .f2, script, style'):
             tag.decompose()
         for a in main_content.find_all('a'):
@@ -122,7 +122,7 @@ class handler(BaseHTTPRequestHandler):
                 raise ValueError("無效的請求格式")
 
             urls = body['urls']
-            # 使用多執行緒並行抓取
+            # 使用多執行緒並行抓取，加快列表載入速度
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 results = list(executor.map(get_article_preview_data, urls))
             data = results
