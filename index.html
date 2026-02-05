@@ -40,7 +40,7 @@
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
 
-        /* === 捲軸隱藏 === */
+        /* === 捲軸隱藏但可滑動 === */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
@@ -56,25 +56,12 @@
         .viewer-container { touch-action: none; } 
         .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical, .viewer-one-to-one, .viewer-zoom-in, .viewer-zoom-out, .viewer-rotate-left, .viewer-rotate-right, .viewer-title { display: none; }
         
-        /* Toolbar 手機適配 */
-        .viewer-toolbar { 
-            width: auto; 
-            margin: 0 auto; 
-            bottom: 20px; 
-            border-radius: 99px; 
-            background-color: rgba(50,50,50,0.6); 
-            backdrop-filter: blur(8px); 
-        }
-        .viewer-toolbar > ul > li { 
-            width: 44px; height: 44px; 
-            background-color: transparent; 
-            border-radius: 50%; 
-            margin: 0 2px; 
-        }
+        .viewer-toolbar { width: auto; margin: 0 auto; bottom: 20px; border-radius: 99px; background-color: rgba(50,50,50,0.6); backdrop-filter: blur(8px); }
+        .viewer-toolbar > ul > li { width: 44px; height: 44px; background-color: transparent; border-radius: 50%; margin: 0 2px; }
         .viewer-toolbar > ul > li:hover { background-color: rgba(255,255,255,0.2); }
 
         @media (max-width: 768px) {
-            .viewer-toolbar { bottom: 80px; width: 90%; }
+            .viewer-toolbar { bottom: 40px; width: 90%; }
             .viewer-toolbar > ul > li { width: 40px; height: 40px; }
         }
         
@@ -86,81 +73,77 @@
         .btn-tooltip::after { content: attr(data-title); position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(5px) scale(0.95); padding: 4px 8px; background: rgba(15, 23, 42, 0.95); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: all 0.2s ease; pointer-events: none; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
         .btn-tooltip:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(5px) scale(1); }
 
-        /* === 文章列表圖片修正 (關鍵修改) === */
+        /* === 列表圖片樣式 (修正版) === */
         
-        /* 單圖容器：透明背景，無邊框，高度自適應 */
-        .thumbnail-base { 
-            flex-shrink: 0; 
-            overflow: hidden; 
-            border-radius: 0.5rem; 
-            background-color: transparent !important; /* 移除黑邊 */
-            border: none !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); 
-            position: relative; 
-            width: 100%; 
-            height: auto; 
+        /* 側邊小圖 (Side Thumb) - 使用 Cover 填滿，整齊美觀 */
+        .thumb-side {
+            flex-shrink: 0;
+            width: 80px; 
+            height: 80px;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: rgba(255,255,255,0.05);
+            position: relative;
         }
-        
-        /* 圖片：完整顯示 (contain)，自然高度，移除底線空白 */
-        .thumbnail-base img { 
-            width: 100%; 
-            height: auto; 
-            object-fit: contain; 
-            object-position: top center; /* 靠上對齊 */
-            display: block; 
-            border: none !important;
-            transition: transform 0.5s ease; 
-        }
-        .thumbnail-base:hover img { transform: scale(1.02); }
-
-        /* 多圖拼貼容器 (Grid) */
-        .thumbnail-multi {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 4px;
+        .thumb-side img {
             width: 100%;
-            background-color: transparent !important;
-        }
-        /* 拼貼中的圖片：Cover 模式讓拼貼整齊，點開看大圖 */
-        .thumbnail-multi .thumbnail-base img {
-            object-fit: cover;
             height: 100%;
-            min-height: 80px;
+            object-fit: cover; /* 側邊小圖用 cover 比較好看 */
+            transition: transform 0.5s ease;
+        }
+        
+        /* 大卡片圖 (Big Card) - 使用 Contain 完整顯示，無黑邊 */
+        .thumb-big {
+            width: 100%;
+            height: auto;
+            max-height: 400px; /* 限制最大高度 */
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: transparent; /* 透明背景，無黑邊 */
+            margin-top: 0.5rem;
+            display: flex;
+            justify-content: flex-start; /* 靠左對齊或置中 */
+        }
+        .thumb-big img {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain; /* 完整顯示 */
+            display: block;
+            border-radius: 0.5rem;
         }
 
-        /* 列表項目佈局 (RWD) */
-        .article-card {
+        /* 橫向捲動 Carousel (多圖用) */
+        .thumb-carousel {
             display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            margin-top: 0.5rem;
+            width: 100%;
+            scroll-snap-type: x mandatory;
+        }
+        .thumb-carousel-item {
+            flex-shrink: 0;
+            width: 140px; /* 固定寬度 */
+            height: 100px;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            scroll-snap-align: start;
+            background-color: rgba(255,255,255,0.05);
+        }
+        .thumb-carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 預覽圖用 cover 比較整齊 */
+        }
+
+        /* 列表項目 */
+        .article-card {
             padding: 0.75rem;
             border-bottom: 1px solid rgba(255,255,255,0.05);
             transition: background-color 0.2s;
         }
         .article-card:hover { background-color: rgba(255,255,255,0.03); }
-        
-        /* 手機版強制垂直堆疊，圖片寬度 100% */
-        @media (max-width: 768px) {
-            .article-card {
-                flex-direction: column;
-            }
-            .thumbnail-base {
-                width: 100%;
-                max-width: none;
-                margin-top: 0.5rem;
-            }
-            /* 限制手機版單圖最大高度，避免長條圖佔滿螢幕 */
-            .thumbnail-base img {
-                max-height: 300px; 
-            }
-        }
-        
-        /* 電腦版限制圖片寬度 */
-        @media (min-width: 768px) {
-            .thumbnail-base {
-                max-width: 200px;
-            }
-        }
 
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.25rem; line-height: 1.35; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
@@ -221,34 +204,28 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
         
-        /* 手機版：小、半透明、位置調高避開導航 */
+        /* 手機版：保留顯示，但縮小、半透明、位置上移 */
         @media (max-width: 768px) {
             #floating-back-btn {
-                bottom: 80px; 
-                right: 20px;
-                width: 48px;
-                height: 48px;
-                opacity: 0.8;
+                bottom: 5rem;    /* 80px */
+                right: 1rem;     /* 16px */
+                width: 2.5rem;   /* 40px */
+                height: 2.5rem;  /* 40px */
+                opacity: 0.6;    /* 半透明 */
             }
-            #floating-back-btn:active {
-                opacity: 1;
-                transform: scale(0.95);
-            }
+            #floating-back-btn:active { opacity: 1; transform: scale(0.95); }
         }
 
-        /* 電腦版：大、不透明、固定 */
+        /* 電腦版：大尺寸，固定右下 */
         @media (min-width: 768px) {
             #floating-back-btn {
-                bottom: 24px;
-                right: 24px;
-                width: 60px;
-                height: 60px;
+                bottom: 2rem;    /* 32px */
+                right: 2rem;     /* 32px */
+                width: 3.5rem;   /* 56px */
+                height: 3.5rem;  /* 56px */
                 opacity: 1;
             }
-            #floating-back-btn:hover {
-                transform: scale(1.1);
-                background-color: #3b82f6;
-            }
+            #floating-back-btn:hover { transform: scale(1.1); background-color: #3b82f6; }
         }
     </style>
 </head>
@@ -477,7 +454,6 @@
                     else { chip.classList.remove('active'); }
                 });
 
-                // 更新浮動按鈕圖示
                 if (isDetail || isGallery) {
                     backIconUp.classList.add('hidden');
                     backIconLeft.classList.remove('hidden');
@@ -516,7 +492,6 @@
             function createListItem(article, index) { 
                 const item = document.createElement('div'); 
                 const isRead = state.readArticles.has(article.link);
-                // 修改：手機版強制垂直堆疊 (flex-col)，電腦版水平 (flex-row)
                 const baseClass = `article-card p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${isRead ? 'opacity-75' : ''}`;
                 const titleClass = isRead ? 'text-read' : 'text-main-title';
                 
@@ -525,23 +500,19 @@
                 
                 let layoutType = 'standard';
                 if (hasImage) {
-                     // 電腦版才有的隨機變化
-                     if (images.length >= 3) layoutType = 'collage-3';
-                     else if (images.length === 2) layoutType = 'collage-2';
-                     else if (index > 0 && index % 8 === 0) layoutType = 'big-card'; 
-                     else if (index % 2 !== 0) layoutType = 'left-thumb';
-                     else layoutType = 'right-thumb';
+                    // 多圖 -> 橫向捲動 Carousel
+                    if (images.length > 1) layoutType = 'carousel';
+                    else if (index > 0 && index % 7 === 0) layoutType = 'big-card'; 
+                    else if (index % 2 !== 0) layoutType = 'left-thumb';
+                    else layoutType = 'right-thumb';
                 }
 
-                // 設定容器 Flex/Grid (RWD)
-                // 手機版 (CSS控制)：一律 flex-col (圖片在下)
-                // 電腦版 (md:): 根據 layoutType 變化
-                if (layoutType === 'collage-3' || layoutType === 'collage-2' || layoutType === 'big-card') {
+                if (layoutType === 'big-card' || layoutType === 'carousel') {
                      item.className = `${baseClass} flex flex-col gap-2`;
                 } else if (layoutType === 'left-thumb') {
-                     item.className = `${baseClass} flex flex-col md:flex-row-reverse gap-3 items-start`;
+                     item.className = `${baseClass} flex flex-row-reverse gap-3 items-start`;
                 } else {
-                     item.className = `${baseClass} flex flex-col md:flex-row gap-3 items-start`;
+                     item.className = `${baseClass} flex flex-row gap-3 items-start`;
                 }
 
                 item.dataset.link = article.link; 
@@ -550,35 +521,32 @@
                 const pushHTML = article.push_count ? `<span class="flex-shrink-0 ml-auto text-xs font-mono px-2 py-0.5 rounded ${pushClass}">${article.push_count}</span>` : ''; 
                 const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-blue-400 mr-2 bg-blue-900/30 px-1.5 py-0.5 rounded border border-blue-900/50">${article.board}</span>` : ''; 
                 const timestampText = article.formatted_timestamp ? `${article.formatted_timestamp.split(' ')[0]}` : `${article.date}`; 
-                const snippetClass = (layoutType === 'big-card' || layoutType.startsWith('collage')) ? 'line-clamp-3' : 'line-clamp-2';
+                const snippetClass = (layoutType === 'big-card' || layoutType === 'carousel') ? 'line-clamp-3' : 'line-clamp-2';
                 const snippetText = article.snippet || ''; 
                 
                 let mediaHTML = ''; 
                 if (hasImage) { 
-                    const imgClass = "w-full h-full object-cover transition-transform duration-700 hover:scale-105";
-                    // 容器樣式：手機 w-full, 電腦版依 layoutType
-                    
-                    if (layoutType === 'collage-3') {
-                         const imgs = images.slice(0, 3).map(src => `<div class="thumbnail-base w-full h-24 md:h-32"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="${imgClass}"></div>`).join('');
-                         mediaHTML = `<div class="grid grid-cols-3 gap-1 mt-1 w-full">${imgs}</div>`;
-                    } else if (layoutType === 'collage-2') {
-                         const imgs = images.slice(0, 2).map(src => `<div class="thumbnail-base w-full h-32 md:h-40"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="${imgClass}"></div>`).join('');
-                         mediaHTML = `<div class="grid grid-cols-2 gap-1 mt-1 w-full">${imgs}</div>`;
+                    if (layoutType === 'carousel') {
+                        // 多圖橫向捲動
+                        const imgs = images.slice(0, 5).map(src => 
+                            `<div class="thumb-carousel-item group">
+                                <img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="transition-transform duration-500 group-hover:scale-110">
+                             </div>`
+                        ).join('');
+                        mediaHTML = `<div class="thumb-carousel no-scrollbar">${imgs}</div>`;
+                    } else if (layoutType === 'big-card') {
+                        // 大卡片 (使用 Contain + 透明背景)
+                        const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`; 
+                        mediaHTML = `<div class="thumb-big group"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy"></div>`;
                     } else {
-                         const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`; 
-                         let containerClass = "thumbnail-base relative group bg-transparent w-full md:w-40 md:h-32";
-                         
-                         // 大圖模式
-                         if (layoutType === 'big-card') {
-                             containerClass = "thumbnail-base relative group bg-transparent w-full aspect-video mt-1";
-                         }
-
-                         mediaHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="${imgClass}"></div>`; 
+                        // 側邊小圖 (使用 Cover 填滿)
+                        const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`; 
+                        mediaHTML = `<div class="thumb-side group"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="group-hover:scale-110"></div>`; 
                     }
                 } 
                 
                 item.innerHTML = `
-                    <div class="flex flex-col overflow-hidden w-full md:flex-grow">
+                    <div class="flex flex-col overflow-hidden w-full flex-grow">
                         <div class="flex items-start justify-between mb-1">
                             <h3 class="font-bold text-base leading-snug ${titleClass} line-clamp-2 pr-2 transition-colors">${boardNameHTML}${article.title}</h3>
                             ${pushHTML}
@@ -591,7 +559,16 @@
                     </div>
                     ${mediaHTML}`; 
                 
-                item.addEventListener('click', () => { 
+                item.addEventListener('click', (e) => { 
+                    // 如果點擊的是 Carousel 裡的圖片，直接打開 Viewer
+                    if (e.target.tagName === 'IMG' && e.target.closest('.thumb-carousel')) {
+                        e.stopPropagation();
+                        const imgSrc = e.target.src.replace(location.origin + '/api/scraper?proxy_url=', '');
+                        const decodedSrc = decodeURIComponent(imgSrc);
+                        openImageViewer(images, images.indexOf(decodedSrc));
+                        return;
+                    }
+
                     cancelRetry(); 
                     const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link); 
                     if (a) showDetailView(a); 
