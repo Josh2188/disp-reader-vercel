@@ -14,10 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="PTT Reader">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Viewer.js -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
-    
+    <script src="https://unpkg.com/pinch-zoom-js@2.3.4/dist/pinch-zoom.umd.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
@@ -39,7 +36,9 @@
         /* === 動畫效果 === */
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
         /* === 捲軸隱藏 === */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -51,131 +50,27 @@
         .glassmorphism { background-color: rgba(15, 23, 42, 0.9); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); }
         .card-bg { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(4px); }
 
-        /* === Viewer.js 客製化 === */
-        .viewer-backdrop { background-color: rgba(0, 0, 0, 0.98) !important; }
-        .viewer-container { touch-action: none; } 
-        .viewer-play, .viewer-flip-horizontal, .viewer-flip-vertical, .viewer-one-to-one, .viewer-zoom-in, .viewer-zoom-out, .viewer-rotate-left, .viewer-rotate-right, .viewer-title { display: none; }
+        /* === 圖片燈箱核心樣式 === */
+        #image-modal.hidden, #image-modal-controls.hidden { display: none; }
+        .pinch-zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; touch-action: none; } 
+        .pinch-zoom-container img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: auto; transform-origin: center center; will-change: transform; }
         
-        .viewer-toolbar { width: auto; margin: 0 auto; bottom: 20px; border-radius: 99px; background-color: rgba(50,50,50,0.6); backdrop-filter: blur(8px); }
-        .viewer-toolbar > ul > li { width: 44px; height: 44px; background-color: transparent; border-radius: 50%; margin: 0 2px; }
-        .viewer-toolbar > ul > li:hover { background-color: rgba(255,255,255,0.2); }
-
-        @media (max-width: 768px) {
-            .viewer-toolbar { bottom: 80px; width: 90%; }
-            .viewer-toolbar > ul > li { width: 40px; height: 40px; }
-        }
-        
-        #viewer-custom-overlay { pointer-events: none; }
-        #viewer-custom-overlay button { pointer-events: auto; }
+        .image-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.3); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; z-index: 61; }
+        #image-modal:hover .image-nav-btn { opacity: 1; }
+        .image-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        #image-prev-btn { left: 16px; }
+        #image-next-btn { right: 16px; }
 
         /* === Tooltip === */
         .btn-tooltip { position: relative; }
         .btn-tooltip::after { content: attr(data-title); position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(5px) scale(0.95); padding: 4px 8px; background: rgba(15, 23, 42, 0.95); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: all 0.2s ease; pointer-events: none; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
         .btn-tooltip:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(5px) scale(1); }
 
-        /* === 內容樣式 (修正：無黑邊 + 完整顯示) === */
-        /* 圖片容器：透明背景，無邊框，高度自適應，移除多餘 padding */
-        .thumbnail-base { 
-            flex-shrink: 0; 
-            overflow: hidden; 
-            border-radius: 0.5rem; 
-            background-color: transparent !important; /* 強制透明 */
-            border: none !important;
-            /* box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); 移除陰影以避免產生看似黑邊的效果 */
-            position: relative; 
-            width: 100%; 
-            height: auto; 
-            min-height: 0; /* 防止 grid item 溢出 */
-            display: flex;
-            align-items: center; /* 垂直置中 */
-            justify-content: center; /* 水平置中 */
-        }
+        /* === 內容樣式 === */
+        .thumbnail-base { flex-shrink: 0; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); position: relative; }
+        .thumbnail-base img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+        .thumbnail-base:hover img { transform: scale(1.1); }
         
-        /* 圖片：完整顯示 (contain)，最大高度限制，移除底線 */
-        .thumbnail-base img { 
-            max-width: 100%; 
-            height: auto; 
-            max-height: 250px; /* 限制單圖最大高度，避免過長 */
-            object-fit: contain; /* 完整顯示，不裁切 */
-            display: block; 
-            border: none !important;
-            transition: transform 0.5s ease; 
-        }
-        .thumbnail-base:hover img { transform: scale(1.02); }
-
-        /* 多圖拼貼容器 (Grid) - 調整 gap */
-        .thumbnail-multi {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* 自動適應欄位 */
-            gap: 0.5rem;
-            width: 100%;
-            background-color: transparent !important;
-            margin-top: 0.5rem;
-        }
-        /* 多圖模式下的圖片限制 */
-        .thumbnail-multi .thumbnail-base img {
-            max-height: 150px; /* 多圖時高度小一點 */
-            object-fit: cover; /* 多圖拼貼時為了整齊，改用 cover (您提到如果變這樣，原本隨機編排較好 -> 這裡保留隨機編排邏輯，但多圖時用 cover 較整齊) */
-            /* 修正：使用者說多圖也不要截斷 -> 改回 contain */
-             object-fit: contain;
-             width: 100%;
-             height: 100%;
-        }
-        /* 修正：如果用 contain，多圖 grid 的高度不齊會很醜。
-           折衷方案：多圖時使用 flex row，讓高度一致或自適應 */
-        .thumbnail-multi.flex-mode {
-             display: flex;
-             flex-wrap: wrap;
-             gap: 0.5rem;
-        }
-        .thumbnail-multi.flex-mode .thumbnail-base {
-             width: calc(33.33% - 0.35rem); /* 三欄 */
-             flex-grow: 1;
-        }
-
-
-        /* 列表項目佈局 (RWD) */
-        .article-card {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            transition: background-color 0.2s;
-        }
-        .article-card:hover { background-color: rgba(255,255,255,0.03); }
-        
-        /* 手機版：垂直堆疊，圖片寬度 100% */
-        @media (max-width: 768px) {
-            .article-card {
-                flex-direction: column;
-            }
-            .thumbnail-base {
-                width: 100%;
-                max-width: none;
-                margin-top: 0.5rem;
-            }
-            .thumbnail-base img {
-                max-height: none; /* 手機上不限高，讓它完整顯示 */
-                width: 100%;
-            }
-            /* 多圖在手機上也垂直堆疊或換行 */
-            .thumbnail-multi {
-                grid-template-columns: repeat(2, 1fr); /* 手機兩欄 */
-            }
-        }
-        
-        /* 電腦版限制圖片寬度 (側邊圖模式) */
-        @media (min-width: 768px) {
-            .thumbnail-side {
-                width: 160px; /* 固定寬度 */
-                flex-shrink: 0;
-            }
-            .thumbnail-side img {
-                max-height: 120px;
-            }
-        }
-
         .push { display: flex; flex-wrap: wrap; align-items: baseline; margin-bottom: 0.25rem; line-height: 1.35; }
         .push-tag { flex-shrink: 0; width: 2rem; font-weight: 600; text-align: center; }
         .push-tag-推 { color: #22c55e; } .push-tag-噓 { color: #ef4444; } .push-tag-→ { color: #9ca3af; }
@@ -187,19 +82,17 @@
         .youtube-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         .youtube-thumbnail { cursor: pointer; position: relative; display: block; }
         .youtube-thumbnail::after { content: '▶'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; color: white; background-color: rgba(0,0,0,0.5); width: 60px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; line-height: 42px; padding-left: 5px; backdrop-filter: blur(4px); }
-        .video-container { width: 100%; margin: 0.5rem 0; border-radius: 0.5rem; overflow: hidden; background-color: #000; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .video-container video { width: 100%; height: auto; display: block; max-height: 80vh; }
         .article-image { cursor: pointer; border-radius: 0.5rem; transition: filter 0.2s; }
         .article-image:hover { filter: brightness(0.9); }
 
         #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
-        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; background-color: #1e293b; }
-        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; object-fit: contain; } /* 美圖牆也改為完整顯示 */
+        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; }
+        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; }
         .gallery-item:hover img { transform: scale(1.05); }
         .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; backdrop-filter: blur(2px); }
         .gallery-item.is-favorite .fav-overlay { display: block; }
 
-        /* RWD 欄位 */
+        /* RWD 欄位 (新增 xs) */
         #gallery-grid.size-xs { column-count: 3; } @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
         #gallery-grid.size-sm { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } } @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
         #gallery-grid.size-md { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } } @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
@@ -219,51 +112,16 @@
         .board-chip.active { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); border-color: rgba(59, 130, 246, 0.5); transform: translateY(-1px); }
         .board-chip:hover:not(.active) { background-color: rgba(71, 85, 105, 0.6); color: #f1f5f9; }
 
-        /* === 右下角返回鍵 (區分手機/電腦) === */
-        #floating-back-btn {
-            position: fixed;
-            z-index: 50;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 9999px;
-            cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background-color: #2563eb;
-            color: white;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* 手機版：位置調高避開導航 */
-        @media (max-width: 768px) {
-            #floating-back-btn {
-                bottom: 80px; 
-                right: 20px;
-                width: 48px;
-                height: 48px;
-                opacity: 0.8;
-            }
-            #floating-back-btn:active {
-                opacity: 1;
-                transform: scale(0.95);
-            }
-        }
+        /* 多圖拼貼佈局 Helper */
+        .grid-collage { display: grid; gap: 2px; width: 100%; height: 100%; border-radius: 0.5rem; overflow: hidden; }
+        .collage-1-2 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+        .collage-1-2 img:first-child { grid-row: span 2; height: 100%; }
+        .collage-2 { grid-template-columns: 1fr 1fr; }
+        .collage-3 { grid-template-columns: 1fr 1fr 1fr; }
 
-        /* 電腦版：大、不透明、固定 */
-        @media (min-width: 768px) {
-            #floating-back-btn {
-                bottom: 24px;
-                right: 24px;
-                width: 60px;
-                height: 60px;
-                opacity: 1;
-            }
-            #floating-back-btn:hover {
-                transform: scale(1.1);
-                background-color: #3b82f6;
-            }
-        }
+        @media (min-width: 768px) { #app-container { max-width: 48rem; } }
+        @media (min-width: 1024px) { #app-container { max-width: 64rem; } }
+        @media (min-width: 1280px) { #app-container { max-width: none; } }
     </style>
 </head>
 <body class="text-gray-100 theme-default min-h-screen">
@@ -313,7 +171,7 @@
                     </div>
 
                     <div id="gallery-view-controls" class="flex-shrink-0 flex items-center gap-1 hidden">
-                         <button id="gallery-size-toggle-btn" class="btn-tooltip p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" data-title="切換縮圖尺寸"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg></button>
+                         <button id="gallery-size-toggle-btn" class="btn-tooltip p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" data-title="切換縮圖尺寸"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg></button>
                          <button id="fullscreen-toggle-gallery" class="btn-tooltip p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" data-title="全螢幕"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button>
                     </div>
 
@@ -344,26 +202,24 @@
         </div>
     </div>
 
-    <!-- Viewer.js 浮動控制層 -->
-    <div id="viewer-custom-overlay" class="hidden fixed top-0 left-0 w-full h-full z-[2016] flex flex-col justify-between pointer-events-none">
-        <div class="flex justify-end p-4 pt-4 gap-3">
-             <button id="viewer-download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="下載圖片">
-                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            </button>
-            <button id="viewer-zoom-cycle-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="循環縮放">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
-            </button>
-            <button id="viewer-favorite-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-pink-600/80 transition-all border border-white/10 pointer-events-auto shadow-lg" title="收藏">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-            </button>
-        </div>
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/98 z-50 flex items-center justify-center p-0 transition-opacity duration-300 backdrop-blur-sm">
+        <div id="pinch-zoom-target" class="pinch-zoom-container"></div>
+        <button id="image-prev-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+        <button id="image-next-btn" class="image-nav-btn"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+        <div id="image-modal-title" class="absolute bottom-6 left-4 right-4 text-white text-center text-sm truncate z-60 drop-shadow-md font-medium pointer-events-none opacity-80"></div>
+    </div>
+    <div id="image-modal-controls" class="hidden fixed top-4 right-4 flex gap-3 z-[60]">
+        <button id="zoom-cycle-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10" title="循環縮放">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
+        </button>
+        <button id="favorite-from-modal-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-pink-600/80 transition-all border border-white/10" title="收藏">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+        </button>
+        <button id="download-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
+        <button id="close-modal-btn" class="bg-black/40 backdrop-blur-md text-white p-3 rounded-full hover:bg-red-600/80 transition-all border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
     </div>
     
-    <!-- 浮動返回按鈕 -->
-    <button id="floating-back-btn" title="返回 / 回到頂部">
-        <svg id="back-icon-up" class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-        <svg id="back-icon-left" class="w-full h-full hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-    </button>
+    <button id="floating-back-btn" class="hidden fixed bottom-6 right-6 z-40 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 transition-transform active:scale-95 hover:bg-blue-500 hover:scale-105 border border-white/10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
     
     <div id="toast-notification" class="bg-slate-800 border border-slate-600 text-white text-sm py-3 px-6 rounded-full shadow-2xl"><p id="toast-message"></p></div>
     
@@ -382,7 +238,7 @@
 
             const cache = { get(key) { const itemStr = localStorage.getItem(key); if (!itemStr) return null; try { const item = JSON.parse(itemStr); if (new Date().getTime() > item.expiry) { localStorage.removeItem(key); return null; } return item.data; } catch (e) { return null; } }, set(key, data) { const item = { data: data, expiry: new Date().getTime() + 10 * 60 * 1000 }; localStorage.setItem(key, JSON.stringify(item)); } };
 
-            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), viewerInstance: null, currentArticleImages: [], allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', currentModalGalleryItem: null, touchStartX: 0, touchStartY: 0, isScrolling: false };
+            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), pinchZoomInstance: null, inactivityTimer: null, currentArticleImages: [], currentImageIndex: 0, allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', currentModalGalleryItem: null, touchStartX: 0, touchStartY: 0, isScrolling: false };
             const MAX_RETRIES = 5;
 
             const el = id => document.getElementById(id);
@@ -394,6 +250,9 @@
             const skeletonContainer = el('skeleton-container'), infiniteLoader = el('infinite-loader'), listError = el('list-error');
             const listErrorText = el('list-error-text'), boardScroller = el('board-scroller-container');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
+            const imageModal = el('image-modal'), imageModalControls = el('image-modal-controls'), imagePrevBtn = el('image-prev-btn');
+            const imageNextBtn = el('image-next-btn'), pinchZoomTarget = el('pinch-zoom-target'), downloadBtn = el('download-btn');
+            const closeModalBtn = el('close-modal-btn'), imageModalTitle = el('image-modal-title');
             const clearCacheBtn = el('clear-cache-btn'), toggleFavoritesBtn = el('toggle-favorites-btn');
             const favIconOutline = el('fav-icon-outline'), favIconSolid = el('fav-icon-solid'), toggleSortBtn = el('toggle-sort-btn');
             const sortTimeIcon = el('sort-time-icon'), sortHotIcon = el('sort-hot-icon'), listViewControls = el('list-view-controls');
@@ -408,13 +267,9 @@
             const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
             const appLogoBtn = el('app-logo-btn');
             const beautyModeBtn = el('beauty-mode-btn');
-            const viewerCustomOverlay = el('viewer-custom-overlay');
-            const viewerZoomCycleBtn = el('viewer-zoom-cycle-btn');
-            const viewerFavoriteBtn = el('viewer-favorite-btn');
-            const viewerDownloadBtn = el('viewer-download-btn');
-            const backIconUp = el('back-icon-up');
-            const backIconLeft = el('back-icon-left');
-
+            const favoriteFromModalBtn = el('favorite-from-modal-btn');
+            const zoomCycleBtn = el('zoom-cycle-btn');
+            
             const TOP_BOARDS = { "Hot": "熱門", "Gossiping": "八卦", "Stock": "股票", "Beauty": "表特", "Lifeismoney": "省錢", "MobileComm": "手機", "Sex": "西斯", "Boy-Girl": "男女", "Tech_Job": "科技", "HatePolitics": "政黑", "KoreaStar": "韓星", "movie": "電影", "e-shopping": "網購" };
             const BOARD_KEYS = Object.keys(TOP_BOARDS);
 
@@ -428,7 +283,7 @@
                         if (state.viewingFavorites) renderAndSortArticles(); 
                         if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         if(state.currentView === 'gallery') updateGalleryFavoriteIcons();
-                        if(state.viewerInstance) updateFavoriteFromOverlay();
+                        if(!imageModal.classList.contains('hidden')) updateFavoriteFromModalBtn();
                     });
                     unsubscribeDisliked = onSnapshot(collection(db, 'users', userId, 'disliked_articles'), snap => { state.dislikedArticles = snap.docs.map(d => d.data()); renderAndSortArticles(); });
                 } else { userId = user ? user.uid : null; googleLoginBtn.classList.remove('hidden'); userInfo.classList.add('hidden'); userControls.classList.add('hidden'); state.favorites = []; state.dislikedArticles = []; if (!user) signInAnonymously(auth).catch(e => console.error("匿名登入失敗:", e)); }
@@ -438,41 +293,7 @@
             const saveReadArticles = () => localStorage.setItem('readArticles', JSON.stringify([...state.readArticles]));
             const isFavorite = link => state.favorites.some(fav => fav.link === link);
 
-            function linkifyAndMediafy(text) { 
-                if (!text) return ''; 
-                const urlRegex = /(https?:\/\/[^\s<>"]+)/g; 
-                const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; 
-                const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)$/i; 
-                const videoRegex = /\.(mp4|webm|mov)($|\?)/i;
-                const imgurGifvRegex = /imgur\.com\/([a-zA-Z0-9]+)\.gifv/i;
-                
-                const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); 
-                let processedText = escapeHTML(text).replace(/\n/g, '<br>'); 
-                
-                return processedText.replace(urlRegex, url => { 
-                    const cleanUrl = url.split('&amp;')[0]; 
-                    const ytMatch = cleanUrl.match(youtubeRegex); 
-                    if (ytMatch) { 
-                        const videoId = ytMatch[1]; 
-                        return `<div class="youtube-container"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`; 
-                    }
-                    if (videoRegex.test(cleanUrl)) {
-                         return `<div class="video-container"><video src="${cleanUrl}" controls playsinline loop muted preload="metadata"></video></div>`;
-                    }
-                    const gifvMatch = cleanUrl.match(imgurGifvRegex);
-                    if (gifvMatch) {
-                        const mp4Url = `https://i.imgur.com/${gifvMatch[1]}.mp4`;
-                        return `<div class="video-container"><video src="${mp4Url}" controls playsinline loop muted autoplay></video></div>`;
-                    }
-                    const hasImageExtension = imageRegex.test(cleanUrl); 
-                    const isKnownImageHost = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//.test(cleanUrl); 
-                    if (hasImageExtension || isKnownImageHost) { 
-                        const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; 
-                        return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-2 rounded-lg max-w-full h-auto shadow-md cursor-pointer" data-original-url="${cleanUrl}" loading="lazy">`; 
-                    } 
-                    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline break-all">${cleanUrl}</a>`; 
-                }); 
-            }
+            function linkifyAndMediafy(text) { if (!text) return ''; const urlRegex = /(https?:\/\/[^\s<>"]+)/g; const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/; const imageRegex = /\.(jpg|jpeg|png|gif|avif|webp)($|\?)/i; const imageHostRegex = /^(https?:\/\/)(i\.)?(imgur\.com|meee\.com\.tw|sl\.loli\.net|upload\.cc)\//; const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); let processedText = escapeHTML(text).replace(/\n/g, '<br>'); return processedText.replace(urlRegex, url => { const cleanUrl = url.split('&amp;')[0]; const ytMatch = cleanUrl.match(youtubeRegex); if (ytMatch) { const videoId = ytMatch[1]; return `<a href="${cleanUrl}" class="youtube-thumbnail" data-youtube-id="${videoId}"><img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" class="my-2 rounded-lg max-w-full h-auto shadow-md" loading="lazy"></a>`; } const hasImageExtension = imageRegex.test(cleanUrl); const isKnownImageHost = imageHostRegex.test(cleanUrl); if (hasImageExtension || isKnownImageHost) { const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(cleanUrl)}`; return `<img src="${proxiedUrl}" alt="圖片" class="article-image my-3 rounded-lg max-w-full h-auto shadow-md cursor-pointer" data-original-url="${cleanUrl}" loading="lazy">`; } return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-main-link hover:underline break-all">${cleanUrl}</a>`; }); }
             
             function updateHeader() { 
                 const isDetail = state.currentView === 'detail'; 
@@ -490,21 +311,17 @@
                     if (chip.dataset.board === state.currentBoard) { chip.classList.add('active'); chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } 
                     else { chip.classList.remove('active'); }
                 });
-
-                // 更新浮動按鈕圖示
-                if (isDetail || isGallery) {
-                    backIconUp.classList.add('hidden');
-                    backIconLeft.classList.remove('hidden');
-                } else {
-                    backIconUp.classList.remove('hidden');
-                    backIconLeft.classList.add('hidden');
-                }
             }
 
             function switchToView(viewName) { 
                 ['list', 'detail', 'gallery'].forEach(view => el(`${view}-view`).classList.toggle('hidden', view !== viewName)); 
                 state.currentView = viewName; 
                 updateHeader();
+                // 浮動返回按鈕：只在非內頁且非畫廊時顯示？不，使用者要求內頁隱藏，所以只有列表頁要顯示嗎？通常列表頁不需要，內頁才需要。
+                // 修正邏輯：使用者說「手機檢視時，請將文章內頁右下角的返回鍵隱藏」。
+                // 所以 detailView 時，floatingBackBtn 應為 hidden
+                if (viewName === 'detail') floatingBackBtn.classList.add('hidden'); 
+                else floatingBackBtn.classList.add('hidden'); // 其他頁面暫不顯示
             }
 
             function createSkeletonItem() { return `<div class="flex items-start p-2 gap-2 animate-pulse border-b border-white/5"><div class="flex flex-col flex-grow"><div class="h-5 bg-white/10 rounded w-3/4 mb-2"></div><div class="h-3 bg-white/10 rounded w-1/3 mb-3"></div><div class="h-4 bg-white/10 rounded w-full mb-1"></div></div><div class="w-20 h-20 bg-white/10 rounded-md flex-shrink-0"></div></div>`; }
@@ -530,27 +347,32 @@
             function createListItem(article, index) { 
                 const item = document.createElement('div'); 
                 const isRead = state.readArticles.has(article.link);
-                const baseClass = `article-card p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${isRead ? 'opacity-75' : ''}`;
+                const baseClass = `p-2 border-b border-white/5 hover:bg-white/5 cursor-pointer active:bg-white/10 transition-all duration-300 animate-fade-in-up ${isRead ? 'opacity-75' : ''}`;
                 const titleClass = isRead ? 'text-read' : 'text-main-title';
                 
+                // 判斷圖片數量來決定佈局
                 const images = article.images || (article.thumbnail ? [article.thumbnail] : []);
                 const hasImage = images.length > 0;
                 
                 let layoutType = 'standard';
-                // 隨機穿插大卡片、左圖、右圖
+                // 簡易隨機邏輯 + 圖片數量判斷
                 if (hasImage) {
-                     if (index > 0 && index % 7 === 0) layoutType = 'big-card'; 
-                     else if (index % 2 !== 0) layoutType = 'left-thumb';
-                     else layoutType = 'right-thumb';
+                    if (images.length >= 3 && index % 5 === 0) layoutType = 'collage-3';
+                    else if (images.length === 2 && index % 4 === 0) layoutType = 'collage-2';
+                    else if (index > 0 && index % 8 === 0) layoutType = 'big-card'; 
+                    else if (index % 2 !== 0) layoutType = 'left-thumb';
+                    else layoutType = 'right-thumb';
+                } else {
+                    layoutType = 'no-image';
                 }
 
-                // Flex 佈局 (RWD)
-                if (layoutType === 'big-card') {
-                     item.className = `${baseClass} flex flex-col gap-2`;
+                // 設定容器 Flex/Grid
+                if (layoutType === 'big-card' || layoutType === 'collage-3' || layoutType === 'collage-2') {
+                    item.className = `${baseClass} flex flex-col gap-2`;
                 } else if (layoutType === 'left-thumb') {
-                     item.className = `${baseClass} flex flex-col md:flex-row-reverse gap-3 items-start`;
+                    item.className = `${baseClass} flex flex-row-reverse gap-2 items-start`;
                 } else {
-                     item.className = `${baseClass} flex flex-col md:flex-row gap-3 items-start`;
+                    item.className = `${baseClass} flex flex-row gap-2 items-start`;
                 }
 
                 item.dataset.link = article.link; 
@@ -559,41 +381,38 @@
                 const pushHTML = article.push_count ? `<span class="flex-shrink-0 ml-auto text-xs font-mono px-2 py-0.5 rounded ${pushClass}">${article.push_count}</span>` : ''; 
                 const boardNameHTML = state.currentBoard === 'Hot' ? `<span class="text-xs text-blue-400 mr-2 bg-blue-900/30 px-1.5 py-0.5 rounded border border-blue-900/50">${article.board}</span>` : ''; 
                 const timestampText = article.formatted_timestamp ? `${article.formatted_timestamp.split(' ')[0]}` : `${article.date}`; 
-                const snippetClass = layoutType === 'big-card' ? 'line-clamp-3' : 'line-clamp-2';
+                const snippetClass = (layoutType === 'big-card' || layoutType.startsWith('collage')) ? 'line-clamp-3' : 'line-clamp-2';
                 const snippetText = article.snippet || ''; 
                 
                 let mediaHTML = ''; 
                 if (hasImage) { 
-                    // 單圖顯示，使用 object-cover (填滿) 或 contain (大圖)
-                    const imgClass = "w-full h-full object-cover transition-transform duration-700 hover:scale-105";
-
-                    if (layoutType === 'big-card') {
-                         // 大圖卡片：使用 contain + 透明背景完整顯示
-                         const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`;
-                         mediaHTML = `<div data-thumbnail-for="${article.link}" class="thumbnail-base w-full max-h-96 mt-2 !bg-transparent"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="w-full h-full object-contain max-h-96"></div>`;
+                    if (layoutType === 'collage-3') {
+                        // 3張圖拼貼
+                        const imgs = images.slice(0, 3).map(src => `<div class="thumbnail-base w-full h-24"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy"></div>`).join('');
+                        mediaHTML = `<div class="grid grid-cols-3 gap-1 mt-1">${imgs}</div>`;
+                    } else if (layoutType === 'collage-2') {
+                        // 2張圖拼貼
+                        const imgs = images.slice(0, 2).map(src => `<div class="thumbnail-base w-full h-32"><img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy"></div>`).join('');
+                        mediaHTML = `<div class="grid grid-cols-2 gap-1 mt-1">${imgs}</div>`;
                     } else {
-                        // 側邊小圖：使用 cover 填滿正方形
+                        // 單圖邏輯
                         const proxiedImageUrl = `/api/scraper?proxy_url=${encodeURIComponent(images[0])}`; 
-                        const containerClass = "thumbnail-base relative group bg-transparent w-full aspect-video md:w-32 md:h-24 md:aspect-auto";
-                        mediaHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy" class="${imgClass}"></div>`; 
-                    }
-
-                    // 如果有多張圖，顯示 Carousel (在下方)
-                    if (images.length > 1) {
-                        const imgs = images.map(src => 
-                            `<div class="thumb-carousel-item group">
-                                <img src="/api/scraper?proxy_url=${encodeURIComponent(src)}" loading="lazy" class="transition-transform duration-500 group-hover:scale-110 object-cover">
-                             </div>`
-                        ).join('');
-                        // 將單圖替換為 Carousel，或者附加在下方？
-                        // 這裡選擇附加在下方，若有 Carousel 則單圖可以不顯示，或者顯示第一張當封面
-                        // 為了簡潔，直接用 Carousel 顯示所有圖
-                         mediaHTML = `<div class="thumb-carousel no-scrollbar mt-2 w-full">${imgs}</div>`;
+                        let containerClass = "thumbnail-base relative group";
+                        if (layoutType === 'big-card') containerClass += " w-full aspect-video mt-1 rounded-xl"; 
+                        else {
+                            // 隨機單圖尺寸
+                            const sizeVar = index % 5;
+                            if (sizeVar === 0) containerClass += " w-24 h-24"; 
+                            else if (sizeVar === 1) containerClass += " w-20 h-28"; 
+                            else if (sizeVar === 2) containerClass += " w-28 h-28";
+                            else containerClass += " w-24 h-24";
+                        }
+                        mediaHTML = `<div data-thumbnail-for="${article.link}" class="${containerClass}"><img src="${proxiedImageUrl}" alt="thumbnail" loading="lazy"></div>`; 
                     }
                 } 
                 
                 item.innerHTML = `
-                    <div class="flex flex-col overflow-hidden w-full md:flex-grow">
+                    <div class="flex flex-col overflow-hidden flex-grow">
                         <div class="flex items-start justify-between mb-1">
                             <h3 class="font-bold text-base leading-snug ${titleClass} line-clamp-2 pr-2 transition-colors">${boardNameHTML}${article.title}</h3>
                             ${pushHTML}
@@ -602,19 +421,11 @@
                             <span class="mr-2">${article.author}</span>
                             <span>• ${timestampText}</span>
                         </div>
-                        <p class="text-sm text-main-content mt-1 line-clamp-2 leading-tight opacity-80">${snippetText}</p>
-                        ${mediaHTML} 
-                    </div>`; 
+                        <p class="text-sm text-main-content mt-1 ${snippetClass} leading-tight opacity-80">${snippetText}</p>
+                    </div>
+                    ${mediaHTML}`; 
                 
-                item.addEventListener('click', (e) => { 
-                    if (e.target.tagName === 'IMG' && e.target.closest('.thumb-carousel')) {
-                        e.stopPropagation();
-                        const imgSrc = e.target.src.replace(location.origin + '/api/scraper?proxy_url=', '');
-                        const decodedSrc = decodeURIComponent(imgSrc);
-                        openImageViewer(images, images.indexOf(decodedSrc));
-                        return;
-                    }
-
+                item.addEventListener('click', () => { 
                     cancelRetry(); 
                     const a = state.allArticles.find(a => a.link === article.link) || state.favorites.find(a => a.link === article.link); 
                     if (a) showDetailView(a); 
@@ -669,9 +480,12 @@
             }
 
             function goBack(fromButton = false) { 
-                if (state.viewerInstance) { state.viewerInstance.hide(); return; }
-                if (state.currentView === 'detail' || state.currentView === 'gallery') { window.history.back(); } 
-                else if (state.currentView === 'list') { articlesList.scrollTo({ top: 0, behavior: 'smooth' }); }
+                if (!imageModal.classList.contains('hidden')) { closeImageModal(); return; }
+                if (state.currentView === 'detail' || state.currentView === 'gallery') {
+                    window.history.back();
+                } else if (state.currentView === 'list') {
+                     articlesList.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             }
 
             function onBackToList() { 
@@ -682,7 +496,7 @@
             }
 
             window.addEventListener('popstate', (event) => { 
-                if (state.viewerInstance) { state.viewerInstance.hide(); return; } 
+                if (!imageModal.classList.contains('hidden')) { closeImageModal(); return; } 
                 if (state.currentView === 'gallery' && (!event.state || event.state.view === 'list')) { switchToView('list'); } 
                 else if (state.currentView === 'detail' && (!event.state || event.state.view === 'list')) { onBackToList(); } 
                 else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); }
@@ -701,8 +515,16 @@
                     itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; 
                     itemDiv.addEventListener('click', (e) => { 
                         e.preventDefault(); 
-                        if (item.all_images && item.all_images.length > 0) { openImageViewer(item.all_images, item.all_images.indexOf(item.preview_image), item); } 
-                        else { openImageViewer([item.preview_image], 0, item); }
+                        if (item.all_images && item.all_images.length > 0) {
+                            state.currentArticleImages = item.all_images;
+                            state.currentModalGalleryItem = item;
+                            const idx = Math.max(0, item.all_images.indexOf(item.preview_image));
+                            openImageModal(idx, item.article.title); 
+                        } else {
+                            state.currentArticleImages = [item.preview_image];
+                            state.currentModalGalleryItem = item; 
+                            openImageModal(0, item.article.title);
+                        }
                     }); 
                     fragment.appendChild(itemDiv); 
                 }); 
@@ -712,161 +534,60 @@
             
             function updateGalleryFavoriteIcons() { document.querySelectorAll('.gallery-item').forEach(item => { const link = item.dataset.articleLink; if (link) { item.classList.toggle('is-favorite', isFavorite(link)); } }); }
 
-            function openImageViewer(images, index, contextItem = null) {
-                if (state.viewerInstance) state.viewerInstance.destroy();
+            function cleanupImageInstance() { if (state.pinchZoomInstance) { if (state.pinchZoomInstance._wheelHandler) pinchZoomTarget.removeEventListener('wheel', state.pinchZoomInstance._wheelHandler); if (typeof state.pinchZoomInstance.destroy === 'function') state.pinchZoomInstance.destroy(); } state.pinchZoomInstance = null; pinchZoomTarget.innerHTML = ''; }
+            
+            function openImageModal(index, title = null) { 
+                state.currentImageIndex = index; 
+                const url = state.currentArticleImages[index]; 
+                if (!url) return; 
                 
-                const div = document.createElement('div');
-                div.style.display = 'none';
-                images.forEach(src => {
-                    const img = document.createElement('img');
-                    img.src = `/api/scraper?proxy_url=${encodeURIComponent(src)}`;
-                    if (contextItem && contextItem.article) {
-                        img.dataset.articleLink = contextItem.article.link;
-                    } else if (state.currentArticle) {
-                        img.dataset.articleLink = state.currentArticle.link;
-                    }
-                    div.appendChild(img);
-                });
-                document.body.appendChild(div);
+                imageModalTitle.textContent = title || (state.currentModalGalleryItem ? state.currentModalGalleryItem.article.title : '');
+                imageModalTitle.classList.toggle('hidden', !imageModalTitle.textContent);
+                updateImageNavButtons();
+                updateFavoriteFromModalBtn();
 
-                const viewer = new Viewer(div, {
-                    initialViewIndex: index,
-                    inline: false,
-                    button: true,
-                    navbar: true,
-                    title: true,
-                    transition: false, // 關閉過渡動畫解決閃爍
-                    zoomRatio: 0.5,
-                    minZoomRatio: 0.1, // 允許縮得更小，避免回彈
-                    maxZoomRatio: 10,
-                    touch: true, // 啟用觸摸
-                    toolbar: {
-                        zoomIn: 1, zoomOut: 1, oneToOne: 1, reset: 1, prev: 1, play: 0, next: 1, rotateLeft: 1, rotateRight: 1, flipHorizontal: 0, flipVertical: 0,
-                    },
-                    hidden() {
-                        viewer.destroy();
-                        div.remove();
-                        state.viewerInstance = null;
-                        viewerCustomOverlay.classList.add('hidden');
-                    },
-                    view(e) {
-                        state.currentImageIndex = e.detail.index;
-                        const originalImg = e.detail.originalImage;
-                        if (originalImg && originalImg.dataset.articleLink) {
-                            state.currentModalGalleryItem = { article: { link: originalImg.dataset.articleLink } };
-                            updateFavoriteFromOverlay();
-                        }
-                    },
-                    ready() {
-                        viewerCustomOverlay.classList.remove('hidden');
-                        updateFavoriteFromOverlay();
-                        
-                        // === 關鍵修正：手勢滑動 ===
-                        const viewerContainer = document.querySelector('.viewer-container');
-                        if (viewerContainer) {
-                            let startX = 0;
-                            let startY = 0;
-                            
-                            viewerContainer.addEventListener('touchstart', (e) => {
-                                startX = e.changedTouches[0].clientX;
-                                startY = e.changedTouches[0].clientY;
-                            }, { passive: false });
-
-                            viewerContainer.addEventListener('touchend', (e) => {
-                                const endX = e.changedTouches[0].clientX;
-                                const endY = e.changedTouches[0].clientY;
-                                const diffX = endX - startX;
-                                const diffY = endY - startY;
-
-                                if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
-                                    const imageData = viewer.imageData;
-                                    const initialImageData = viewer.initialImageData;
-                                    if (imageData.ratio > initialImageData.ratio * 1.05) return;
-
-                                    e.preventDefault(); 
-                                    if (diffX > 0) viewer.prev();
-                                    else viewer.next();
-                                }
-                            }, { passive: false });
-                        }
-                    }
-                });
+                imageModal.classList.remove('hidden'); 
+                imageModalControls.classList.remove('hidden'); 
                 
-                state.viewerInstance = viewer;
-                viewer.show();
-            }
-
-            function updateFavoriteFromOverlay() {
-                if (!state.currentModalGalleryItem) return;
-                const isFav = isFavorite(state.currentModalGalleryItem.article.link);
-                viewerFavoriteBtn.querySelector('svg').classList.toggle('fill-current', isFav);
-                viewerFavoriteBtn.querySelector('svg').classList.toggle('text-pink-500', isFav);
-            }
-
-            // 循環放大邏輯 (修復)
-            const zoomLevels = [1.5, 2, 2.5, 3, 4, 5, 1];
-            let currentZoomIdx = 0;
-            viewerZoomCycleBtn.addEventListener('click', () => {
-                if (!state.viewerInstance) return;
-                const targetRatio = zoomLevels[currentZoomIdx];
-                
-                if (targetRatio === 1) {
-                    state.viewerInstance.reset();
-                } else {
-                    const initialRatio = state.viewerInstance.initialImageData.ratio;
-                    state.viewerInstance.zoomTo(initialRatio * targetRatio, true);
+                if(!pinchZoomTarget.querySelector('.loader')) {
+                    const loader = document.createElement('div');
+                    loader.className = 'loader h-12 w-12 border-white absolute z-10';
+                    loader.style.top = '50%';
+                    loader.style.left = '50%';
+                    loader.style.transform = 'translate(-50%, -50%)';
+                    pinchZoomTarget.appendChild(loader);
                 }
+
+                if (!history.state || history.state.view !== 'image-modal') history.pushState({ view: 'image-modal' }, 'Image', '#image'); 
                 
-                showToast(`縮放: ${targetRatio * 100}%`);
-                currentZoomIdx = (currentZoomIdx + 1) % zoomLevels.length;
-            });
-
-            viewerDownloadBtn.addEventListener('click', async () => {
-                if (!state.viewerInstance) return;
-                const currentImg = state.viewerInstance.image;
-                if (!currentImg) return;
+                const img = new Image(); 
+                img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`; 
                 
-                const src = currentImg.src;
-                let originalUrl = src;
-                try {
-                    const urlObj = new URL(src, window.location.origin);
-                    if(urlObj.searchParams.has('proxy_url')) {
-                        originalUrl = decodeURIComponent(urlObj.searchParams.get('proxy_url'));
-                    }
-                } catch(e) {}
-
-                showToast('正在準備下載...');
-                try {
-                    const res = await fetch(src); 
-                    if (!res.ok) throw new Error('Download failed');
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    const filename = originalUrl.split('/').pop().split('?')[0] || 'download.jpg';
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    a.remove();
-                    showToast('下載完成');
-                } catch (e) {
-                    console.error(e);
-                    showToast('下載失敗，嘗試開啟原圖');
-                    window.open(originalUrl, '_blank');
-                }
-            });
-
-            viewerFavoriteBtn.addEventListener('click', async () => {
-                if (!state.currentModalGalleryItem || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; };
-                const a = state.currentModalGalleryItem.article;
-                const docId = a.link.replace(/[^a-zA-Z0-9]/g, '');
-                const docRef = doc(db, 'users', userId, 'favorites', docId);
-                if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已移除'); }
-                else { await setDoc(docRef, a); showToast('已收藏'); }
-                updateFavoriteFromOverlay();
-            });
+                img.onload = () => { 
+                    cleanupImageInstance(); 
+                    img.className = 'animate-fade-in'; 
+                    pinchZoomTarget.innerHTML = ''; 
+                    pinchZoomTarget.appendChild(img); 
+                    
+                    try { 
+                        const PinchZoomClass = window.PinchZoom?.default || window.PinchZoom;
+                        if (PinchZoomClass) {
+                            state.pinchZoomInstance = new PinchZoomClass(pinchZoomTarget, { minZoom: 1, maxZoom: 8, tapZoomFactor: 3, animationDuration: 300 }); 
+                            const wheelHandler = e => { e.preventDefault(); const inst = state.pinchZoomInstance; if (!inst) return; try { const rect = pinchZoomTarget.getBoundingClientRect(); const scale = inst.getScale(); let newScale = e.deltaY < 0 ? scale * 1.2 : scale / 1.2; newScale = Math.max(inst.options.minZoom, Math.min(newScale, inst.options.maxZoom)); if (newScale !== scale) inst.zoomTo(newScale, { x: e.clientX - rect.left, y: e.clientY - rect.top }); } catch(err) {} }; 
+                            pinchZoomTarget.addEventListener('wheel', wheelHandler, { passive: false }); 
+                            state.pinchZoomInstance._wheelHandler = wheelHandler; 
+                        }
+                    } catch (e) { console.error("pinch-zoom-js 初始化失敗:", e); } 
+                }; 
+                img.onerror = () => { pinchZoomTarget.innerHTML = '<p class="text-white">圖片載入失敗</p>'; } 
+            }
+            
+            function closeImageModal() { if (imageModal.classList.contains('hidden')) return; cleanupImageInstance(); state.currentModalGalleryItem = null; imageModal.classList.add('hidden'); imageModalControls.classList.add('hidden'); };
+            function handleCloseRequest(e) { if (e) e.stopPropagation(); if (history.state?.view === 'image-modal') history.back(); else closeImageModal(); };
+            function showNextImage(e) { if(e) e.stopPropagation(); if (state.currentImageIndex < state.currentArticleImages.length - 1) openImageModal(state.currentImageIndex + 1, imageModalTitle.textContent); }
+            function showPrevImage(e) { if(e) e.stopPropagation(); if (state.currentImageIndex > 0) openImageModal(state.currentImageIndex - 1, imageModalTitle.textContent); }
+            function updateImageNavButtons() { imagePrevBtn.disabled = state.currentImageIndex === 0; imageNextBtn.disabled = state.currentImageIndex >= state.currentArticleImages.length - 1; }
+            function updateFavoriteFromModalBtn() { if (!state.currentModalGalleryItem) return; const isFav = isFavorite(state.currentModalGalleryItem.article.link); favoriteFromModalBtn.querySelector('svg').classList.toggle('fill-current', isFav); favoriteFromModalBtn.querySelector('svg').classList.toggle('text-pink-500', isFav); }
 
             const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
@@ -878,10 +599,60 @@
             function applyGallerySize(sizeKey) { if (!gallerySizes.includes(sizeKey)) return; gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`)); galleryGrid.classList.add(`size-${sizeKey}`); localStorage.setItem('gallerySize', sizeKey); state.gallerySize = sizeKey; }
             function toggleGallerySize() { const currentIndex = gallerySizes.indexOf(state.gallerySize); const nextIndex = (currentIndex + 1) % gallerySizes.length; const nextSizeKey = gallerySizes[nextIndex]; applyGallerySize(nextSizeKey); const sizeMap = { xs: '特小', sm: '小', md: '中', lg: '大' }; showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`); }
 
+            // 循環放大邏輯 (修復)
+            const zoomLevels = [1, 1.5, 2, 2.5, 3, 4, 5];
+            let currentZoomIndex = 0;
+            zoomCycleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!state.pinchZoomInstance) return;
+                
+                // 檢查是否縮放實例有 update 方法，否則手動計算
+                currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
+                const newZoom = zoomLevels[currentZoomIndex];
+                
+                // 設定縮放中心為畫面中心 (重要：座標系統需要基於圖片容器)
+                // PinchZoom 的 zoomTo 接受的是相對於 container 的座標
+                const rect = pinchZoomTarget.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                // 某些版本的 PinchZoom 可能使用不同的參數順序，這裡使用物件傳遞確保安全
+                state.pinchZoomInstance.zoomTo(newZoom, { x: centerX, y: centerY });
+                showToast(`縮放: ${newZoom * 100}%`);
+            });
+
             // 手勢操作 - 一般頁面
             function handleTouchStart(e) { state.touchStartX = e.changedTouches[0].screenX; state.touchStartY = e.changedTouches[0].screenY; state.isScrolling = false; }
             function handleTouchMove(e) { if (state.isScrolling) return; const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) + 10) { state.isScrolling = true; } }
             function handleTouchEnd(e) { if (state.isScrolling) { state.isScrolling = false; return; } const deltaX = e.changedTouches[0].screenX - state.touchStartX; const deltaY = e.changedTouches[0].screenY - state.touchStartY; const swipeThreshold = 80; if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 2) { if (deltaX < 0) { goBack(state.currentView === 'detail'); } } }
+
+            let imgTouchStartX = 0;
+            let imgTouchStartY = 0;
+            const imageModalEl = el('image-modal');
+            
+            imageModalEl.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 1) return;
+                imgTouchStartX = e.touches[0].clientX;
+                imgTouchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            imageModalEl.addEventListener('touchend', (e) => {
+                if (!state.pinchZoomInstance) return;
+                if (state.pinchZoomInstance.scale > 1.05) return; 
+
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchEndX - imgTouchStartX;
+                const diffY = touchEndY - imgTouchStartY;
+
+                if (Math.abs(diffX) > 60 && Math.abs(diffY) < 100) {
+                    if (diffX > 0) {
+                        showPrevImage();
+                    } else {
+                        showNextImage();
+                    }
+                }
+            }, { passive: true });
 
             let listTouchStartX = 0;
             let listTouchStartY = 0;
@@ -978,7 +749,8 @@
                     const originalUrl = image.dataset.originalUrl; 
                     let idx = state.currentArticleImages.indexOf(originalUrl); 
                     if (idx === -1) { state.currentArticleImages.push(originalUrl); idx = state.currentArticleImages.length - 1; }
-                    openImageViewer(state.currentArticleImages, idx);
+                    state.currentModalGalleryItem = { article: state.currentArticle }; 
+                    openImageModal(idx); 
                     return; 
                 } 
                 const thumbnail = e.target.closest('.youtube-thumbnail'); 
@@ -992,6 +764,23 @@
                 } 
             });
             
+            imageModal.addEventListener('click', handleCloseRequest);
+            closeModalBtn.addEventListener('click', handleCloseRequest);
+            pinchZoomTarget.addEventListener('click', e => e.stopPropagation());
+            imagePrevBtn.addEventListener('click', showPrevImage);
+            imageNextBtn.addEventListener('click', showNextImage);
+            
+            favoriteFromModalBtn.addEventListener('click', async () => { 
+                if (!state.currentModalGalleryItem || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; 
+                const a = state.currentModalGalleryItem.article; 
+                if(!a || !a.link) return;
+                const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); 
+                const docRef = doc(db, 'users', userId, 'favorites', docId); 
+                if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } 
+                else { await setDoc(docRef, a); showToast('已加入我的最愛'); } 
+            });
+
+            downloadBtn.addEventListener('click', async e => { e.stopPropagation(); const url = state.currentArticleImages[state.currentImageIndex]; if (!url) return; showToast('正在準備下載...'); downloadBtn.disabled = true; try { const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`); if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`); const blob = await res.blob(); const objUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = objUrl; a.download = url.split('/').pop().split('?')[0] || 'download'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(objUrl); a.remove(); showToast('下載已開始'); } catch (err) { showToast('下載失敗'); window.open(url, '_blank'); } finally { downloadBtn.disabled = false; } });
             clearCacheBtn.addEventListener('click', () => { Object.keys(localStorage).forEach(key => { if (key.startsWith('ptt-cache-')) localStorage.removeItem(key); }); localStorage.removeItem('readArticles'); state.readArticles.clear(); renderAndSortArticles(); showToast(`已清除所有快取與已讀記錄`); });
             const toggleFullscreen = () => { if (!document.fullscreenElement) docEl.requestFullscreen(); else document.exitFullscreen(); };
             fullscreenToggleList.addEventListener('click', toggleFullscreen);
