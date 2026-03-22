@@ -300,6 +300,19 @@
             const listErrorText = el('list-error-text'), boardScroller = el('board-scroller-container');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
             
+            // --- 新增：無限滾動觀察器 (取代 scroll event，解決高度不足無法載入的問題) ---
+            const listObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !state.isLoading && state.prevPageUrl && !state.viewingFavorites && state.currentBoard !== 'Hot') {
+                    loadArticles(state.currentBoard, state.prevPageUrl, true);
+                }
+            }, { root: articlesList, rootMargin: '400px' });
+
+            const galleryObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !state.isLoading && state.galleryPrevPageUrl) {
+                    loadGallery(true);
+                }
+            }, { root: galleryGrid, rootMargin: '600px' });
+
             // Custom Viewer Controls
             const customImageViewer = el('custom-image-viewer');
             const viewerImage = el('viewer-image');
@@ -486,7 +499,64 @@
 
             async function fetchPreviewsInChunks(articles) { const articlesToFetch = articles.filter(a => typeof a.snippet === 'undefined'); if (articlesToFetch.length === 0) return; const CHUNK_SIZE = 5; const articleLinks = articlesToFetch.map(a => a.link); for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) { const chunk = articleLinks.slice(i, i + CHUNK_SIZE); if (chunk.length === 0) continue; try { const res = await fetch('/api/previews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urls: chunk }) }); if (!res.ok) continue; updatePreviewsUI(await res.json()); } catch (error) { console.error(`批次預覽錯誤:`, error); } } }
             function cancelRetry() { if (state.retryTimer) { clearTimeout(state.retryTimer); state.retryTimer = null; } state.loadRetries = 0; state.isLoading = false; }
-            async function loadArticles(board, url = null, append = false) { if (state.isLoading) return; state.isLoading = true; listError.classList.add('hidden'); const isHotBoard = board === 'Hot'; if (!append) { cancelRetry(); articlesList.innerHTML = ''; if (!isHotBoard && cache.get(`ptt-cache-${board}`)) { const cachedData = cache.get(`ptt-cache-${board}`); state.allArticles = cachedData.articles; state.prevPageUrl = cachedData.prevPageUrl; renderAndSortArticles(); fetchPreviewsInChunks(state.allArticles); } else { showSkeleton(); } } else { infiniteLoader.classList.remove('hidden'); } try { const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; const fetchUrl = isHotBoard ? `/api/scraper?board=Hot` : `/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`; const res = await fetch(fetchUrl); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const listData = await res.json(); const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]')); const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set(); const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles; if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) { throw new Error("頁面載入不完整"); } cancelRetry(); if (append) state.allArticles.push(...uniqueNewArticles); else state.allArticles = uniqueNewArticles; state.prevPageUrl = listData.prev_page_url; renderAndSortArticles(); fetchPreviewsInChunks(uniqueNewArticles); if (!append && !isHotBoard) { cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl }); } state.isLoading = false; } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadArticles(board, url, append); }, 2000 * state.loadRetries); } else { if (!append) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); } cancelRetry(); } } finally { if (!append) hideSkeleton(); infiniteLoader.classList.add('hidden'); } }
+            
+            async function loadArticles(board, url = null, append = false) { 
+                if (state.isLoading) return; 
+                state.isLoading = true; 
+                listError.classList.add('hidden'); 
+                const isHotBoard = board === 'Hot'; 
+                if (!append) { 
+                    cancelRetry(); 
+                    articlesList.innerHTML = ''; 
+                    if (!isHotBoard && cache.get(`ptt-cache-${board}`)) { 
+                        const cachedData = cache.get(`ptt-cache-${board}`); 
+                        state.allArticles = cachedData.articles; 
+                        state.prevPageUrl = cachedData.prevPageUrl; 
+                        renderAndSortArticles(); 
+                        fetchPreviewsInChunks(state.allArticles); 
+                    } else { 
+                        showSkeleton(); 
+                    } 
+                } else { 
+                    infiniteLoader.classList.remove('hidden'); 
+                } 
+                try { 
+                    const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; 
+                    const fetchUrl = isHotBoard ? `/api/scraper?board=Hot` : `/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`; 
+                    const res = await fetch(fetchUrl); 
+                    if (!res.ok) throw new Error(`請求失敗: ${res.status}`); 
+                    const listData = await res.json(); 
+                    const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]')); 
+                    const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set(); 
+                    const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles; 
+                    if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) { throw new Error("頁面載入不完整"); } 
+                    cancelRetry(); 
+                    if (append) state.allArticles.push(...uniqueNewArticles); 
+                    else state.allArticles = uniqueNewArticles; 
+                    state.prevPageUrl = listData.prev_page_url; 
+                    renderAndSortArticles(); 
+                    fetchPreviewsInChunks(uniqueNewArticles); 
+                    if (!append && !isHotBoard) { cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl }); } 
+                    state.isLoading = false; 
+                } catch (error) { 
+                    state.loadRetries++; 
+                    if (state.loadRetries <= MAX_RETRIES) { 
+                        state.retryTimer = setTimeout(() => { state.isLoading = false; loadArticles(board, url, append); }, 2000 * state.loadRetries); 
+                    } else { 
+                        if (!append) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); } 
+                        cancelRetry(); 
+                    } 
+                } finally { 
+                    if (!append) hideSkeleton(); 
+                    infiniteLoader.classList.add('hidden'); 
+                    
+                    // 重新綁定觀察器到最後一個元素
+                    listObserver.disconnect();
+                    if (articlesList.lastElementChild) {
+                        listObserver.observe(articlesList.lastElementChild);
+                    }
+                } 
+            }
 
             function parsePushCount(c) { if (c === '爆') return 100; if (typeof c === 'number') return c; if (typeof c === 'string') { if (c.startsWith('X')) return -10 - parseInt(c.substring(1), 10); const n = parseInt(c, 10); return isNaN(n) ? 0 : n; } return 0; }
             function renderAndSortArticles() { let articles = state.viewingFavorites ? [...state.favorites] : [...state.allArticles]; const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link)); articles = articles.filter(a => !dislikedLinks.has(a.link)); if (state.sortBy === 'hot' && state.currentBoard !== 'Hot') { articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count)); } renderArticles(articles); }
@@ -567,7 +637,48 @@
                 else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); }
             });
 
-            async function loadGallery(append = false) { if (state.isLoading) return; state.isLoading = true; galleryError.classList.add('hidden'); if (!append) { cancelRetry(); galleryGrid.innerHTML = ''; state.galleryPrevPageUrl = null; galleryLoaderInitial.classList.remove('hidden'); } else { galleryLoaderMore.classList.remove('hidden'); } try { const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; const res = await fetch(url); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const data = await res.json(); cancelRetry(); state.galleryPrevPageUrl = data.prev_page_url; const newItems = data.articles || []; if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } renderGallery(newItems, append); } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); } else { if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } cancelRetry(); } } finally { state.isLoading = false; galleryLoaderInitial.classList.add('hidden'); galleryLoaderMore.classList.add('hidden'); } }
+            async function loadGallery(append = false) { 
+                if (state.isLoading) return; 
+                state.isLoading = true; 
+                galleryError.classList.add('hidden'); 
+                if (!append) { 
+                    cancelRetry(); 
+                    galleryGrid.innerHTML = ''; 
+                    state.galleryPrevPageUrl = null; 
+                    galleryLoaderInitial.classList.remove('hidden'); 
+                } else { 
+                    galleryLoaderMore.classList.remove('hidden'); 
+                } 
+                try { 
+                    const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; 
+                    const res = await fetch(url); 
+                    if (!res.ok) throw new Error(`請求失敗: ${res.status}`); 
+                    const data = await res.json(); 
+                    cancelRetry(); 
+                    state.galleryPrevPageUrl = data.prev_page_url; 
+                    const newItems = data.articles || []; 
+                    if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } 
+                    renderGallery(newItems, append); 
+                } catch (error) { 
+                    state.loadRetries++; 
+                    if (state.loadRetries <= MAX_RETRIES) { 
+                        state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); 
+                    } else { 
+                        if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } 
+                        cancelRetry(); 
+                    } 
+                } finally { 
+                    state.isLoading = false; 
+                    galleryLoaderInitial.classList.add('hidden'); 
+                    galleryLoaderMore.classList.add('hidden'); 
+                    
+                    // 重新綁定觀察器到最後一個元素
+                    galleryObserver.disconnect();
+                    if (galleryGrid.lastElementChild) {
+                        galleryObserver.observe(galleryGrid.lastElementChild);
+                    }
+                } 
+            }
             
             function renderGallery(items, append = false) { 
                 if (!append) galleryGrid.innerHTML = ''; 
@@ -816,8 +927,6 @@
             floatingBackBtn.addEventListener('click', () => goBack(true));
             
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
-            articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.viewingFavorites || state.currentBoard === 'Hot') return; const { scrollTop, scrollHeight, clientHeight } = articlesList; if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); });
-            galleryGrid.addEventListener('scroll', () => { if (state.isLoading || !state.galleryPrevPageUrl) return; const { scrollTop, scrollHeight, clientHeight } = galleryGrid; if (scrollTop + clientHeight >= scrollHeight - 500) { loadGallery(true); } });
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('text-gray-400', !isV); toggleFavoritesBtn.classList.toggle('text-red-500', isV); }
