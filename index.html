@@ -90,48 +90,56 @@
         .board-chip.active { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); border-color: rgba(59, 130, 246, 0.5); transform: translateY(-1px); }
         .board-chip:hover:not(.active) { background-color: rgba(71, 85, 105, 0.6); color: #f1f5f9; }
 
-        /* === 美圖牆真正的瀑布流 (Masonry) 徹底解決疊加與變形 === */
+        /* 多圖拼貼佈局 Helper */
+        .grid-collage { display: grid; gap: 2px; width: 100%; height: 100%; border-radius: 0.5rem; overflow: hidden; }
+        .collage-1-2 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+        .collage-1-2 img:first-child { grid-row: span 2; height: 100%; }
+        .collage-2 { grid-template-columns: 1fr 1fr; }
+        .collage-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+        /* === 美圖牆嚴格網格佈局 (Fixed Grid) 徹底解決疊加與變形 === */
         #gallery-grid {
-            column-gap: 0.5rem;
+            display: grid;
+            gap: 0.5rem;
             padding: 0.5rem;
             width: 100%;
         }
         .gallery-item {
-            break-inside: avoid; /* 避免圖片被切斷 */
-            margin-bottom: 0.5rem;
-            display: block;
-            width: 100%;
             position: relative;
+            aspect-ratio: 3 / 4;
             background-color: #1e293b;
             border-radius: 0.5rem;
             overflow: hidden;
             cursor: pointer;
+            display: block;
+            width: 100%;
             transform: translateZ(0); /* 修正 Safari 渲染問題 */
         }
         .gallery-item img {
             width: 100%;
-            height: auto; /* 保持圖片原始比例，絕對不壓扁 */
+            height: 100%;
+            object-fit: cover; /* 關鍵：強制填滿容器不變形 */
             display: block;
             transition: transform 0.5s ease;
         }
         .gallery-item:hover img { transform: scale(1.05); }
 
         /* 根據你選擇的 Gallery Size 改變列數 */
-        #gallery-grid.size-xs { column-count: 3; }
-        @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
-        @media (min-width: 1024px) { #gallery-grid.size-xs { column-count: 5; } }
+        #gallery-grid.size-xs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        @media (min-width: 640px) { #gallery-grid.size-xs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { #gallery-grid.size-xs { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
-        #gallery-grid.size-sm { column-count: 2; }
-        @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } }
-        @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
+        #gallery-grid.size-sm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (min-width: 640px) { #gallery-grid.size-sm { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { #gallery-grid.size-sm { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-        #gallery-grid.size-md { column-count: 1; }
-        @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } }
-        @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
+        #gallery-grid.size-md { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        @media (min-width: 640px) { #gallery-grid.size-md { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { #gallery-grid.size-md { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-        #gallery-grid.size-lg { column-count: 1; }
-        @media (min-width: 640px) { #gallery-grid.size-lg { column-count: 1; } }
-        @media (min-width: 1024px) { #gallery-grid.size-lg { column-count: 2; } }
+        #gallery-grid.size-lg { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        @media (min-width: 640px) { #gallery-grid.size-lg { grid-template-columns: repeat(1, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { #gallery-grid.size-lg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 
         /* === 返回按鈕 (Floating Back Button) 優化 === */
