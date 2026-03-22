@@ -15,6 +15,11 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Viewer.js CSS (圖片瀏覽器) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css" xintegrity="sha512-za6IYQz7tR0pzniM/EAkgjV1gf1kZMlxeWEpfGkKNEwyfE9q7VR4xK5DnyIqy7UcnCWjBn6h7/6EnTaua9wu2w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Viewer.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js" xintegrity="sha512-EC3CQ+2OkM+ZKsM1dbFAB6OGEPKRxi6EDRnZW9ys8LghQRAq6cXPUgXCCujmDrXdodGXX9bqaaCRtwj4h4wgSQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,6 +81,19 @@
         .article-image { cursor: pointer; border-radius: 0.5rem; transition: filter 0.2s; }
         .article-image:hover { filter: brightness(0.9); }
 
+        #gallery-grid { column-gap: 0.5rem; padding: 0.5rem; }
+        .gallery-item { margin-bottom: 0.5rem; break-inside: avoid; cursor: pointer; display: block; position: relative; overflow: hidden; border-radius: 0.5rem; }
+        .gallery-item img { width: 100%; height: auto; display: block; transition: transform 0.5s ease; }
+        .gallery-item:hover img { transform: scale(1.05); }
+        .gallery-item .fav-overlay { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 4px; display: none; backdrop-filter: blur(2px); }
+        .gallery-item.is-favorite .fav-overlay { display: block; }
+
+        /* RWD 欄位 */
+        #gallery-grid.size-xs { column-count: 3; } @media (min-width: 640px) { #gallery-grid.size-xs { column-count: 4; } }
+        #gallery-grid.size-sm { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-sm { column-count: 3; } } @media (min-width: 1024px) { #gallery-grid.size-sm { column-count: 4; } }
+        #gallery-grid.size-md { column-count: 2; } @media (min-width: 640px) { #gallery-grid.size-md { column-count: 2; } } @media (min-width: 1024px) { #gallery-grid.size-md { column-count: 3; } }
+        #gallery-grid.size-lg { column-count: 1; } @media (min-width: 640px) { #gallery-grid.size-lg { column-count: 2; } }
+
         /* === 主題配色 === */
         .theme-default .text-main-title { color: #e2e8f0; } .theme-default .text-main-link { color: #60a5fa; } .theme-default .text-main-content { color: #cbd5e1; } .theme-default .push-userid { color: #60a5fa; } .theme-default .text-read { color: #64748b !important; }
         .theme-cyan .text-main-title { color: #cffafe; } .theme-cyan .text-main-link { color: #22d3ee; } .theme-cyan .text-main-content { color: #d1d5db; } .theme-cyan .push-userid { color: #22d3ee; } .theme-cyan .text-read { color: #57737a !important; }
@@ -97,54 +115,35 @@
         .collage-2 { grid-template-columns: 1fr 1fr; }
         .collage-3 { grid-template-columns: 1fr 1fr 1fr; }
 
-        /* === 美圖牆嚴格網格佈局 (Fixed Grid) 徹底解決疊加與變形 === */
-        #gallery-grid {
-            display: grid;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            width: 100%;
+        /* === ViewerJS 客製化覆蓋 === */
+        .viewer-container { z-index: 2040 !important; } /* 確保 Viewer 在最上層 */
+        .viewer-backdrop { background-color: rgba(0, 0, 0, 0.96) !important; backdrop-filter: blur(5px); }
+        .viewer-toolbar { border-radius: 20px; background-color: rgba(0,0,0,0.6); margin-bottom: 15px; }
+        .viewer-toolbar > ul > li { width: 32px; height: 32px; }
+        .viewer-toolbar > ul > li:hover { background-color: rgba(255,255,255,0.2); }
+        
+        /* 隱藏 ViewerJS 內建的 Title 和部分多餘按鈕，只留需要的 */
+        .viewer-title { display: none; }
+        .viewer-button { background-color: rgba(0,0,0,0.4); border-radius: 50%; width: 48px; height: 48px; top: -24px; right: -24px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+
+        /* === 自定義 Viewer 頂部按鈕 (懸浮於 Viewer 之上) === */
+        #custom-viewer-controls {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 2050; /* 比 ViewerJS 更高 */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
-        .gallery-item {
-            position: relative;
-            aspect-ratio: 3 / 4;
-            background-color: #1e293b;
-            border-radius: 0.5rem;
-            overflow: hidden;
-            cursor: pointer;
-            display: block;
-            width: 100%;
-            transform: translateZ(0); /* 修正 Safari 渲染問題 */
-        }
-        .gallery-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* 關鍵：強制填滿容器不變形 */
-            display: block;
-            transition: transform 0.5s ease;
-        }
-        .gallery-item:hover img { transform: scale(1.05); }
-
-        /* 根據你選擇的 Gallery Size 改變列數 */
-        #gallery-grid.size-xs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        @media (min-width: 640px) { #gallery-grid.size-xs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-        @media (min-width: 1024px) { #gallery-grid.size-xs { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-
-        #gallery-grid.size-sm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        @media (min-width: 640px) { #gallery-grid.size-sm { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-        @media (min-width: 1024px) { #gallery-grid.size-sm { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-
-        #gallery-grid.size-md { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        @media (min-width: 640px) { #gallery-grid.size-md { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (min-width: 1024px) { #gallery-grid.size-md { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-
-        #gallery-grid.size-lg { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        @media (min-width: 640px) { #gallery-grid.size-lg { grid-template-columns: repeat(1, minmax(0, 1fr)); } }
-        @media (min-width: 1024px) { #gallery-grid.size-lg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-
-
+        #custom-viewer-controls.active { opacity: 1; visibility: visible; }
+        
         /* === 返回按鈕 (Floating Back Button) 優化 === */
         #floating-back-btn {
             position: fixed;
+            /* 電腦版預設位置 */
             bottom: 1.5rem; 
             right: 1.5rem;
             z-index: 40;
@@ -159,15 +158,19 @@
         #floating-back-btn:hover { background-color: #3b82f6; transform: scale(1.05); }
         #floating-back-btn:active { transform: scale(0.95); }
         
+        /* 手機版樣式調整：上移、半透明、變小 */
         @media (max-width: 768px) {
             #floating-back-btn {
-                bottom: 120px;
+                bottom: 120px; /* 避開底部操作區 (約上移 120px) */
                 right: 1rem;
-                padding: 0.75rem;
-                opacity: 0.8;
+                padding: 0.75rem; /* 稍微縮小 */
+                opacity: 0.8; /* 降低干擾 */
                 transform: scale(0.9);
             }
-            #floating-back-btn:hover, #floating-back-btn:active { opacity: 1; transform: scale(1); }
+            #floating-back-btn:hover, #floating-back-btn:active {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         @media (min-width: 768px) { #app-container { max-width: 48rem; } }
@@ -180,7 +183,7 @@
     <div id="app-container" class="mx-auto min-h-screen shadow-2xl shadow-black flex flex-col relative bg-transparent">
         <header id="main-header" class="bg-slate-900/80 shadow-sm sticky top-0 z-20 glassmorphism transition-all duration-300">
             <div class="flex items-center justify-between p-3 pb-1 gap-2">
-                <!-- Logo 部分 -->
+                <!-- Logo 部分：移除文字 -->
                 <div class="flex items-center gap-3 overflow-hidden flex-grow cursor-pointer group" id="app-logo-btn" title="返回">
                     <div class="flex items-center gap-2 flex-shrink-0">
                         <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-200 ring-1 ring-white/10">
@@ -188,6 +191,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg>
                         </div>
+                        <!-- 文字部分已移除 -->
                     </div>
                     <h2 id="header-title" class="font-bold text-base truncate text-blue-100 hidden ml-2 border-l border-gray-700 pl-3"></h2>
                 </div>
@@ -242,7 +246,6 @@
             </div>
             <div id="detail-view" class="absolute inset-0 hidden"><main id="detail-content" class="h-full overflow-y-auto no-scrollbar p-2 md:p-4 pb-24"></main></div>
             <div id="gallery-view" class="absolute inset-0 hidden flex flex-col">
-                <!-- 真正的純 CSS 瀑布流容器 -->
                 <main id="gallery-grid" class="flex-grow overflow-y-auto no-scrollbar pb-20 pt-2"></main>
                 <div id="gallery-loader-initial" class="absolute inset-0 flex justify-center items-center"><div class="loader h-16 w-16"></div></div>
                 <div id="gallery-loader-more" class="flex justify-center items-center py-4 hidden"><div class="loader h-8 w-8"></div></div>
@@ -251,34 +254,28 @@
         </div>
     </div>
 
+    <!-- Viewer.js 所需的隱藏容器，用於動態生成圖片列表 -->
+    <div id="viewer-images-hidden" style="display: none;"></div>
+
+    <!-- 自定義的 Viewer 上方按鈕 (愛心, 下載, 關閉) -->
+    <div id="custom-viewer-controls">
+        <button id="viewer-favorite-btn" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-pink-600/80 transition-all border border-white/10" title="收藏">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+        </button>
+        <button id="viewer-download-btn" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-blue-600/80 transition-all border border-white/10" title="下載">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        </button>
+        <button id="viewer-close-btn" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-red-600/80 transition-all border border-white/10" title="關閉">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    </div>
+    
     <!-- 浮動返回按鈕 -->
     <button id="floating-back-btn" class="hidden">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
     </button>
     
     <div id="toast-notification" class="bg-slate-800 border border-slate-600 text-white text-sm py-3 px-6 rounded-full shadow-2xl fixed bottom-10 left-1/2 transform -translate-x-1/2 translate-y-20 opacity-0 transition-all duration-300 z-[3000]"><p id="toast-message"></p></div>
-
-    <!-- 自製全螢幕圖片瀏覽器 (取代 Viewer.js) -->
-    <div id="custom-image-viewer" class="fixed inset-0 z-[4000] bg-black/95 backdrop-blur-xl flex flex-col touch-none hidden opacity-0 transition-opacity duration-300">
-        <div class="flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent absolute top-0 w-full z-10 pointer-events-none">
-            <span id="viewer-counter" class="text-white/60 text-sm font-mono pointer-events-auto">1 / 1</span>
-            <div class="flex gap-4 pointer-events-auto">
-                <button id="viewer-favorite-btn" class="text-white hover:text-pink-500 p-2 transition-colors" title="收藏">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                </button>
-                <button id="viewer-download-btn" class="text-white hover:text-blue-400 p-2 transition-colors" title="下載">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                </button>
-                <button id="viewer-close-btn" class="text-white hover:text-red-400 p-2 transition-colors" title="關閉">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-        </div>
-        <!-- 點擊左右半邊來換圖 -->
-        <div id="viewer-click-area" class="flex-1 flex items-center justify-center overflow-hidden relative cursor-pointer">
-            <img id="viewer-image" src="" class="max-w-full max-h-full object-contain transition-transform duration-300" alt="fullscreen view">
-        </div>
-    </div>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
@@ -295,7 +292,7 @@
 
             const cache = { get(key) { const itemStr = localStorage.getItem(key); if (!itemStr) return null; try { const item = JSON.parse(itemStr); if (new Date().getTime() > item.expiry) { localStorage.removeItem(key); return null; } return item.data; } catch (e) { return null; } }, set(key, data) { const item = { data: data, expiry: new Date().getTime() + 10 * 60 * 1000 }; localStorage.setItem(key, JSON.stringify(item)); } };
 
-            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), inactivityTimer: null, currentArticleImages: [], allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', currentModalGalleryItem: null, isScrolling: false, viewerIndex: 0, viewerIsOpen: false };
+            let state = { currentBoard: 'Gossiping', prevPageUrl: null, isLoading: false, currentView: 'list', currentArticle: null, favorites: [], dislikedArticles: [], readArticles: new Set(JSON.parse(localStorage.getItem('readArticles')) || []), inactivityTimer: null, currentArticleImages: [], allArticles: [], galleryItems: [], galleryPrevPageUrl: null, sortBy: 'time', viewingFavorites: false, loadRetries: 0, retryTimer: null, fontSize: localStorage.getItem('fontSize') || 'md', gallerySize: localStorage.getItem('gallerySize') || 'sm', currentModalGalleryItem: null, isScrolling: false, viewer: null };
             const MAX_RETRIES = 5;
 
             const el = id => document.getElementById(id);
@@ -308,24 +305,9 @@
             const listErrorText = el('list-error-text'), boardScroller = el('board-scroller-container');
             const headerTitle = el('header-title'), detailContent = el('detail-content'), floatingBackBtn = el('floating-back-btn');
             
-            // --- 新增：無限滾動觀察器 (取代 scroll event，解決高度不足無法載入的問題) ---
-            const listObserver = new IntersectionObserver((entries) => {
-                if (entries[0].isIntersecting && !state.isLoading && state.prevPageUrl && !state.viewingFavorites && state.currentBoard !== 'Hot') {
-                    loadArticles(state.currentBoard, state.prevPageUrl, true);
-                }
-            }, { root: articlesList, rootMargin: '400px' });
-
-            const galleryObserver = new IntersectionObserver((entries) => {
-                if (entries[0].isIntersecting && !state.isLoading && state.galleryPrevPageUrl) {
-                    loadGallery(true);
-                }
-            }, { root: galleryGrid, rootMargin: '600px' });
-
-            // Custom Viewer Controls
-            const customImageViewer = el('custom-image-viewer');
-            const viewerImage = el('viewer-image');
-            const viewerCounter = el('viewer-counter');
-            const viewerClickArea = el('viewer-click-area');
+            // Viewer Controls
+            const viewerImagesHidden = el('viewer-images-hidden');
+            const customViewerControls = el('custom-viewer-controls');
             const viewerFavoriteBtn = el('viewer-favorite-btn');
             const viewerDownloadBtn = el('viewer-download-btn');
             const viewerCloseBtn = el('viewer-close-btn');
@@ -340,8 +322,8 @@
             const fullscreenToggleList = el('fullscreen-toggle-list'), fullscreenToggleDetail = el('fullscreen-toggle-detail'), fullscreenToggleGallery = el('fullscreen-toggle-gallery');
             const headerFavoriteBtn = el('header-favorite-btn');
             const fontSizeToggleDetail = el('font-size-toggle-detail'), fontSizeToggleList = el('font-size-toggle-list'), themeToggleBtn = el('theme-toggle-btn');
-            const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
             const galleryError = el('gallery-error'), galleryErrorText = el('gallery-error-text');
+            const gallerySizeToggleBtn = el('gallery-size-toggle-btn');
             const appLogoBtn = el('app-logo-btn');
             const beautyModeBtn = el('beauty-mode-btn');
             
@@ -359,7 +341,7 @@
                         if(state.currentView === 'detail' && state.currentArticle) updateFavoriteIcon(isFavorite(state.currentArticle.link));
                         if(state.currentView === 'gallery') updateGalleryFavoriteIcons();
                         // Update viewer heart if active
-                        if(state.viewerIsOpen) updateViewerFavoriteBtn();
+                        if(state.viewer && state.viewer.isShown) updateViewerFavoriteBtn(state.viewer.index);
                     });
                     unsubscribeDisliked = onSnapshot(collection(db, 'users', userId, 'disliked_articles'), snap => { state.dislikedArticles = snap.docs.map(d => d.data()); renderAndSortArticles(); });
                 } else { userId = user ? user.uid : null; googleLoginBtn.classList.remove('hidden'); userInfo.classList.add('hidden'); userControls.classList.add('hidden'); state.favorites = []; state.dislikedArticles = []; if (!user) signInAnonymously(auth).catch(e => console.error("匿名登入失敗:", e)); }
@@ -394,10 +376,16 @@
                 state.currentView = viewName; 
                 updateHeader();
                 
-                if (viewName === 'detail' || viewName === 'gallery') {
+                // 返回按鈕邏輯：手機版內頁隱藏，列表頁顯示？不，使用者要求"手機版：保留顯示但樣式較不干擾"。
+                // 所以 Floating Button 在列表頁也可以顯示。
+                if (viewName === 'detail') {
+                     floatingBackBtn.classList.remove('hidden');
+                } else if (viewName === 'gallery') {
                      floatingBackBtn.classList.remove('hidden');
                 } else {
-                     floatingBackBtn.classList.add('hidden');
+                     floatingBackBtn.classList.add('hidden'); // 列表頁通常不顯示返回頂部，但這裡是指"返回上一頁"的功能? 
+                     // PTT Reader 的邏輯通常是：列表是根頁面，內頁才有返回。
+                     // 所以在 List View 隱藏。
                 }
             }
 
@@ -507,64 +495,7 @@
 
             async function fetchPreviewsInChunks(articles) { const articlesToFetch = articles.filter(a => typeof a.snippet === 'undefined'); if (articlesToFetch.length === 0) return; const CHUNK_SIZE = 5; const articleLinks = articlesToFetch.map(a => a.link); for (let i = 0; i < articleLinks.length; i += CHUNK_SIZE) { const chunk = articleLinks.slice(i, i + CHUNK_SIZE); if (chunk.length === 0) continue; try { const res = await fetch('/api/previews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urls: chunk }) }); if (!res.ok) continue; updatePreviewsUI(await res.json()); } catch (error) { console.error(`批次預覽錯誤:`, error); } } }
             function cancelRetry() { if (state.retryTimer) { clearTimeout(state.retryTimer); state.retryTimer = null; } state.loadRetries = 0; state.isLoading = false; }
-            
-            async function loadArticles(board, url = null, append = false) { 
-                if (state.isLoading) return; 
-                state.isLoading = true; 
-                listError.classList.add('hidden'); 
-                const isHotBoard = board === 'Hot'; 
-                if (!append) { 
-                    cancelRetry(); 
-                    articlesList.innerHTML = ''; 
-                    if (!isHotBoard && cache.get(`ptt-cache-${board}`)) { 
-                        const cachedData = cache.get(`ptt-cache-${board}`); 
-                        state.allArticles = cachedData.articles; 
-                        state.prevPageUrl = cachedData.prevPageUrl; 
-                        renderAndSortArticles(); 
-                        fetchPreviewsInChunks(state.allArticles); 
-                    } else { 
-                        showSkeleton(); 
-                    } 
-                } else { 
-                    infiniteLoader.classList.remove('hidden'); 
-                } 
-                try { 
-                    const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; 
-                    const fetchUrl = isHotBoard ? `/api/scraper?board=Hot` : `/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`; 
-                    const res = await fetch(fetchUrl); 
-                    if (!res.ok) throw new Error(`請求失敗: ${res.status}`); 
-                    const listData = await res.json(); 
-                    const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]')); 
-                    const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set(); 
-                    const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles; 
-                    if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) { throw new Error("頁面載入不完整"); } 
-                    cancelRetry(); 
-                    if (append) state.allArticles.push(...uniqueNewArticles); 
-                    else state.allArticles = uniqueNewArticles; 
-                    state.prevPageUrl = listData.prev_page_url; 
-                    renderAndSortArticles(); 
-                    fetchPreviewsInChunks(uniqueNewArticles); 
-                    if (!append && !isHotBoard) { cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl }); } 
-                    state.isLoading = false; 
-                } catch (error) { 
-                    state.loadRetries++; 
-                    if (state.loadRetries <= MAX_RETRIES) { 
-                        state.retryTimer = setTimeout(() => { state.isLoading = false; loadArticles(board, url, append); }, 2000 * state.loadRetries); 
-                    } else { 
-                        if (!append) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); } 
-                        cancelRetry(); 
-                    } 
-                } finally { 
-                    if (!append) hideSkeleton(); 
-                    infiniteLoader.classList.add('hidden'); 
-                    
-                    // 重新綁定觀察器到最後一個元素
-                    listObserver.disconnect();
-                    if (articlesList.lastElementChild) {
-                        listObserver.observe(articlesList.lastElementChild);
-                    }
-                } 
-            }
+            async function loadArticles(board, url = null, append = false) { if (state.isLoading) return; state.isLoading = true; listError.classList.add('hidden'); const isHotBoard = board === 'Hot'; if (!append) { cancelRetry(); articlesList.innerHTML = ''; if (!isHotBoard && cache.get(`ptt-cache-${board}`)) { const cachedData = cache.get(`ptt-cache-${board}`); state.allArticles = cachedData.articles; state.prevPageUrl = cachedData.prevPageUrl; renderAndSortArticles(); fetchPreviewsInChunks(state.allArticles); } else { showSkeleton(); } } else { infiniteLoader.classList.remove('hidden'); } try { const listUrl = url || `https://www.ptt.cc/bbs/${board}/index.html`; const fetchUrl = isHotBoard ? `/api/scraper?board=Hot` : `/api/scraper?board=${board}&list_url=${encodeURIComponent(listUrl)}`; const res = await fetch(fetchUrl); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const listData = await res.json(); const newArticles = listData.articles.filter(a => a.title && !a.title.includes('[公告]')); const existingLinks = append ? new Set(state.allArticles.map(a => a.link)) : new Set(); const uniqueNewArticles = append ? newArticles.filter(a => !existingLinks.has(a.link)) : newArticles; if (append && uniqueNewArticles.length === 0 && listData.prev_page_url) { throw new Error("頁面載入不完整"); } cancelRetry(); if (append) state.allArticles.push(...uniqueNewArticles); else state.allArticles = uniqueNewArticles; state.prevPageUrl = listData.prev_page_url; renderAndSortArticles(); fetchPreviewsInChunks(uniqueNewArticles); if (!append && !isHotBoard) { cache.set(`ptt-cache-${board}`, { articles: state.allArticles, prevPageUrl: state.prevPageUrl }); } state.isLoading = false; } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadArticles(board, url, append); }, 2000 * state.loadRetries); } else { if (!append) { listErrorText.textContent = error.message; listError.classList.remove('hidden'); } cancelRetry(); } } finally { if (!append) hideSkeleton(); infiniteLoader.classList.add('hidden'); } }
 
             function parsePushCount(c) { if (c === '爆') return 100; if (typeof c === 'number') return c; if (typeof c === 'string') { if (c.startsWith('X')) return -10 - parseInt(c.substring(1), 10); const n = parseInt(c, 10); return isNaN(n) ? 0 : n; } return 0; }
             function renderAndSortArticles() { let articles = state.viewingFavorites ? [...state.favorites] : [...state.allArticles]; const dislikedLinks = new Set(state.dislikedArticles.map(a => a.link)); articles = articles.filter(a => !dislikedLinks.has(a.link)); if (state.sortBy === 'hot' && state.currentBoard !== 'Hot') { articles.sort((a, b) => parsePushCount(b.push_count) - parsePushCount(a.push_count)); } renderArticles(articles); }
@@ -606,18 +537,9 @@
                 detailContent.scrollTop = 0; 
             }
 
-            function closeViewer() {
-                state.viewerIsOpen = false;
-                customImageViewer.classList.add('opacity-0');
-                setTimeout(() => {
-                    customImageViewer.classList.add('hidden');
-                    viewerImage.src = '';
-                }, 300);
-            }
-
             function goBack(fromButton = false) { 
-                if (state.viewerIsOpen) { 
-                    closeViewer(); 
+                if (state.viewer && state.viewer.isShown) { 
+                    state.viewer.hide(); 
                     return; 
                 }
                 if (state.currentView === 'detail' || state.currentView === 'gallery') {
@@ -635,8 +557,9 @@
             }
 
             window.addEventListener('popstate', (event) => { 
-                if (state.viewerIsOpen) { 
-                    closeViewer(); 
+                if (state.viewer && state.viewer.isShown) { 
+                    state.viewer.hide(); 
+                    // 防止瀏覽器繼續後退
                     history.pushState(null, null, location.href);
                     return; 
                 } 
@@ -645,71 +568,17 @@
                 else if (event.state && event.state.view === 'detail') { const article = state.allArticles.find(a => a.link === event.state.articleLink); if (article) showDetailView(article, true); }
             });
 
-            async function loadGallery(append = false) { 
-                if (state.isLoading) return; 
-                state.isLoading = true; 
-                galleryError.classList.add('hidden'); 
-                if (!append) { 
-                    cancelRetry(); 
-                    galleryGrid.innerHTML = ''; 
-                    state.galleryPrevPageUrl = null; 
-                    galleryLoaderInitial.classList.remove('hidden'); 
-                } else { 
-                    galleryLoaderMore.classList.remove('hidden'); 
-                } 
-                try { 
-                    const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; 
-                    const res = await fetch(url); 
-                    if (!res.ok) throw new Error(`請求失敗: ${res.status}`); 
-                    const data = await res.json(); 
-                    cancelRetry(); 
-                    state.galleryPrevPageUrl = data.prev_page_url; 
-                    const newItems = data.articles || []; 
-                    if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } 
-                    renderGallery(newItems, append); 
-                } catch (error) { 
-                    state.loadRetries++; 
-                    if (state.loadRetries <= MAX_RETRIES) { 
-                        state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); 
-                    } else { 
-                        if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } 
-                        cancelRetry(); 
-                    } 
-                } finally { 
-                    state.isLoading = false; 
-                    galleryLoaderInitial.classList.add('hidden'); 
-                    galleryLoaderMore.classList.add('hidden'); 
-                    
-                    // 重新綁定觀察器到最後一個元素
-                    galleryObserver.disconnect();
-                    if (galleryGrid.lastElementChild) {
-                        galleryObserver.observe(galleryGrid.lastElementChild);
-                    }
-                } 
-            }
+            async function loadGallery(append = false) { if (state.isLoading) return; state.isLoading = true; galleryError.classList.add('hidden'); if (!append) { cancelRetry(); galleryGrid.innerHTML = ''; state.galleryPrevPageUrl = null; galleryLoaderInitial.classList.remove('hidden'); } else { galleryLoaderMore.classList.remove('hidden'); } try { const url = append && state.galleryPrevPageUrl ? `/api/scraper?board=BeautyGallery&list_url=${encodeURIComponent(state.galleryPrevPageUrl)}` : `/api/scraper?board=BeautyGallery`; const res = await fetch(url); if (!res.ok) throw new Error(`請求失敗: ${res.status}`); const data = await res.json(); cancelRetry(); state.galleryPrevPageUrl = data.prev_page_url; const newItems = data.articles || []; if (append) { state.galleryItems.push(...newItems); } else { state.galleryItems = newItems; } renderGallery(newItems, append); } catch (error) { state.loadRetries++; if (state.loadRetries <= MAX_RETRIES) { state.retryTimer = setTimeout(() => { state.isLoading = false; loadGallery(append); }, 2000 * state.loadRetries); } else { if (!append) { galleryErrorText.textContent = error.message; galleryError.classList.remove('hidden'); } cancelRetry(); } } finally { state.isLoading = false; galleryLoaderInitial.classList.add('hidden'); galleryLoaderMore.classList.add('hidden'); } }
             
             function renderGallery(items, append = false) { 
                 if (!append) galleryGrid.innerHTML = ''; 
                 const fragment = document.createDocumentFragment(); 
-                
                 items.forEach(item => { 
                     const itemDiv = document.createElement('a'); 
-                    // 改用真正瀑布流的 class，移除強制比例，保證不被壓扁
-                    itemDiv.className = 'gallery-item group animate-fade-in-up'; 
+                    itemDiv.className = 'gallery-item animate-fade-in-up'; 
                     itemDiv.dataset.articleLink = item.article.link; 
-                    
                     const proxiedUrl = `/api/scraper?proxy_url=${encodeURIComponent(item.preview_image)}`; 
-                    
-                    itemDiv.innerHTML = `
-                        <img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 pointer-events-none">
-                            <p class="text-xs text-white line-clamp-2">${item.article.title}</p>
-                        </div>
-                        <div class="fav-overlay absolute top-2 right-2 hidden text-pink-500 drop-shadow-md pointer-events-none">
-                            <svg class="w-6 h-6 fill-current" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg>
-                        </div>
-                    `; 
-                    
+                    itemDiv.innerHTML = `<img src="${proxiedUrl}" loading="lazy" alt="${item.article.title}" onerror="this.parentElement.style.display='none'"><div class="fav-overlay"><svg class="w-5 h-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></div>`; 
                     itemDiv.addEventListener('click', (e) => { 
                         e.preventDefault(); 
                         if (item.all_images && item.all_images.length > 0) {
@@ -729,78 +598,72 @@
                 updateGalleryFavoriteIcons(); 
             }
             
-            function updateGalleryFavoriteIcons() { 
-                document.querySelectorAll('.gallery-item').forEach(item => { 
-                    const link = item.dataset.articleLink; 
-                    if (link) { 
-                        const favOverlay = item.querySelector('.fav-overlay');
-                        if (favOverlay) favOverlay.style.display = isFavorite(link) ? 'block' : 'none';
-                    } 
-                }); 
-            }
+            function updateGalleryFavoriteIcons() { document.querySelectorAll('.gallery-item').forEach(item => { const link = item.dataset.articleLink; if (link) { item.classList.toggle('is-favorite', isFavorite(link)); } }); }
 
-            // === 自製全螢幕瀏覽器邏輯 (取代 Viewer.js) ===
+            // === Viewer.js 整合邏輯 ===
             function openViewer(initialIndex) {
-                if (state.currentArticleImages.length === 0) return;
-                state.viewerIndex = initialIndex;
-                state.viewerIsOpen = true;
-                updateViewerImage();
-                customImageViewer.classList.remove('hidden');
-                void customImageViewer.offsetWidth; // 強制重繪
-                customImageViewer.classList.remove('opacity-0');
+                // 清空舊的圖片
+                viewerImagesHidden.innerHTML = '';
+                
+                // 建立新的圖片列表 (使用 Proxy URL)
+                state.currentArticleImages.forEach(url => {
+                    const img = document.createElement('img');
+                    img.src = `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
+                    img.dataset.originalUrl = url; // 儲存原始 URL 供下載使用
+                    viewerImagesHidden.appendChild(img);
+                });
+
+                // 如果已經有實例，銷毀它
+                if (state.viewer) {
+                    state.viewer.destroy();
+                }
+
+                // 建立 Viewer 實例
+                state.viewer = new Viewer(viewerImagesHidden, {
+                    initialViewIndex: initialIndex,
+                    backdrop: 'static', // 背景點擊不關閉，避免誤觸
+                    className: 'viewer-custom-theme',
+                    title: false, // 隱藏標題，介面更乾淨
+                    toolbar: {
+                        zoomIn: 1,
+                        zoomOut: 1,
+                        oneToOne: 1,
+                        reset: 1,
+                        prev: 1,
+                        play: 0, // 隱藏播放按鈕
+                        next: 1,
+                        rotateLeft: 1,
+                        rotateRight: 1,
+                        flipHorizontal: 1,
+                        flipVertical: 1,
+                    },
+                    navbar: true,
+                    tooltip: true,
+                    movable: true,
+                    zoomable: true,
+                    rotatable: true,
+                    scalable: true,
+                    transition: true,
+                    fullscreen: false,
+                    keyboard: true,
+                    viewed(e) {
+                        // 圖片切換時更新愛心狀態
+                        updateViewerFavoriteBtn(e.detail.index);
+                    },
+                    show() {
+                        customViewerControls.classList.add('active');
+                    },
+                    hide() {
+                        customViewerControls.classList.remove('active');
+                    }
+                });
+
+                state.viewer.show();
             }
 
-            function updateViewerImage() {
-                if (!state.currentArticleImages[state.viewerIndex]) return;
-                const url = state.currentArticleImages[state.viewerIndex];
-                viewerImage.src = url.startsWith('http') ? url : `/api/scraper?proxy_url=${encodeURIComponent(url)}`;
-                viewerCounter.textContent = `${state.viewerIndex + 1} / ${state.currentArticleImages.length}`;
-                updateViewerFavoriteBtn();
-            }
-
-            viewerClickArea.addEventListener('click', (e) => {
-                const clickX = e.clientX;
-                const screenW = window.innerWidth;
-                if (clickX < screenW / 2 && state.viewerIndex > 0) {
-                    state.viewerIndex--;
-                    updateViewerImage();
-                } else if (clickX > screenW / 2 && state.viewerIndex < state.currentArticleImages.length - 1) {
-                    state.viewerIndex++;
-                    updateViewerImage();
-                }
-            });
-
-            viewerCloseBtn.addEventListener('click', closeViewer);
-
-            viewerDownloadBtn.addEventListener('click', async () => {
-                const url = state.currentArticleImages[state.viewerIndex];
-                if (!url) return;
-                showToast('正在準備下載...');
-                viewerDownloadBtn.disabled = true;
-                try {
-                    const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`);
-                    if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
-                    const blob = await res.blob();
-                    const objUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = objUrl;
-                    a.download = url.split('/').pop().split('?')[0] || 'download.jpg';
-                    document.body.appendChild(a);
-                    a.click();
-                    URL.revokeObjectURL(objUrl);
-                    a.remove();
-                    showToast('下載已開始');
-                } catch (err) {
-                    showToast('下載失敗，嘗試直接開啟');
-                    window.open(url, '_blank');
-                } finally {
-                    viewerDownloadBtn.disabled = false;
-                }
-            });
-
-            function updateViewerFavoriteBtn() {
+            function updateViewerFavoriteBtn(index) {
                 if (!state.currentModalGalleryItem) {
+                     // 來自內頁的圖片點擊
                      if(state.currentArticle) {
                         const isFav = isFavorite(state.currentArticle.link);
                         toggleViewerFavIcon(isFav);
@@ -821,6 +684,42 @@
                     svg.classList.add('text-white');
                 }
             }
+
+            // Viewer 按鈕事件綁定
+            viewerCloseBtn.addEventListener('click', () => {
+                if (state.viewer) state.viewer.hide();
+            });
+
+            viewerDownloadBtn.addEventListener('click', async () => {
+                if (!state.viewer) return;
+                const index = state.viewer.index;
+                const img = viewerImagesHidden.children[index];
+                const url = img.dataset.originalUrl;
+                
+                showToast('正在準備下載...');
+                viewerDownloadBtn.disabled = true;
+                
+                try {
+                    const res = await fetch(`/api/scraper?proxy_url=${encodeURIComponent(url)}`);
+                    if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
+                    const blob = await res.blob();
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = objUrl;
+                    a.download = url.split('/').pop().split('?')[0] || 'download';
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(objUrl);
+                    a.remove();
+                    showToast('下載已開始');
+                } catch (err) {
+                    showToast('下載失敗，嘗試直接開啟');
+                    window.open(url, '_blank');
+                } finally {
+                    viewerDownloadBtn.disabled = false;
+                }
+            });
 
             viewerFavoriteBtn.addEventListener('click', async () => {
                  let article = null;
@@ -849,15 +748,14 @@
             const fontSizes = { sm: '16px', md: '18px', lg: '20px' }; const fontSizeKeys = ['sm', 'md', 'lg'];
             function applyFontSize(sizeKey) { if (!fontSizes[sizeKey]) return; docEl.style.fontSize = fontSizes[sizeKey]; localStorage.setItem('fontSize', sizeKey); state.fontSize = sizeKey; }
             function toggleFontSize() { const currentIndex = fontSizeKeys.indexOf(state.fontSize); const nextIndex = (currentIndex + 1) % fontSizeKeys.length; const nextSizeKey = fontSizeKeys[nextIndex]; applyFontSize(nextSizeKey); showToast(`字體已切換為 ${nextSizeKey === 'sm' ? '小' : nextSizeKey === 'md' ? '中' : '大'}`); }
-            
             const themes = ['theme-default', 'theme-cyan', 'theme-amber', 'theme-lime', 'theme-rose', 'theme-violet', 'theme-emerald']; let currentThemeIndex = themes.indexOf(localStorage.getItem('colorTheme') || 'theme-default'); if(currentThemeIndex === -1) currentThemeIndex = 0;
             function applyTheme(themeName) { themes.forEach(t => bodyEl.classList.remove(t)); bodyEl.classList.add(themeName); localStorage.setItem('colorTheme', themeName); }
-
+            
             const gallerySizes = ['xs', 'sm', 'md', 'lg'];
             function applyGallerySize(sizeKey) { if (!gallerySizes.includes(sizeKey)) return; gallerySizes.forEach(s => galleryGrid.classList.remove(`size-${s}`)); galleryGrid.classList.add(`size-${sizeKey}`); localStorage.setItem('gallerySize', sizeKey); state.gallerySize = sizeKey; }
             function toggleGallerySize() { const currentIndex = gallerySizes.indexOf(state.gallerySize); const nextIndex = (currentIndex + 1) % gallerySizes.length; const nextSizeKey = gallerySizes[nextIndex]; applyGallerySize(nextSizeKey); const sizeMap = { xs: '特小', sm: '小', md: '中', lg: '大' }; showToast(`縮圖尺寸已切換為 ${sizeMap[nextSizeKey]}`); }
 
-            // 手勢操作 (左右滑動切換版面)
+            // 手勢操作 (僅保留列表的左右滑動切換版面)
             let listTouchStartX = 0;
             let listTouchStartY = 0;
             const listViewEl = el('list-view');
@@ -935,6 +833,8 @@
             floatingBackBtn.addEventListener('click', () => goBack(true));
             
             headerFavoriteBtn.addEventListener('click', async () => { if (!state.currentArticle || !userId || (auth.currentUser?.isAnonymous)) { showToast('請登入 Google 帳號'); return; }; const a = state.currentArticle; const docId = a.link.replace(/[^a-zA-Z0-9]/g, ''); const docRef = doc(db, 'users', userId, 'favorites', docId); if (isFavorite(a.link)) { await deleteDoc(docRef); showToast('已從我的最愛移除'); } else { await setDoc(docRef, a); showToast('已加入我的最愛'); } });
+            articlesList.addEventListener('scroll', () => { if (state.isLoading || !state.prevPageUrl || state.viewingFavorites || state.currentBoard === 'Hot') return; const { scrollTop, scrollHeight, clientHeight } = articlesList; if (scrollTop + clientHeight >= scrollHeight - 300) loadArticles(state.currentBoard, state.prevPageUrl, true); });
+            galleryGrid.addEventListener('scroll', () => { if (state.isLoading || !state.galleryPrevPageUrl) return; const { scrollTop, scrollHeight, clientHeight } = galleryGrid; if (scrollTop + clientHeight >= scrollHeight - 500) { loadGallery(true); } });
             toggleSortBtn.addEventListener('click', () => { cancelRetry(); state.sortBy = state.sortBy === 'time' ? 'hot' : 'time'; sortTimeIcon.classList.toggle('hidden', state.sortBy === 'hot'); sortHotIcon.classList.toggle('hidden', state.sortBy === 'time'); renderAndSortArticles(); articlesList.scrollTop = 0; });
             toggleFavoritesBtn.addEventListener('click', () => { if (auth.currentUser?.isAnonymous) { showToast('請登入 Google 帳號'); return; } state.viewingFavorites = !state.viewingFavorites; updateFavoritesButtonState(); if (state.viewingFavorites) { hideSkeleton(); listError.classList.add('hidden'); renderAndSortArticles(); } else { loadArticles(state.currentBoard); } });
             function updateFavoritesButtonState() { const isV = state.viewingFavorites; favIconOutline.classList.toggle('hidden', isV); favIconSolid.classList.toggle('hidden', !isV); toggleFavoritesBtn.classList.toggle('text-gray-400', !isV); toggleFavoritesBtn.classList.toggle('text-red-500', isV); }
@@ -945,7 +845,7 @@
                     const originalUrl = image.dataset.originalUrl; 
                     let idx = state.currentArticleImages.indexOf(originalUrl); 
                     if (idx === -1) { state.currentArticleImages.push(originalUrl); idx = state.currentArticleImages.length - 1; }
-                    state.currentModalGalleryItem = null; // 來自內頁
+                    state.currentModalGalleryItem = null; // 來自內頁，沒有 gallery item object
                     openViewer(idx); 
                     return; 
                 } 
